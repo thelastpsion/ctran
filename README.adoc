@@ -1,3 +1,42 @@
 = CTRAN
 
 An attempt to reverse-engineer `CTRAN.EXE`, the Psion Object Oriented C preprocessor.
+In Pascal.
+
+== Aims
+
+* A drop-in replacement for the original `CTRAN.EXE` in the Psion SIBO C SDK.
+* Run on modern OSes and 16-bit DOS.
+* Produce identical files to the original.
+* Allow multiple include sources.
+
+== What is (or was) `CTRAN`?
+
+`CTRAN.EXE` is a pre-processor for the object-oriented part of the SDK.
+It takes a `.cat` category file containing class definitions (methods, properties, etc) and generates the following files:
+
+* A `.c` file
+* A `.g` header file, to be `#include`d with the class's methods.
+* A `.ext` file with a summary of the class that can be used by `CTRAN`
+* A `.asm` file
+* A `.ing` file (assembly header)
+* A `.lis` file
+
+Normally only the first three are used.
+It can also generate other files for inclusion within the SDK, plus skeleton source files.
+
+== The problem
+
+My main gripe with the original `CTRAN.EXE` is that it can only include files from one folder.
+So, if you want to include the `ROOT` class in OLIB (the main OO library) and one of your own classes, they both have to be in the same location.
+This means that you have to store every generated file inside the SDK folder.
+
+I did not like this.
+
+== The future
+
+At some point the entire SDK needs to be moved away from DOSBox.
+This will require rewriting every single tool that was included in the SDK, plus the TopSpeed C compiler.
+
+There is a lot of work to do, but rewriting `CTRAN` is the first step.
+

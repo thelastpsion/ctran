@@ -1,3 +1,7 @@
 **/ctran
+**/ctran.exe
 **/*.o
+**/*.a
+
 **/.vscode
+**/fp.*

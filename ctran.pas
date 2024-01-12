@@ -13,9 +13,6 @@ type
     // TokenDict = specialize TFPGmap<TokenType, string>;
     TokenArray = array of Token;
 
-// var
-//     dict: TokenDict;
-
 const
     EOF = 'EOF';
     NEWLINE = 'NEWLINE';
@@ -80,7 +77,6 @@ end;
 //     tokenArray := concat(tokenArray, [newToken]);
 // end;
 
-
 // Takes a TokenType and a String and puts it into a Token record
 function NewToken(newTokenType: TokenType; newTokenLiteral: String): Token;
 begin
@@ -92,6 +88,8 @@ procedure TestTokeniser();
 var
     input: String = '(){}!';
     tests: TokenArray;
+    i: Integer;
+    subject: String;
 begin
     tests := [NewToken(LPAREN, '('),
               NewToken(RPAREN, ')'),
@@ -101,8 +99,35 @@ begin
               NewToken(EOF, '')];
 
     PrintTestArray(tests);
+
+    for i := 0 to Length(input) - 1 do
+    begin
+        subject := input.Substring(i, 1);
+        if subject = tests[i].Literal then
+        begin
+            Writeln('OK');
+        end
+        else
+        begin
+            Writeln('Nope!')
+        end;
+    end;
+    
+    inc(i);
+
+    // Writeln('i is now ' + i.ToString());
+
+    if tests[i].Literal = '' then
+    begin
+        Writeln('OK');
+    end
+    else
+    begin
+        Writeln('Nope!')
+    end;
 end;
 
 begin
     TestTokeniser();
 end.
+

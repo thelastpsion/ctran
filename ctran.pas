@@ -96,7 +96,8 @@ begin
               NewToken(LBRACE, '{'),
               NewToken(RBRACE, '}'),
               NewToken(BANG, '!'),
-              NewToken(EOF, '')];
+              NewToken(EOF, '')
+    ];
 
     PrintTestArray(tests);
 
@@ -117,13 +118,18 @@ begin
 
     // Writeln('i is now ' + i.ToString());
 
+    if i > Length(tests) then
+    begin
+        Writeln('Reached end before EOF - i = ' + i.ToString());
+    end;
+
     if tests[i].Literal = '' then
     begin
-        Writeln('OK');
+        Writeln('EOF found.');
     end
     else
     begin
-        Writeln('Nope!')
+        Writeln('EOF not found.')
     end;
 end;
 

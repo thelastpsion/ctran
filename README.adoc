@@ -33,6 +33,13 @@ This means that you have to store every generated file inside the SDK folder.
 
 I did not like this.
 
+== Why (Object) Pascal?
+
+I want this to run on all modern operating systems, as well as DOS.
+I didn't want to write it in C or C++, so I went hunting for another language/compiler.
+Free Pascal offers just the right level of language, taking away some of the worries of memory management and how to handle dictionaries/trees, while letting me go low-level when I want to.
+It targets pretty much everything, including Linux, Windows, macOS, Haiku, *BSD... and 16-bit DOS.
+
 == The future
 
 At some point the entire SDK needs to be moved away from DOSBox.

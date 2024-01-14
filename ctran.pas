@@ -1,5 +1,5 @@
+{$mode objfpc}{$H+}{$J-}
 program ctran;
-{$mode objfpc}{$H+}
 
 // uses fgl;
 uses sysutils;

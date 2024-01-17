@@ -2,7 +2,8 @@
 program ctran;
 
 // uses fgl;
-uses sysutils;
+uses
+    sysutils;
 
 type
     TokenType = string;
@@ -12,6 +13,42 @@ type
     end;
     // TokenDict = specialize TFPGmap<TokenType, string>;
     TokenArray = array of Token;
+
+    TTokenType = (
+        // Breaks
+        tknEOF,
+        tknNewline,
+        tknSemicolon,
+
+        // Symbols
+        tknParenLeft,
+        tknParenRight,
+        tknBraceLeft,
+        tknBraceRight,
+        tknBang,
+
+        // Category type keywords
+        tknImage,
+        tknLibrary,
+
+        // External file inclusion keywords
+        tknExternal,
+        tknInclude,
+        tknRequire,
+
+        // Class keyword
+        tknClass,
+
+        // Method declaration keywords
+        tknAdd,
+        tknReplace,
+        tknDefer,
+
+        // Other class-related keywords
+        tknProperty,
+        tknTypes,
+        tknConstants
+    );
 
 const
     EOF = 'EOF';
@@ -114,8 +151,7 @@ begin
         end;
     end;
     
-    inc(i);
-
+    i := length(input);
     // Writeln('i is now ' + i.ToString());
 
     if i > Length(tests) then

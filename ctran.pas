@@ -3,7 +3,7 @@ program ctran;
 
 // uses fgl;
 uses
-    sysutils;
+    sysutils, Classes;
 
 type
     TokenType = string;
@@ -48,6 +48,15 @@ type
         tknProperty,
         tknTypes,
         tknConstants
+    );
+
+    TLexerState = (
+        stateInitial,
+        stateImageOrLibrary,
+        stateClass,
+        stateClassProperty,
+        stateClassTypes,
+        stateClassConstants
     );
 
     TMyLexer = class
@@ -223,10 +232,88 @@ begin
     WriteLn(IsValidLetter('_'));
     WriteLn(IsValidLetter('a'));
     WriteLn(IsValidLetter('1'));
+end;
 
+procedure LoadThatFile();
+var
+    slCategoryFile : TStringList;
+    i, j : Integer;
+    linepos : Integer;
+    curtoken : String;
+    curchar : char;
+    grabbedline : String;
+    status : TLexerState;
+begin
+    status := stateInitial;
+    slCategoryFile := TStringList.Create;
+
+    slCategoryFile.LoadFromFile('demo.cat');
+
+    for i := 0 to slCategoryFile.Count - 1 do
+    begin
+        linepos := 0;
+        curtoken := '';
+        grabbedline := slCategoryFile[i].Trim;
+        WriteLn('A:', grabbedline);
+
+        if length(grabbedline) > 0 then
+        begin
+            for j := 1 to length(grabbedline) do
+            begin
+                curtoken := concat(curtoken, grabbedline[j]);
+            end;
+        end;
+        WriteLn('B:', curtoken);
+
+        if grabbedline = curtoken then Writeln('Match') else Writeln('--- NO MATCH ---');
+
+        
+        linepos := 1;
+        curtoken := '';
+
+        case status of
+            stateInitial: begin
+                if grabbedline.Substring(0,6) = 'IMAGE ' then
+                begin
+                    Writeln('>>> Line ', i + 1, ': IMAGE found!');
+                    status := stateImageOrLibrary;
+                    linepos := 7;
+                end;
+                if grabbedline.Substring(0,8) = 'LIBRARY ' then
+                begin
+                    Writeln('>>> Line ', i + 1, ': LIBRARY found!');
+                    status := stateImageOrLibrary;
+                    linepos := 9;
+                end;
+                if status = stateImageOrLibrary then
+                begin
+                    WriteLn('>>>   Now in stateImageOrLibrary');
+                    curtoken := '';
+                    for j := linepos to length(grabbedline) do
+                    begin
+                        if grabbedline[j] = ' ' then
+                            break
+                        else
+                            curtoken := concat(curtoken, grabbedline[j]);
+                    end;
+                    Writeln('>>> Token grabbed: ', curtoken);
+                end;
+            end;
+        end;
+
+//        for j := 1 to length(grabbedline) do
+//        begin
+//            if grabbedline[j].Trim = '' then
+//            begin
+//                WriteLn('TOKEN: ', 
+//            break;
+//        end;
+    end;
 end;
 
 begin
-    TestTokeniser();
+    //TestTokeniser();
+
+    LoadThatFile();
 end.
 

@@ -50,6 +50,16 @@ type
         tknConstants
     );
 
+    TMyLexer = class
+        LineNo, curpos : Integer;
+        content : String;
+        flagEOF : Boolean;
+        curchar : string[1];
+        constructor Create(str : string);
+        procedure FindStartOfLine;
+        procedure GetNextGlyph;
+    end;
+
 const
     EOF = 'EOF';
     NEWLINE = 'NEWLINE';
@@ -90,6 +100,42 @@ const
 //     Writeln('Called fine.');
 // end;
 
+constructor TMyLexer.Create(str : String);
+begin
+    inherited Create;
+    LineNo := 0;
+    curpos := 0;
+    content := str;
+    flagEOF := false;
+    curchar := '';
+end;
+
+//TODO: Should this be a function that returns a char, or should it just put values into variables inside the class?
+procedure TMyLexer.GetNextGlyph();
+var
+    nextpos : Integer;
+    nextchar : char;
+begin
+    nextpos := curpos + 1;
+
+    if curpos > length(content) then
+    begin
+        flagEOF := true;
+        curchar := '';
+        Exit();
+    end;
+
+    nextchar := content[nextpos];
+    inc(curpos);
+end;
+
+procedure TMyLexer.FindStartOfLine();
+var
+    ch : Char;
+begin
+    ch := content[curpos];
+end;
+
 procedure PrintTestArray(tokenArray: TokenArray);
 var
     i: Integer;
@@ -119,6 +165,12 @@ function NewToken(newTokenType: TokenType; newTokenLiteral: String): Token;
 begin
     NewToken.TType := newTokenType;
     NewToken.Literal := newTokenLiteral;
+end;
+
+function IsValidLetter(ch: Char): Boolean;
+begin
+    //Result := (((ord(ch) >= 97) and (ord(ch) <= 122)) or ((ord(ch) >= 65) and (ord(ch) <= 90)) or (ch = '_'));
+    Result := ((LowerCase(ch) in ['a' .. 'z']) or (ch = '_'));
 end;
 
 procedure TestTokeniser();
@@ -167,6 +219,11 @@ begin
     begin
         Writeln('EOF not found.')
     end;
+
+    WriteLn(IsValidLetter('_'));
+    WriteLn(IsValidLetter('a'));
+    WriteLn(IsValidLetter('1'));
+
 end;
 
 begin

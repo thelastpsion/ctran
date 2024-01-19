@@ -53,6 +53,7 @@ type
     TLexerState = (
         stateInitial,
         stateImageOrLibrary,
+        stateClassSeekStart,
         stateClass,
         stateClassProperty,
         stateClassTypes,
@@ -182,6 +183,28 @@ begin
     Result := ((LowerCase(ch) in ['a' .. 'z']) or (ch = '_'));
 end;
 
+function GetNextToken(curline: String; var StartPos: Integer): String;
+var
+    curpos : Integer;
+    flgFoundText : Boolean = false;
+begin
+    GetNextToken := '';
+
+    for curpos := StartPos to length(curline) do
+    begin
+        if curline[curpos] = ' ' then begin
+            if flgFoundText then begin
+                startpos := curpos;
+                exit;
+            end;
+        end else begin
+            GetNextToken := concat(GetNextToken, curline[curpos]);
+            flgFoundText := true;
+        end;
+    end;
+    startpos := StartPos + length(GetNextToken);
+end;
+
 procedure TestTokeniser();
 var
     input: String = '(){}!';
@@ -254,60 +277,76 @@ begin
         linepos := 0;
         curtoken := '';
         grabbedline := slCategoryFile[i].Trim;
-        WriteLn('A:', grabbedline);
+        WriteLn(format('%.3d', [i + 1]), ':', grabbedline);
 
-        if length(grabbedline) > 0 then
-        begin
-            for j := 1 to length(grabbedline) do
-            begin
-                curtoken := concat(curtoken, grabbedline[j]);
-            end;
-        end;
-        WriteLn('B:', curtoken);
-
-        if grabbedline = curtoken then Writeln('Match') else Writeln('--- NO MATCH ---');
-
-        
-        linepos := 1;
-        curtoken := '';
-
-        case status of
-            stateInitial: begin
-                if grabbedline.Substring(0,6) = 'IMAGE ' then
-                begin
-                    Writeln('>>> Line ', i + 1, ': IMAGE found!');
-                    status := stateImageOrLibrary;
-                    linepos := 7;
-                end;
-                if grabbedline.Substring(0,8) = 'LIBRARY ' then
-                begin
-                    Writeln('>>> Line ', i + 1, ': LIBRARY found!');
-                    status := stateImageOrLibrary;
-                    linepos := 9;
-                end;
-                if status = stateImageOrLibrary then
-                begin
-                    WriteLn('>>>   Now in stateImageOrLibrary');
-                    curtoken := '';
-                    for j := linepos to length(grabbedline) do
-                    begin
-                        if grabbedline[j] = ' ' then
-                            break
-                        else
-                            curtoken := concat(curtoken, grabbedline[j]);
+        if length(grabbedline) = 0 then
+            Writeln('>>> Empty line')
+        else if grabbedline[1] = '!' then
+            Writeln('>>> Explicit comment, line skipped')
+        else begin
+            linepos := 1;
+            curtoken := '';
+    
+            case status of
+                stateInitial: begin
+                    curtoken := GetNextToken(grabbedline, linepos);
+                    case curtoken of 
+                        'IMAGE': begin
+                            Writeln('>>> IMAGE found!');
+                            status := stateImageOrLibrary;
+                            linepos := 7;
+                        end;
+                        'LIBRARY': begin
+                            Writeln('>>> LIBRARY found!');
+                            status := stateImageOrLibrary;
+                            linepos := 9;
+                        end;
                     end;
-                    Writeln('>>> Token grabbed: ', curtoken);
+                    if status = stateImageOrLibrary then
+                    begin
+                        WriteLn('>>>   Now in stateImageOrLibrary');
+                        curtoken := GetNextToken(grabbedline, linepos);
+                        Writeln('>>> Token grabbed: ', curtoken);
+                    end;
+                end;
+    
+                stateImageOrLibrary: begin
+                    curtoken := GetNextToken(grabbedline, linepos);
+                    case curtoken of
+                        'EXTERNAL': begin
+                            Writeln('>>> EXTERNAL found!');
+                            curtoken := GetNextToken(grabbedline, linepos);
+                            Writeln('>>> Token grabbed: ', curtoken);
+                            Writeln('>>>   Do something with EXTERNAL here');
+                        end;
+                        'INCLUDE': begin
+                            Writeln('>>> INCLUDE found!');
+                            curtoken := GetNextToken(grabbedline, linepos);
+                            Writeln('>>> Token grabbed: ', curtoken);
+                            Writeln('>>>   Do something with INCLUDE here');
+                        end;
+                        'CLASS': begin
+                            Writeln('>>> CLASS found!');
+                            curtoken := GetNextToken(grabbedline, linepos);
+                            Writeln('>>> Token grabbed: ', curtoken);
+                            curtoken := GetNextToken(grabbedline, linepos);
+                            Writeln('>>> Token grabbed: ', curtoken);
+                            status := stateClassSeekStart;
+                            Writeln('>>>   Now in stateClassSeekStart (looking for brace)');
+                        end;
+                    end;
+                end;
+    
+                stateClassSeekStart: begin
+                    if grabbedline[1] = '{' then begin
+                        Writeln('>>> Start of CLASS section found!');
+                        status := stateClass;
+                        Writeln('>>>   Now in stateClass');
+                        Writeln('>>>   Do something with a class here involving brace-counting');
+                    end;
                 end;
             end;
         end;
-
-//        for j := 1 to length(grabbedline) do
-//        begin
-//            if grabbedline[j].Trim = '' then
-//            begin
-//                WriteLn('TOKEN: ', 
-//            break;
-//        end;
     end;
 end;
 

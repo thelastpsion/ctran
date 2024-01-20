@@ -52,7 +52,7 @@ type
 
     TLexerState = (
         stateInitial,
-        stateImageOrLibrary,
+        stateSeekExtIncClass,
         stateClassSeekStart,
         stateClass,
         stateClassProperty,
@@ -60,7 +60,9 @@ type
         stateClassConstants,
         stateClassConstantsSeekStart,
         stateClassTypesSeekStart,
-        stateClassPropertySeekStart
+        stateClassPropertySeekStart,
+        stateSeekClassOrRequire,
+        stateSeekRequire
     );
 
     TMyLexer = class
@@ -297,22 +299,22 @@ begin
                     case curtoken of 
                         'IMAGE': begin
                             Writeln('>>> IMAGE found!');
-                            status := stateImageOrLibrary;
+                            status := stateSeekExtIncClass;
                         end;
                         'LIBRARY': begin
                             Writeln('>>> LIBRARY found!');
-                            status := stateImageOrLibrary;
+                            status := stateSeekExtIncClass;
                         end;
                     end;
-                    if status = stateImageOrLibrary then
+                    if status = stateSeekExtIncClass then
                     begin
-                        WriteLn('>>>   Now in stateImageOrLibrary');
+                        WriteLn('>>>   Now in stateSeekExtIncClass');
                         curtoken := GetNextToken(grabbedline, linepos);
                         Writeln('>>> Token grabbed: ', curtoken);
                     end;
                 end;
-    
-                stateImageOrLibrary: begin
+
+                stateSeekExtIncClass: begin
                     curtoken := GetNextToken(grabbedline, linepos);
                     case curtoken of
                         'EXTERNAL': begin
@@ -336,6 +338,65 @@ begin
                             status := stateClassSeekStart;
                             Writeln('>>>   Now in stateClassSeekStart (looking for brace)');
                         end;
+                        'REQUIRE': begin
+                            Writeln('!!! REQUIRE found before first CLASS declaration');
+                            exit;
+                        end;
+                    end;
+                end;
+    
+                stateSeekClassOrRequire: begin
+                    curtoken := GetNextToken(grabbedline, linepos);
+                    case curtoken of
+                        'REQUIRE': begin
+                            Writeln('>>> REQUIRE found!');
+                            curtoken := GetNextToken(grabbedline, linepos);
+                            Writeln('>>> Token grabbed: ', curtoken);
+                            Writeln('>>>   Do something with REQUIRE here');
+                            status := stateSeekRequire; // After the first REQUIRE, don't allow any more CLASSes
+                            Writeln('>>> Now in stateSeekRequire');
+                        end;
+                        'INCLUDE': begin
+                            Writeln('!!! INCLUDE found after first CLASS declaration');
+                            exit;
+                        end;
+                        'EXTERNAL': begin
+                            Writeln('!!! EXTERNAL found after first CLASS declaration');
+                            exit;
+                        end;
+                        'CLASS': begin
+                            Writeln('>>> CLASS found!');
+                            curtoken := GetNextToken(grabbedline, linepos);
+                            Writeln('>>> Token grabbed: ', curtoken);
+                            curtoken := GetNextToken(grabbedline, linepos);
+                            Writeln('>>> Token grabbed: ', curtoken);
+                            status := stateClassSeekStart;
+                            Writeln('>>>   Now in stateClassSeekStart (looking for brace)');
+                        end;
+                    end;
+                end;
+    
+                stateSeekRequire: begin
+                    curtoken := GetNextToken(grabbedline, linepos);
+                    case curtoken of
+                        'REQUIRE': begin
+                            Writeln('>>> REQUIRE found!');
+                            curtoken := GetNextToken(grabbedline, linepos);
+                            Writeln('>>> Token grabbed: ', curtoken);
+                            Writeln('>>>   Do something with REQUIRE here');
+                        end;
+                        'INCLUDE': begin
+                            Writeln('!!! INCLUDE found after REQUIRE declaration');
+                            exit;
+                        end;
+                        'EXTERNAL': begin
+                            Writeln('!!! EXTERNAL found after REQUIRE declaration');
+                            exit;
+                        end;
+                        'CLASS': begin
+                            Writeln('!!! CLASS found after REQUIRE declaration');
+                            exit;
+                        end;
                     end;
                 end;
     
@@ -350,43 +411,51 @@ begin
                 end;
                 
                 stateClass: begin
-                    curtoken := GetNextToken(grabbedline, linepos);
-                    case curtoken of
-                        'ADD': begin
-                            Writeln('>>> ADD found!');
-                            curtoken := GetNextToken(grabbedline, linepos);
-                            Writeln('>>> Token grabbed: ', curtoken);
-                            Writeln('>>>   Do something with ADD here');
-                        end;
-                        'REPLACE': begin
-                            Writeln('>>> REPLACE found!');
-                            curtoken := GetNextToken(grabbedline, linepos);
-                            Writeln('>>> Token grabbed: ', curtoken);
-                            Writeln('>>>   Do something with REPLACE here');
-                        end;
-                        'DEFER': begin
-                            Writeln('>>> DEFER found!');
-                            curtoken := GetNextToken(grabbedline, linepos);
-                            Writeln('>>> Token grabbed: ', curtoken);
-                            Writeln('>>>   Do something with DEFER here');
-                        end;
-                        'CONSTANTS': begin
-                            Writeln('>>> CONSTANTS found!');
-                            status := stateClassConstantsSeekStart;
-                            Writeln('>>>   Now in stateClassConstantsSeekStart');
-                        end;
-                        'TYPES': begin
-                            Writeln('>>> TYPES found!');
-                            status := stateClassTypesSeekStart;
-                            Writeln('>>>   Now in stateClassTypesSeekStart');
-                        end;
-                        'PROPERTY': begin
-                            Writeln('>>> PROPERTY found!');
-                            curtoken := GetNextToken(grabbedline, linepos);
-                            Writeln('>>> Token grabbed: ', curtoken);
-                            if TryStrToInt(curtoken, x) then Writeln('>>> Number found!');
-                            status := stateClassTypesSeekStart;
-                            Writeln('>>>   Now in stateClassPropertySeekStart');
+                    if grabbedline[1] = '}' then begin
+                        Writeln('>>> End of CLASS section found!');
+                        dec(bracelevel);
+                        Writeln('>>>   Brace level: ', bracelevel);
+                        status := stateSeekClassOrRequire;
+                        Writeln('>>> Now in stateSeekClassOrRequire');
+                    end else begin
+                        curtoken := GetNextToken(grabbedline, linepos);
+                        case curtoken of
+                            'ADD': begin
+                                Writeln('>>> ADD found!');
+                                curtoken := GetNextToken(grabbedline, linepos);
+                                Writeln('>>> Token grabbed: ', curtoken);
+                                Writeln('>>>   Do something with ADD here');
+                            end;
+                            'REPLACE': begin
+                                Writeln('>>> REPLACE found!');
+                                curtoken := GetNextToken(grabbedline, linepos);
+                                Writeln('>>> Token grabbed: ', curtoken);
+                                Writeln('>>>   Do something with REPLACE here');
+                            end;
+                            'DEFER': begin
+                                Writeln('>>> DEFER found!');
+                                curtoken := GetNextToken(grabbedline, linepos);
+                                Writeln('>>> Token grabbed: ', curtoken);
+                                Writeln('>>>   Do something with DEFER here');
+                            end;
+                            'CONSTANTS': begin
+                                Writeln('>>> CONSTANTS found!');
+                                status := stateClassConstantsSeekStart;
+                                Writeln('>>>   Now in stateClassConstantsSeekStart');
+                            end;
+                            'TYPES': begin
+                                Writeln('>>> TYPES found!');
+                                status := stateClassTypesSeekStart;
+                                Writeln('>>>   Now in stateClassTypesSeekStart');
+                            end;
+                            'PROPERTY': begin
+                                Writeln('>>> PROPERTY found!');
+                                curtoken := GetNextToken(grabbedline, linepos);
+                                Writeln('>>> Token grabbed: ', curtoken);
+                                if TryStrToInt(curtoken, x) then Writeln('>>> Number found!');
+                                status := stateClassPropertySeekStart;
+                                Writeln('>>>   Now in stateClassPropertySeekStart');
+                            end;
                         end;
                     end;
                 end;
@@ -408,6 +477,11 @@ begin
                         Writeln('>>>   Brace level: ', bracelevel);
                         status := stateClass;
                         Writeln('>>> Now in stateClass');
+                    end else begin
+                        curtoken := GetNextToken(grabbedline, linepos);
+                        Writeln('>>> Token grabbed: ', curtoken);
+                        curtoken := GetNextToken(grabbedline, linepos);
+                        Writeln('>>> Token grabbed: ', curtoken);
                     end;
                 end;
                 
@@ -434,13 +508,18 @@ begin
                             Writeln('>>> Now in stateClass');
                         end;
                     end;
+                    if bracelevel > 1 then begin
+                        if ansipos(';', grabbedline) > 0 then
+                            grabbedline := copy(grabbedline, 1, ansipos(';', grabbedline));
+                        Writeln ('>>> Found string: ', grabbedline);
+                    end;
                 end;
-                
+
                 stateClassPropertySeekStart: begin
                     if grabbedline[1] = '{' then begin
                         Writeln('>>> Start of PROPERTY section found!');
                         status := stateClassProperty;
-                        Writeln('>>>   Now in stateClassConstants');
+                        Writeln('>>>   Now in stateClassProperty');
                         inc(bracelevel);
                         Writeln('>>>   Brace level: ', bracelevel);
                     end;
@@ -453,6 +532,10 @@ begin
                         Writeln('>>>   Brace level: ', bracelevel);
                         status := stateClass;
                         Writeln('>>> Now in stateClass');
+                    end else begin
+                        if ansipos(';', grabbedline) > 0 then
+                            grabbedline := copy(grabbedline, 1, ansipos(';', grabbedline));
+                        Writeln ('>>> Found string: ', grabbedline);
                     end;
                 end;
             end;

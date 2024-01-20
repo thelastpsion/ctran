@@ -260,12 +260,13 @@ end;
 procedure LoadThatFile();
 var
     slCategoryFile : TStringList;
-    i, j : Integer;
+    i : Integer;
     linepos : Integer;
     curtoken : String;
-    curchar : char;
+//    curchar : char;
     grabbedline : String;
     status : TLexerState;
+    bracelevel: Integer = 0;
 begin
     status := stateInitial;
     slCategoryFile := TStringList.Create;
@@ -294,12 +295,10 @@ begin
                         'IMAGE': begin
                             Writeln('>>> IMAGE found!');
                             status := stateImageOrLibrary;
-                            linepos := 7;
                         end;
                         'LIBRARY': begin
                             Writeln('>>> LIBRARY found!');
                             status := stateImageOrLibrary;
-                            linepos := 9;
                         end;
                     end;
                     if status = stateImageOrLibrary then
@@ -342,7 +341,47 @@ begin
                         Writeln('>>> Start of CLASS section found!');
                         status := stateClass;
                         Writeln('>>>   Now in stateClass');
-                        Writeln('>>>   Do something with a class here involving brace-counting');
+                        inc(bracelevel);
+                        Writeln('>>>   Brace level: ', bracelevel);
+                    end;
+                end;
+                
+                stateClass: begin
+                    curtoken := GetNextToken(grabbedline, linepos);
+                    case curtoken of
+                        'ADD': begin
+                            Writeln('>>> ADD found!');
+                            curtoken := GetNextToken(grabbedline, linepos);
+                            Writeln('>>> Token grabbed: ', curtoken);
+                            Writeln('>>>   Do something with ADD here');
+                        end;
+                        'REPLACE': begin
+                            Writeln('>>> REPLACE found!');
+                            curtoken := GetNextToken(grabbedline, linepos);
+                            Writeln('>>> Token grabbed: ', curtoken);
+                            Writeln('>>>   Do something with REPLACE here');
+                        end;
+                        'DEFER': begin
+                            Writeln('>>> DEFER found!');
+                            curtoken := GetNextToken(grabbedline, linepos);
+                            Writeln('>>> Token grabbed: ', curtoken);
+                            Writeln('>>>   Do something with DEFER here');
+                        end;
+                        'CONSTANTS': begin
+                            Writeln('>>> CONSTANTS found!');
+                            Writeln('>>>   Do something with CONSTANTS here');
+                        end;
+                        'TYPES': begin
+                            Writeln('>>> TYPES found!');
+                            Writeln('>>>   Do something with TYPES here');
+                        end;
+                        'PROPERTY': begin
+                            Writeln('>>> PROPERTY found!');
+                            curtoken := GetNextToken(grabbedline, linepos);
+                            // Check here for numeric token
+                            Writeln('>>> Token grabbed: ', curtoken);
+                            Writeln('>>>   Do something with PROPERTY here');
+                        end;
                     end;
                 end;
             end;

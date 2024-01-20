@@ -57,7 +57,10 @@ type
         stateClass,
         stateClassProperty,
         stateClassTypes,
-        stateClassConstants
+        stateClassConstants,
+        stateClassConstantsSeekStart,
+        stateClassTypesSeekStart,
+        stateClassPropertySeekStart
     );
 
     TMyLexer = class
@@ -205,62 +208,62 @@ begin
     startpos := StartPos + length(GetNextToken);
 end;
 
-procedure TestTokeniser();
-var
-    input: String = '(){}!';
-    tests: TokenArray;
-    i: Integer;
-    subject: String;
-begin
-    tests := [NewToken(LPAREN, '('),
-              NewToken(RPAREN, ')'),
-              NewToken(LBRACE, '{'),
-              NewToken(RBRACE, '}'),
-              NewToken(BANG, '!'),
-              NewToken(EOF, '')
-    ];
-
-    PrintTestArray(tests);
-
-    for i := 0 to Length(input) - 1 do
-    begin
-        subject := input.Substring(i, 1);
-        if subject = tests[i].Literal then
-        begin
-            Writeln('OK');
-        end
-        else
-        begin
-            Writeln('Nope!')
-        end;
-    end;
-    
-    i := length(input);
-    // Writeln('i is now ' + i.ToString());
-
-    if i > Length(tests) then
-    begin
-        Writeln('Reached end before EOF - i = ' + i.ToString());
-    end;
-
-    if tests[i].Literal = '' then
-    begin
-        Writeln('EOF found.');
-    end
-    else
-    begin
-        Writeln('EOF not found.')
-    end;
-
-    WriteLn(IsValidLetter('_'));
-    WriteLn(IsValidLetter('a'));
-    WriteLn(IsValidLetter('1'));
-end;
+//procedure TestTokeniser();
+//var
+//    input: String = '(){}!';
+//    tests: TokenArray;
+//    i: Integer;
+//    subject: String;
+//begin
+//    tests := [NewToken(LPAREN, '('),
+//              NewToken(RPAREN, ')'),
+//              NewToken(LBRACE, '{'),
+//              NewToken(RBRACE, '}'),
+//              NewToken(BANG, '!'),
+//              NewToken(EOF, '')
+//    ];
+//
+//    PrintTestArray(tests);
+//
+//    for i := 0 to Length(input) - 1 do
+//    begin
+//        subject := input.Substring(i, 1);
+//        if subject = tests[i].Literal then
+//        begin
+//            Writeln('OK');
+//        end
+//        else
+//        begin
+//            Writeln('Nope!')
+//        end;
+//    end;
+//    
+//    i := length(input);
+//    // Writeln('i is now ' + i.ToString());
+//
+//    if i > Length(tests) then
+//    begin
+//        Writeln('Reached end before EOF - i = ' + i.ToString());
+//    end;
+//
+//    if tests[i].Literal = '' then
+//    begin
+//        Writeln('EOF found.');
+//    end
+//    else
+//    begin
+//        Writeln('EOF not found.')
+//    end;
+//
+//    WriteLn(IsValidLetter('_'));
+//    WriteLn(IsValidLetter('a'));
+//    WriteLn(IsValidLetter('1'));
+//end;
 
 procedure LoadThatFile();
 var
     slCategoryFile : TStringList;
-    i : Integer;
+    i, x : Integer;
     linepos : Integer;
     curtoken : String;
 //    curchar : char;
@@ -369,19 +372,87 @@ begin
                         end;
                         'CONSTANTS': begin
                             Writeln('>>> CONSTANTS found!');
-                            Writeln('>>>   Do something with CONSTANTS here');
+                            status := stateClassConstantsSeekStart;
+                            Writeln('>>>   Now in stateClassConstantsSeekStart');
                         end;
                         'TYPES': begin
                             Writeln('>>> TYPES found!');
-                            Writeln('>>>   Do something with TYPES here');
+                            status := stateClassTypesSeekStart;
+                            Writeln('>>>   Now in stateClassTypesSeekStart');
                         end;
                         'PROPERTY': begin
                             Writeln('>>> PROPERTY found!');
                             curtoken := GetNextToken(grabbedline, linepos);
-                            // Check here for numeric token
                             Writeln('>>> Token grabbed: ', curtoken);
-                            Writeln('>>>   Do something with PROPERTY here');
+                            if TryStrToInt(curtoken, x) then Writeln('>>> Number found!');
+                            status := stateClassTypesSeekStart;
+                            Writeln('>>>   Now in stateClassPropertySeekStart');
                         end;
+                    end;
+                end;
+                
+                stateClassConstantsSeekStart: begin
+                    if grabbedline[1] = '{' then begin
+                        Writeln('>>> Start of CONSTANTS section found!');
+                        status := stateClassConstants;
+                        Writeln('>>>   Now in stateClassConstants');
+                        inc(bracelevel);
+                        Writeln('>>>   Brace level: ', bracelevel);
+                    end;
+                end;
+
+                stateClassConstants: begin
+                    if grabbedline[1] = '}' then begin
+                        Writeln('>>> End of CONSTANTS section found!');
+                        dec(bracelevel);
+                        Writeln('>>>   Brace level: ', bracelevel);
+                        status := stateClass;
+                        Writeln('>>> Now in stateClass');
+                    end;
+                end;
+                
+                stateClassTypesSeekStart: begin
+                    if grabbedline[1] = '{' then begin
+                        Writeln('>>> Start of TYPES section found!');
+                        status := stateClassTypes;
+                        Writeln('>>>   Now in stateClassTypes');
+                        inc(bracelevel);
+                        Writeln('>>>   Brace level: ', bracelevel);
+                    end;
+                end;
+
+                stateClassTypes: begin
+                    if grabbedline[1] = '{' then begin
+                        inc(bracelevel);
+                        Writeln('>>>   Brace level: ', bracelevel);
+                    end else if grabbedline[1] = '}' then begin
+                        dec(bracelevel);
+                        Writeln('>>>   Brace level: ', bracelevel);
+                        if bracelevel = 1 then begin
+                            Writeln('>>> End of TYPES section found!');
+                            status := stateClass;
+                            Writeln('>>> Now in stateClass');
+                        end;
+                    end;
+                end;
+                
+                stateClassPropertySeekStart: begin
+                    if grabbedline[1] = '{' then begin
+                        Writeln('>>> Start of PROPERTY section found!');
+                        status := stateClassProperty;
+                        Writeln('>>>   Now in stateClassConstants');
+                        inc(bracelevel);
+                        Writeln('>>>   Brace level: ', bracelevel);
+                    end;
+                end;
+
+                stateClassProperty: begin
+                    if grabbedline[1] = '}' then begin
+                        Writeln('>>> End of PROPERTY section found!');
+                        dec(bracelevel);
+                        Writeln('>>>   Brace level: ', bracelevel);
+                        status := stateClass;
+                        Writeln('>>> Now in stateClass');
                     end;
                 end;
             end;

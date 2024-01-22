@@ -3,17 +3,10 @@ program ctran;
 
 // uses fgl;
 uses
-    sysutils, Classes;
+    sysutils, Classes; //, Generics.Collections;
 
 type
-    TokenType = string;
-    Token = record
-        TType : TokenType;
-        Literal : string;
-    end;
-    // TokenDict = specialize TFPGmap<TokenType, string>;
-    TokenArray = array of Token;
-
+//    TokenType = string;
     TTokenType = (
         // Breaks
         tknEOF,
@@ -47,8 +40,19 @@ type
         // Other class-related keywords
         tknProperty,
         tknTypes,
-        tknConstants
+        tknConstants,
+
+        tknString
     );
+
+//    TokenDict = specialize TDictionary<TTokenType, string>;
+
+    TToken = record
+        TType : TTokenType;
+        Literal : string;
+    end;
+    TTokenArray = array of TToken;
+
 
     TLexerState = (
         stateInitial,
@@ -65,15 +69,15 @@ type
         stateSeekRequire
     );
 
-    TMyLexer = class
-        LineNo, curpos : Integer;
-        content : String;
-        flagEOF : Boolean;
-        curchar : string[1];
-        constructor Create(str : string);
-        procedure FindStartOfLine;
-        procedure GetNextGlyph;
-    end;
+//    TMyLexer = class
+//        LineNo, curpos : Integer;
+//        content : String;
+//        flagEOF : Boolean;
+//        curchar : string[1];
+//        constructor Create(str : string);
+//        procedure FindStartOfLine;
+//        procedure GetNextGlyph;
+//    end;
 
 const
     EOF = 'EOF';
@@ -115,51 +119,53 @@ const
 //     Writeln('Called fine.');
 // end;
 
-constructor TMyLexer.Create(str : String);
-begin
-    inherited Create;
-    LineNo := 0;
-    curpos := 0;
-    content := str;
-    flagEOF := false;
-    curchar := '';
-end;
+//constructor TMyLexer.Create(str : String);
+//begin
+//    inherited Create;
+//    LineNo := 0;
+//    curpos := 0;
+//    content := str;
+//    flagEOF := false;
+//    curchar := '';
+//end;
 
 //TODO: Should this be a function that returns a char, or should it just put values into variables inside the class?
-procedure TMyLexer.GetNextGlyph();
-var
-    nextpos : Integer;
-    nextchar : char;
-begin
-    nextpos := curpos + 1;
+//procedure TMyLexer.GetNextGlyph();
+//var
+//    nextpos : Integer;
+//    nextchar : char;
+//begin
+//    nextpos := curpos + 1;
+//
+//    if curpos > length(content) then
+//    begin
+//        flagEOF := true;
+//        curchar := '';
+//        Exit();
+//    end;
+//
+//    nextchar := content[nextpos];
+//    inc(curpos);
+//end;
+//
+//procedure TMyLexer.FindStartOfLine();
+//var
+//    ch : Char;
+//begin
+//    ch := content[curpos];
+//end;
 
-    if curpos > length(content) then
-    begin
-        flagEOF := true;
-        curchar := '';
-        Exit();
-    end;
-
-    nextchar := content[nextpos];
-    inc(curpos);
-end;
-
-procedure TMyLexer.FindStartOfLine();
-var
-    ch : Char;
-begin
-    ch := content[curpos];
-end;
-
-procedure PrintTestArray(tokenArray: TokenArray);
+procedure PrintTestArray(tokenArray: TTokenArray);
 var
     i: Integer;
+    s: String;
 begin
-    Writeln(' Token      | Literal');
-    Writeln('------------|---------');
+    Writeln(' Token         | Literal');
+    Writeln('---------------|---------');
     for i := 0 to Length(tokenArray) - 1 do
     begin
-        Writeln(' ' + tokenArray[i].TType.PadRight(10) + ' | ' + tokenArray[i].Literal);
+        Str(tokenArray[i].TType, s);
+        Writeln(' ', s.PadRight(13), ' | ', tokenArray[i].Literal);
     end;
     Writeln;
     Writeln('Length: ', Length(tokenArray));
@@ -176,7 +182,7 @@ end;
 // end;
 
 // Takes a TokenType and a String and puts it into a Token record
-function NewToken(newTokenType: TokenType; newTokenLiteral: String): Token;
+function NewToken(newTokenType: TTokenType; newTokenLiteral: String): TToken;
 begin
     NewToken.TType := newTokenType;
     NewToken.Literal := newTokenLiteral;
@@ -268,10 +274,10 @@ var
     i, x : Integer;
     linepos : Integer;
     curtoken : String;
-//    curchar : char;
     grabbedline : String;
     status : TLexerState;
     bracelevel: Integer = 0;
+    Tokenised : TTokenArray;
 begin
     status := stateInitial;
     slCategoryFile := TStringList.Create;
@@ -300,10 +306,12 @@ begin
                         'IMAGE': begin
                             Writeln('>>> IMAGE found!');
                             status := stateSeekExtIncClass;
+                            Tokenised := [NewToken(tknImage, curtoken)];
                         end;
                         'LIBRARY': begin
                             Writeln('>>> LIBRARY found!');
                             status := stateSeekExtIncClass;
+                            Tokenised := [NewToken(tknLibrary, curtoken)];
                         end;
                     end;
                     if status = stateSeekExtIncClass then
@@ -311,6 +319,7 @@ begin
                         WriteLn('>>>   Now in stateSeekExtIncClass');
                         curtoken := GetNextToken(grabbedline, linepos);
                         Writeln('>>> Token grabbed: ', curtoken);
+                        Tokenised := concat(Tokenised, [NewToken(tknString, curtoken)]);
                     end;
                 end;
 
@@ -319,22 +328,29 @@ begin
                     case curtoken of
                         'EXTERNAL': begin
                             Writeln('>>> EXTERNAL found!');
+                            Tokenised := concat(Tokenised, [NewToken(tknExternal, curtoken)]);
                             curtoken := GetNextToken(grabbedline, linepos);
                             Writeln('>>> Token grabbed: ', curtoken);
+                            Tokenised := concat(Tokenised, [NewToken(tknString, curtoken)]);
                             Writeln('>>>   Do something with EXTERNAL here');
                         end;
                         'INCLUDE': begin
                             Writeln('>>> INCLUDE found!');
+                            Tokenised := concat(Tokenised, [NewToken(tknInclude, curtoken)]);
                             curtoken := GetNextToken(grabbedline, linepos);
                             Writeln('>>> Token grabbed: ', curtoken);
+                            Tokenised := concat(Tokenised, [NewToken(tknString, curtoken)]);
                             Writeln('>>>   Do something with INCLUDE here');
                         end;
                         'CLASS': begin
                             Writeln('>>> CLASS found!');
+                            Tokenised := concat(Tokenised, [NewToken(tknClass, curtoken)]);
                             curtoken := GetNextToken(grabbedline, linepos);
                             Writeln('>>> Token grabbed: ', curtoken);
+                            Tokenised := concat(Tokenised, [NewToken(tknString, curtoken)]);
                             curtoken := GetNextToken(grabbedline, linepos);
                             Writeln('>>> Token grabbed: ', curtoken);
+                            Tokenised := concat(Tokenised, [NewToken(tknString, curtoken)]);
                             status := stateClassSeekStart;
                             Writeln('>>>   Now in stateClassSeekStart (looking for brace)');
                         end;
@@ -350,8 +366,10 @@ begin
                     case curtoken of
                         'REQUIRE': begin
                             Writeln('>>> REQUIRE found!');
+                            Tokenised := concat(Tokenised, [NewToken(tknRequire, curtoken)]);
                             curtoken := GetNextToken(grabbedline, linepos);
                             Writeln('>>> Token grabbed: ', curtoken);
+                            Tokenised := concat(Tokenised, [NewToken(tknString, curtoken)]);
                             Writeln('>>>   Do something with REQUIRE here');
                             status := stateSeekRequire; // After the first REQUIRE, don't allow any more CLASSes
                             Writeln('>>> Now in stateSeekRequire');
@@ -366,10 +384,13 @@ begin
                         end;
                         'CLASS': begin
                             Writeln('>>> CLASS found!');
+                            Tokenised := concat(Tokenised, [NewToken(tknClass, curtoken)]);
                             curtoken := GetNextToken(grabbedline, linepos);
                             Writeln('>>> Token grabbed: ', curtoken);
+                            Tokenised := concat(Tokenised, [NewToken(tknString, curtoken)]);
                             curtoken := GetNextToken(grabbedline, linepos);
                             Writeln('>>> Token grabbed: ', curtoken);
+                            Tokenised := concat(Tokenised, [NewToken(tknString, curtoken)]);
                             status := stateClassSeekStart;
                             Writeln('>>>   Now in stateClassSeekStart (looking for brace)');
                         end;
@@ -381,8 +402,10 @@ begin
                     case curtoken of
                         'REQUIRE': begin
                             Writeln('>>> REQUIRE found!');
+                            Tokenised := concat(Tokenised, [NewToken(tknRequire, curtoken)]);
                             curtoken := GetNextToken(grabbedline, linepos);
                             Writeln('>>> Token grabbed: ', curtoken);
+                            Tokenised := concat(Tokenised, [NewToken(tknString, curtoken)]);
                             Writeln('>>>   Do something with REQUIRE here');
                         end;
                         'INCLUDE': begin
@@ -403,6 +426,7 @@ begin
                 stateClassSeekStart: begin
                     if grabbedline[1] = '{' then begin
                         Writeln('>>> Start of CLASS section found!');
+                            Tokenised := concat(Tokenised, [NewToken(tknBraceLeft, '{')]);
                         status := stateClass;
                         Writeln('>>>   Now in stateClass');
                         inc(bracelevel);
@@ -412,6 +436,7 @@ begin
                 
                 stateClass: begin
                     if grabbedline[1] = '}' then begin
+                        Tokenised := concat(Tokenised, [NewToken(tknBraceRight, '}')]);
                         Writeln('>>> End of CLASS section found!');
                         dec(bracelevel);
                         Writeln('>>>   Brace level: ', bracelevel);
@@ -422,37 +447,49 @@ begin
                         case curtoken of
                             'ADD': begin
                                 Writeln('>>> ADD found!');
+                                Tokenised := concat(Tokenised, [NewToken(tknAdd, curtoken)]);
                                 curtoken := GetNextToken(grabbedline, linepos);
                                 Writeln('>>> Token grabbed: ', curtoken);
+                                Tokenised := concat(Tokenised, [NewToken(tknString, curtoken)]);
                                 Writeln('>>>   Do something with ADD here');
                             end;
                             'REPLACE': begin
                                 Writeln('>>> REPLACE found!');
+                                Tokenised := concat(Tokenised, [NewToken(tknReplace, curtoken)]);
                                 curtoken := GetNextToken(grabbedline, linepos);
                                 Writeln('>>> Token grabbed: ', curtoken);
+                                Tokenised := concat(Tokenised, [NewToken(tknString, curtoken)]);
                                 Writeln('>>>   Do something with REPLACE here');
                             end;
                             'DEFER': begin
                                 Writeln('>>> DEFER found!');
+                                Tokenised := concat(Tokenised, [NewToken(tknDefer, curtoken)]);
                                 curtoken := GetNextToken(grabbedline, linepos);
                                 Writeln('>>> Token grabbed: ', curtoken);
+                                Tokenised := concat(Tokenised, [NewToken(tknString, curtoken)]);
                                 Writeln('>>>   Do something with DEFER here');
                             end;
                             'CONSTANTS': begin
                                 Writeln('>>> CONSTANTS found!');
+                                Tokenised := concat(Tokenised, [NewToken(tknConstants, curtoken)]);
                                 status := stateClassConstantsSeekStart;
                                 Writeln('>>>   Now in stateClassConstantsSeekStart');
                             end;
                             'TYPES': begin
                                 Writeln('>>> TYPES found!');
+                                Tokenised := concat(Tokenised, [NewToken(tknTypes, curtoken)]);
                                 status := stateClassTypesSeekStart;
                                 Writeln('>>>   Now in stateClassTypesSeekStart');
                             end;
                             'PROPERTY': begin
                                 Writeln('>>> PROPERTY found!');
+                                Tokenised := concat(Tokenised, [NewToken(tknProperty, curtoken)]);
                                 curtoken := GetNextToken(grabbedline, linepos);
                                 Writeln('>>> Token grabbed: ', curtoken);
-                                if TryStrToInt(curtoken, x) then Writeln('>>> Number found!');
+                                if TryStrToInt(curtoken, x) then begin
+                                    Writeln('>>> Number found!');
+                                    Tokenised := concat(Tokenised, [NewToken(tknString, curtoken)]);
+                                end;
                                 status := stateClassPropertySeekStart;
                                 Writeln('>>>   Now in stateClassPropertySeekStart');
                             end;
@@ -463,6 +500,7 @@ begin
                 stateClassConstantsSeekStart: begin
                     if grabbedline[1] = '{' then begin
                         Writeln('>>> Start of CONSTANTS section found!');
+                        Tokenised := concat(Tokenised, [NewToken(tknBraceLeft, '{')]);
                         status := stateClassConstants;
                         Writeln('>>>   Now in stateClassConstants');
                         inc(bracelevel);
@@ -473,21 +511,28 @@ begin
                 stateClassConstants: begin
                     if grabbedline[1] = '}' then begin
                         Writeln('>>> End of CONSTANTS section found!');
+                        Tokenised := concat(Tokenised, [NewToken(tknBraceRight, '}')]);
                         dec(bracelevel);
                         Writeln('>>>   Brace level: ', bracelevel);
                         status := stateClass;
                         Writeln('>>> Now in stateClass');
+                    end else if grabbedline[1] = '{' then begin
+                        Writeln('!!! Too many curly braces');
+                        exit;
                     end else begin
                         curtoken := GetNextToken(grabbedline, linepos);
                         Writeln('>>> Token grabbed: ', curtoken);
+                        Tokenised := concat(Tokenised, [NewToken(tknString, curtoken)]);
                         curtoken := GetNextToken(grabbedline, linepos);
                         Writeln('>>> Token grabbed: ', curtoken);
+                        Tokenised := concat(Tokenised, [NewToken(tknString, curtoken)]);
                     end;
                 end;
-                
+
                 stateClassTypesSeekStart: begin
                     if grabbedline[1] = '{' then begin
                         Writeln('>>> Start of TYPES section found!');
+                        Tokenised := concat(Tokenised, [NewToken(tknBraceLeft, '{')]);
                         status := stateClassTypes;
                         Writeln('>>>   Now in stateClassTypes');
                         inc(bracelevel);
@@ -497,13 +542,21 @@ begin
 
                 stateClassTypes: begin
                     if grabbedline[1] = '{' then begin
+//                        if ansipos(';', grabbedline) > 0 then
+//                            grabbedline := copy(grabbedline, 1, ansipos(';', grabbedline));
+//                        Tokenised := concat(Tokenised, [NewToken(tknString, grabbedline)]);
                         inc(bracelevel);
                         Writeln('>>>   Brace level: ', bracelevel);
                     end else if grabbedline[1] = '}' then begin
                         dec(bracelevel);
                         Writeln('>>>   Brace level: ', bracelevel);
+//                        if bracelevel > 1 then begin
+//                            if ansipos(';', grabbedline) > 0 then
+//                                grabbedline := copy(grabbedline, 1, ansipos(';', grabbedline));
+//                            Tokenised := concat(Tokenised, [NewToken(tknString, grabbedline)]);
                         if bracelevel = 1 then begin
                             Writeln('>>> End of TYPES section found!');
+                            Tokenised := concat(Tokenised, [NewToken(tknBraceRight, '}')]);
                             status := stateClass;
                             Writeln('>>> Now in stateClass');
                         end;
@@ -512,12 +565,14 @@ begin
                         if ansipos(';', grabbedline) > 0 then
                             grabbedline := copy(grabbedline, 1, ansipos(';', grabbedline));
                         Writeln ('>>> Found string: ', grabbedline);
+                        Tokenised := concat(Tokenised, [NewToken(tknString, grabbedline)]);
                     end;
                 end;
 
                 stateClassPropertySeekStart: begin
                     if grabbedline[1] = '{' then begin
                         Writeln('>>> Start of PROPERTY section found!');
+                        Tokenised := concat(Tokenised, [NewToken(tknBraceLeft, '{')]);
                         status := stateClassProperty;
                         Writeln('>>>   Now in stateClassProperty');
                         inc(bracelevel);
@@ -528,6 +583,7 @@ begin
                 stateClassProperty: begin
                     if grabbedline[1] = '}' then begin
                         Writeln('>>> End of PROPERTY section found!');
+                        Tokenised := concat(Tokenised, [NewToken(tknBraceRight, '}')]);
                         dec(bracelevel);
                         Writeln('>>>   Brace level: ', bracelevel);
                         status := stateClass;
@@ -536,11 +592,18 @@ begin
                         if ansipos(';', grabbedline) > 0 then
                             grabbedline := copy(grabbedline, 1, ansipos(';', grabbedline));
                         Writeln ('>>> Found string: ', grabbedline);
+                        Tokenised := concat(Tokenised, [NewToken(tknString, grabbedline)]);
                     end;
                 end;
             end;
         end;
     end;
+
+//    for ThisToken in Tokenised do
+//    begin
+//        Writeln(ThisToken.TType, ' ', ThisToken.Literal);
+//    end;
+    PrintTestArray(Tokenised);
 end;
 
 begin

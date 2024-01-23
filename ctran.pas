@@ -3,7 +3,7 @@ program ctran;
 
 // uses fgl;
 uses
-    sysutils, Classes; //, Generics.Collections;
+    sysutils, Classes;
 
 type
 //    TokenType = string;
@@ -155,6 +155,13 @@ const
 //    ch := content[curpos];
 //end;
 
+var
+    boolExternal : Boolean = false;
+    strExternal : String;
+    boolGenG : Boolean = false;
+    strGenG : String;
+    strFilename : String;
+
 procedure PrintTestArray(tokenArray: TTokenArray);
 var
     i: Integer;
@@ -282,7 +289,7 @@ begin
     status := stateInitial;
     slCategoryFile := TStringList.Create;
 
-    slCategoryFile.LoadFromFile('demo.cat');
+    slCategoryFile.LoadFromFile(strFilename);
 
     for i := 0 to slCategoryFile.Count - 1 do
     begin
@@ -603,11 +610,70 @@ begin
 //    begin
 //        Writeln(ThisToken.TType, ' ', ThisToken.Literal);
 //    end;
+
+    // TODO: Check for imbalanced braces.
+
     PrintTestArray(Tokenised);
+end;
+
+procedure GetParams();
+var
+    cur, tot : Integer;
+    thisParam : String;
+    flgFoundName: Boolean = false;
+begin
+    tot := paramCount();
+    cur := 1;
+    
+    while cur <= tot do
+    begin
+        thisParam := paramStr(cur);
+        if thisParam[1] = '-' then begin
+            case UpCase(thisParam[2]) of
+                'E': begin
+                    writeln('external includes found');
+                    boolExternal := true;
+                end;
+                'G': begin
+                    writeln('generate .G files');
+                    boolGenG := true;
+                end;
+                else begin
+                    writeln('Nope!');
+                    exit();
+                end;
+            end;
+            if length(thisParam) = 2 then begin
+                inc(cur);
+                thisParam := paramStr(cur);
+            end else begin
+                thisParam := copy(thisParam, 3);
+            end;
+            writeln('Found value: ', thisParam);
+        end else begin
+            if flgFoundName then begin
+                writeln('Too many items without a switch!');
+                exit();
+            end;
+            writeln('Found name of file to process: ', thisParam);
+            flgFoundName := true;
+            strFilename := thisParam;
+        end;
+        inc(cur);
+        // TODO: Avoid incrementing if a -thing is followed by another -thing
+        // TODO: Check for too many items without a switch
+        // TODO: is it worth catering for `-s value` as well as `-svalue`? 
+    end;
 end;
 
 begin
     //TestTokeniser();
+
+    GetParams();
+    
+    if (length(strFilename) < 5) or ((length(strFilename) > 4) and (AnsiPos('.', UpCase(strFilename)) < 2)) then
+        strfilename += '.cat';
+    WriteLn('Filename: ', strFilename);
 
     LoadThatFile();
 end.

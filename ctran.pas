@@ -174,7 +174,7 @@ begin
     for i := 0 to Length(tokenArray) - 1 do
     begin
         Str(tokenArray[i].TType, s);
-        Writeln(' ', format('%4d', [tokenArray[i].LineNum]), ' | ', s.PadRight(13), ' | ', tokenArray[i].Literal);
+        Writeln(format(' %4d | %-13s | %s', [tokenArray[i].LineNum, s, tokenArray[i].Literal]));
     end;
     Writeln;
     Writeln('Length: ', Length(tokenArray));
@@ -601,7 +601,11 @@ begin
         end;
     end;
 
-    // TODO: Check for imbalanced braces.
+    if bracelevel <> 0 then begin
+        WriteLn('Error with braces: Somehow at brace level ', bracelevel);
+        exit;
+    end;
+
     // TODO: Check for braces inside lines?
 
     Writeln;

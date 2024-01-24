@@ -278,6 +278,13 @@ end;
 //    WriteLn(IsValidLetter('1'));
 //end;
 
+// Removes everything in a string after the first semicolon
+procedure TrimAfterSemicolon(var s: String);
+begin
+    if ansipos(';', s) > 0 then s := copy(s, 1, ansipos(';', s));
+end;
+
+
 procedure LoadThatFile();
 var
     slCategoryFile : TStringList;
@@ -311,7 +318,7 @@ begin
             case status of
                 stateInitial: begin
                     curtoken := GetNextToken(grabbedline, linepos);
-                    case curtoken of 
+                    case UpCase(curtoken) of 
                         'IMAGE': begin
                             Writeln('>>> IMAGE found!');
                             status := stateSeekExtIncClass;
@@ -442,7 +449,7 @@ begin
                         Writeln('>>>   Brace level: ', bracelevel);
                     end;
                 end;
-                
+
                 stateClass: begin
                     if grabbedline[1] = '}' then begin
                         Tokenised := concat(Tokenised, [NewToken(i, tknBraceRight, '}')]);
@@ -505,7 +512,7 @@ begin
                         end;
                     end;
                 end;
-                
+
                 stateClassConstantsSeekStart: begin
                     if grabbedline[1] = '{' then begin
                         Writeln('>>> Start of CONSTANTS section found!');
@@ -564,8 +571,9 @@ begin
                         end;
                     end;
                     if bracelevel > 1 then begin
-                        if ansipos(';', grabbedline) > 0 then
-                            grabbedline := copy(grabbedline, 1, ansipos(';', grabbedline));
+//                        if ansipos(';', grabbedline) > 0 then
+//                            grabbedline := copy(grabbedline, 1, ansipos(';', grabbedline));
+                        TrimAfterSemicolon(grabbedline);
                         Writeln ('>>> Found string: ', grabbedline);
                         Tokenised := concat(Tokenised, [NewToken(i, tknString, grabbedline)]);
                     end;
@@ -591,8 +599,9 @@ begin
                         status := stateClass;
                         Writeln('>>> Now in stateClass');
                     end else begin
-                        if ansipos(';', grabbedline) > 0 then
-                            grabbedline := copy(grabbedline, 1, ansipos(';', grabbedline));
+//                        if ansipos(';', grabbedline) > 0 then
+//                            grabbedline := copy(grabbedline, 1, ansipos(';', grabbedline));
+                        TrimAfterSemicolon(grabbedline);
                         Writeln ('>>> Found string: ', grabbedline);
                         Tokenised := concat(Tokenised, [NewToken(i, tknString, grabbedline)]);
                     end;

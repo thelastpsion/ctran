@@ -284,7 +284,6 @@ begin
     if ansipos(';', s) > 0 then s := copy(s, 1, ansipos(';', s));
 end;
 
-
 procedure LoadThatFile();
 var
     slCategoryFile : TStringList;
@@ -341,7 +340,7 @@ begin
 
                 stateSeekExtIncClass: begin
                     curtoken := GetNextToken(grabbedline, linepos);
-                    case curtoken of
+                    case UpCase(curtoken) of
                         'EXTERNAL': begin
                             Writeln('>>> EXTERNAL found!');
                             Tokenised := concat(Tokenised, [NewToken(i, tknExternal, curtoken)]);
@@ -379,7 +378,7 @@ begin
     
                 stateSeekClassOrRequire: begin
                     curtoken := GetNextToken(grabbedline, linepos);
-                    case curtoken of
+                    case UpCase(curtoken) of
                         'REQUIRE': begin
                             Writeln('>>> REQUIRE found!');
                             Tokenised := concat(Tokenised, [NewToken(i, tknRequire, curtoken)]);
@@ -415,7 +414,7 @@ begin
     
                 stateSeekRequire: begin
                     curtoken := GetNextToken(grabbedline, linepos);
-                    case curtoken of
+                    case UpCase(curtoken) of
                         'REQUIRE': begin
                             Writeln('>>> REQUIRE found!');
                             Tokenised := concat(Tokenised, [NewToken(i, tknRequire, curtoken)]);
@@ -571,8 +570,6 @@ begin
                         end;
                     end;
                     if bracelevel > 1 then begin
-//                        if ansipos(';', grabbedline) > 0 then
-//                            grabbedline := copy(grabbedline, 1, ansipos(';', grabbedline));
                         TrimAfterSemicolon(grabbedline);
                         Writeln ('>>> Found string: ', grabbedline);
                         Tokenised := concat(Tokenised, [NewToken(i, tknString, grabbedline)]);
@@ -599,8 +596,6 @@ begin
                         status := stateClass;
                         Writeln('>>> Now in stateClass');
                     end else begin
-//                        if ansipos(';', grabbedline) > 0 then
-//                            grabbedline := copy(grabbedline, 1, ansipos(';', grabbedline));
                         TrimAfterSemicolon(grabbedline);
                         Writeln ('>>> Found string: ', grabbedline);
                         Tokenised := concat(Tokenised, [NewToken(i, tknString, grabbedline)]);

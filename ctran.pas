@@ -71,19 +71,21 @@ type
     );
 
     TPsionOOTokeniser = class
-        _curLineNum, _curLinePos : Integer;
-        _slCategoryFile : TStringList;
-        _strFilename : String;
-        _strCurLine : String;
-        _status : TLexerState;
-        _bracelevel : Integer;
-        _TokenArray : TTokenArray;
-
-        constructor Create();
-        function _GetNextLiteral() : String;
-        function _NewToken(newTokenLineNum: Integer; newTokenType: TTokenType; newTokenLiteral: String): TToken;
-        procedure LoadFile(strFilename : String);
-        procedure PrintArray();
+        strict private
+            var
+                _curLineNum, _curLinePos : Integer;
+                _slCategoryFile : TStringList;
+                _strFilename : String;
+                _strCurLine : String;
+                _status : TLexerState;
+                _bracelevel : Integer;
+                _TokenArray : TTokenArray;
+            function _GetNextLiteral() : String;
+            function _NewToken(newTokenLineNum: Integer; newTokenType: TTokenType; newTokenLiteral: String): TToken;
+        public
+            constructor Create();
+            procedure LoadFile(strFilename : String);
+            procedure PrintArray();
     end;
 
 var

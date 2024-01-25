@@ -84,12 +84,15 @@ type
                 _status : TLexerState;
                 _bracelevel : Integer;
                 _TokenArray : TTokenArray;
+                _CurToken : Integer;
             function _GetNextLiteral() : String;
             function _NewToken(newTokenLineNum: Integer; newTokenType: TTokenType; newTokenLiteral: String): TToken;
         public
             constructor Create();
             procedure LoadFile(strFilename : String);
             procedure PrintArray();
+            function GetNextToken() : TToken;
+            procedure Reset();
     end;
 
 var
@@ -163,6 +166,7 @@ begin
     _status := stateInitial;
     _bracelevel := 0;
     _slCategoryFile := TStringList.Create;
+    _CurToken := -1;
 end;
 
 //TODO: Should this be a function that returns a char, or should it just put values into variables inside the class?
@@ -194,16 +198,21 @@ end;
 
 procedure TPsionOOTokeniser.PrintArray();
 var
-    i: Integer;
     s: String;
+    recToken : TToken;
 begin
+    recToken := _NewToken(0, tknString, ''); // Just an empty token, so that the variable is initialised
+
     Writeln(' Line | Token Type     | Literal');
     Writeln('------+----------------+-------------');
-    for i := 0 to Length(_TokenArray) - 1 do
+
+    while recToken.TType <> tknEOF do
     begin
-        Str(_TokenArray[i].TType, s); // Because you can't simply use an enum in format()
-        Writeln(format(' %4d | %-14s | %s', [_TokenArray[i].LineNum, s, _TokenArray[i].Literal]));
+        recToken := GetNextToken();
+        Str(recToken.TType, s); // Because you can't simply use an enum in format()
+        Writeln(format(' %4d | %-14s | %s', [recToken.LineNum, s, recToken.Literal]));
     end;
+
     Writeln;
     Writeln('Length: ', Length(_TokenArray));
 end;
@@ -358,7 +367,7 @@ begin
                 stateClassSeekStart: begin
                     if _strCurLine[1] = '{' then begin
                         Writeln('>>> Start of CLASS section found!');
-                            _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknBraceLeft, '{')]);
+                        _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknBraceLeft, '{')]);
                         status := stateClass;
                         Writeln('>>>   Now in stateClass');
                         inc(bracelevel);
@@ -541,6 +550,17 @@ begin
     end;
 
     _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknEOF, '')]);
+end;
+
+function TPsionOOTokeniser.GetNextToken() : TToken;
+begin
+    if _CurToken < length(_TokenArray) then inc(_CurToken);
+    GetNextToken := _TokenArray[_CurToken];
+end;
+
+procedure TPsionOOTokeniser.Reset();
+begin
+    _CurToken := -1;
 end;
 
 procedure GetParams();

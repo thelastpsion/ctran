@@ -237,7 +237,7 @@ begin
     begin
         if _strCurLine[curpos] = ' ' then begin
             if flgFoundText then begin
-                _curLinePos := curpos;
+                _curLinePos := curpos + 1;
                 exit;
             end;
         end else begin
@@ -332,6 +332,7 @@ begin
                             curtoken := _GetNextLiteral();
                             Writeln('>>> Token grabbed: ', curtoken);
                             _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknString, curtoken)]);
+                            Writeln(format('_curLinePos = %d  length(_strCurLine) = %d', [_curLinePos, length(_strCurLine)]));
                             curtoken := _GetNextLiteral();
                             Writeln('>>> Token grabbed: ', curtoken);
                             _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknString, curtoken)]);
@@ -534,6 +535,7 @@ begin
         exit;
     end;
 
+    _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknEOF, '')]);
 end;
 
 procedure GetParams();

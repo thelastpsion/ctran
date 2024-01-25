@@ -22,6 +22,7 @@ type
         // Category type keywords
         tknImage,
         tknLibrary,
+        tknName,
 
         // External file inclusion keywords
         tknExternal,
@@ -41,6 +42,11 @@ type
         tknTypes,
         tknConstants,
 
+        // External reference file (.EXT) keywords
+        tknHasMethod,
+        tknHasProperty,
+        tknDeclare,
+
         tknString,
         tknEOF
     );
@@ -57,7 +63,7 @@ type
 
     TLexerState = (
         stateInitial,
-        stateSeekExtIncClass,
+        stateSeekKeyword,
         stateClassSeekStart,
         stateClass,
         stateClassProperty,
@@ -65,9 +71,7 @@ type
         stateClassConstants,
         stateClassConstantsSeekStart,
         stateClassTypesSeekStart,
-        stateClassPropertySeekStart,
-        stateSeekClassOrRequire,
-        stateSeekRequire
+        stateClassPropertySeekStart
     );
 
     TPsionOOTokeniser = class
@@ -143,6 +147,12 @@ begin
     if ansipos(';', s) > 0 then s := copy(s, 1, ansipos(';', s));
 end;
 
+//function IsValidLetter(ch: Char): Boolean;
+//begin
+    //Result := (((ord(ch) >= 97) and (ord(ch) <= 122)) or ((ord(ch) >= 65) and (ord(ch) <= 90)) or (ch = '_'));
+//    Result := ((LowerCase(ch) in ['a' .. 'z']) or (ch = '_'));
+//end;
+
 constructor TPsionOOTokeniser.Create();
 begin
     inherited Create;
@@ -187,21 +197,21 @@ var
     i: Integer;
     s: String;
 begin
-    Writeln(' Line | Token Type    | Literal');
-    Writeln('------+---------------+-------------');
+    Writeln(' Line | Token Type     | Literal');
+    Writeln('------+----------------+-------------');
     for i := 0 to Length(_TokenArray) - 1 do
     begin
         Str(_TokenArray[i].TType, s); // Because you can't simply use an enum in format()
-        Writeln(format(' %4d | %-13s | %s', [_TokenArray[i].LineNum, s, _TokenArray[i].Literal]));
+        Writeln(format(' %4d | %-14s | %s', [_TokenArray[i].LineNum, s, _TokenArray[i].Literal]));
     end;
     Writeln;
     Writeln('Length: ', Length(_TokenArray));
 end;
 
 // TODO: Use a pointer to the array?
-// procedure AddToken(var tokenArray: TokenArray; newTokenType: TokenType; newTokenLiteral: String);
+// procedure TPsionOOTokeniser.AddToken(var tokenArray: TokenArray; newTokenType: TokenType; newTokenLiteral: String);
 // var
-//     newToken: Token;
+//     newToken: TToken;
 // begin
 //     newToken.TType := newTokenType;
 //     newToken.Literal := newTokenLiteral;
@@ -215,12 +225,6 @@ begin
     _NewToken.Literal := newTokenLiteral;
     _NewToken.LineNum := newTokenLineNum;
 end;
-
-//function IsValidLetter(ch: Char): Boolean;
-//begin
-    //Result := (((ord(ch) >= 97) and (ord(ch) <= 122)) or ((ord(ch) >= 65) and (ord(ch) <= 90)) or (ch = '_'));
-//    Result := ((LowerCase(ch) in ['a' .. 'z']) or (ch = '_'));
-//end;
 
 function TPsionOOTokeniser._GetNextLiteral() : String;
 var
@@ -280,25 +284,30 @@ begin
                     case UpCase(curtoken) of 
                         'IMAGE': begin
                             Writeln('>>> IMAGE found!');
-                            status := stateSeekExtIncClass;
+                            status := stateSeekKeyword;
                             _TokenArray := [_NewToken(_curLineNum, tknImage, curtoken)];
                         end;
                         'LIBRARY': begin
                             Writeln('>>> LIBRARY found!');
-                            status := stateSeekExtIncClass;
+                            status := stateSeekKeyword;
                             _TokenArray := [_NewToken(_curLineNum, tknLibrary, curtoken)];
                         end;
+                        'NAME': begin
+                            Writeln('>>> NAME found!');
+                            status := stateSeekKeyword;
+                            _TokenArray := [_NewToken(_curLineNum, tknName, curtoken)];
+                        end;
                     end;
-                    if status = stateSeekExtIncClass then
+                    if status = stateSeekKeyword then
                     begin
-                        WriteLn('>>>   Now in stateSeekExtIncClass');
+                        WriteLn('>>>   Now in stateSeekKeyword');
                         curtoken := _GetNextLiteral();
                         Writeln('>>> Token grabbed: ', curtoken);
                         _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknString, curtoken)]);
                     end;
                 end;
 
-                stateSeekExtIncClass: begin
+                stateSeekKeyword: begin
                     curtoken := _GetNextLiteral();
                     case UpCase(curtoken) of
                         'EXTERNAL': begin
@@ -330,52 +339,6 @@ begin
                             Writeln('>>>   Now in stateClassSeekStart (looking for brace)');
                         end;
                         'REQUIRE': begin
-                            Writeln('!!! REQUIRE found before first CLASS declaration');
-                            exit;
-                        end;
-                    end;
-                end;
-    
-                stateSeekClassOrRequire: begin
-                    curtoken := _GetNextLiteral();
-                    case UpCase(curtoken) of
-                        'REQUIRE': begin
-                            Writeln('>>> REQUIRE found!');
-                            _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknRequire, curtoken)]);
-                            curtoken := _GetNextLiteral();
-                            Writeln('>>> Token grabbed: ', curtoken);
-                            _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknString, curtoken)]);
-                            Writeln('>>>   Do something with REQUIRE here');
-                            status := stateSeekRequire; // After the first REQUIRE, don't allow any more CLASSes
-                            Writeln('>>> Now in stateSeekRequire');
-                        end;
-                        'INCLUDE': begin
-                            Writeln('!!! INCLUDE found after first CLASS declaration');
-                            exit;
-                        end;
-                        'EXTERNAL': begin
-                            Writeln('!!! EXTERNAL found after first CLASS declaration');
-                            exit;
-                        end;
-                        'CLASS': begin
-                            Writeln('>>> CLASS found!');
-                            _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknClass, curtoken)]);
-                            curtoken := _GetNextLiteral();
-                            Writeln('>>> Token grabbed: ', curtoken);
-                            _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknString, curtoken)]);
-                            curtoken := _GetNextLiteral();
-                            Writeln('>>> Token grabbed: ', curtoken);
-                            _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknString, curtoken)]);
-                            status := stateClassSeekStart;
-                            Writeln('>>>   Now in stateClassSeekStart (looking for brace)');
-                        end;
-                    end;
-                end;
-    
-                stateSeekRequire: begin
-                    curtoken := _GetNextLiteral();
-                    case UpCase(curtoken) of
-                        'REQUIRE': begin
                             Writeln('>>> REQUIRE found!');
                             _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknRequire, curtoken)]);
                             curtoken := _GetNextLiteral();
@@ -383,21 +346,9 @@ begin
                             _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknString, curtoken)]);
                             Writeln('>>>   Do something with REQUIRE here');
                         end;
-                        'INCLUDE': begin
-                            Writeln('!!! INCLUDE found after REQUIRE declaration');
-                            exit;
-                        end;
-                        'EXTERNAL': begin
-                            Writeln('!!! EXTERNAL found after REQUIRE declaration');
-                            exit;
-                        end;
-                        'CLASS': begin
-                            Writeln('!!! CLASS found after REQUIRE declaration');
-                            exit;
-                        end;
                     end;
                 end;
-    
+
                 stateClassSeekStart: begin
                     if _strCurLine[1] = '{' then begin
                         Writeln('>>> Start of CLASS section found!');
@@ -415,8 +366,8 @@ begin
                         Writeln('>>> End of CLASS section found!');
                         dec(bracelevel);
                         Writeln('>>>   Brace level: ', bracelevel);
-                        status := stateSeekClassOrRequire;
-                        Writeln('>>> Now in stateSeekClassOrRequire');
+                        status := stateSeekKeyword;
+                        Writeln('>>> Now in stateSeekKeyword');
                     end else begin
                         curtoken := _GetNextLiteral();
                         case curtoken of
@@ -426,7 +377,6 @@ begin
                                 curtoken := _GetNextLiteral();
                                 Writeln('>>> Token grabbed: ', curtoken);
                                 _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknString, curtoken)]);
-                                Writeln('>>>   Do something with ADD here');
                             end;
                             'REPLACE': begin
                                 Writeln('>>> REPLACE found!');
@@ -434,7 +384,6 @@ begin
                                 curtoken := _GetNextLiteral();
                                 Writeln('>>> Token grabbed: ', curtoken);
                                 _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknString, curtoken)]);
-                                Writeln('>>>   Do something with REPLACE here');
                             end;
                             'DEFER': begin
                                 Writeln('>>> DEFER found!');
@@ -442,7 +391,6 @@ begin
                                 curtoken := _GetNextLiteral();
                                 Writeln('>>> Token grabbed: ', curtoken);
                                 _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknString, curtoken)]);
-                                Writeln('>>>   Do something with DEFER here');
                             end;
                             'CONSTANTS': begin
                                 Writeln('>>> CONSTANTS found!');
@@ -467,6 +415,22 @@ begin
                                 end;
                                 status := stateClassPropertySeekStart;
                                 Writeln('>>>   Now in stateClassPropertySeekStart');
+                            end;
+                            // External reference (.EXT) keywords
+                            'DECLARE': begin
+                                Writeln('>>> DECLARE found!');
+                                _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknDeclare, curtoken)]);
+                                curtoken := _GetNextLiteral();
+                                Writeln('>>> Token grabbed: ', curtoken);
+                                _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknString, curtoken)]);
+                            end;
+                            'HAS_METHOD': begin
+                                Writeln('>>> HAS_METHOD found!');
+                                _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknHasMethod, curtoken)]);
+                            end;
+                            'HAS_PROPERTY': begin
+                                Writeln('>>> HAS_PROPERTY found!');
+                                _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknHasProperty, curtoken)]);
                             end;
                         end;
                     end;

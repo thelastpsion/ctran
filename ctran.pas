@@ -332,10 +332,15 @@ begin
                             curtoken := _GetNextLiteral();
                             Writeln('>>> Token grabbed: ', curtoken);
                             _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknString, curtoken)]);
-                            Writeln(format('_curLinePos = %d  length(_strCurLine) = %d', [_curLinePos, length(_strCurLine)]));
                             curtoken := _GetNextLiteral();
-                            Writeln('>>> Token grabbed: ', curtoken);
-                            _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknString, curtoken)]);
+                            case curtoken of
+                                '': begin
+                                    Writeln('>>> No more tokens on line ', _curLineNum);
+                                end else begin
+                                    Writeln('>>> Token grabbed: ', curtoken);
+                                    _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknString, curtoken)]);
+                                end;
+                            end;
                             status := stateClassSeekStart;
                             Writeln('>>>   Now in stateClassSeekStart (looking for brace)');
                         end;

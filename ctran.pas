@@ -260,7 +260,8 @@ end;
 // TODO: Check for braces inside lines?
 procedure TPsionOOTokeniser.LoadFile(strFilename : String);
 var
-    i, x : Integer;
+    i : Integer;
+    x : LongInt;
     curtoken : String;
     status : TLexerState;
     bracelevel: Integer = 0;

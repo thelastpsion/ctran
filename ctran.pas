@@ -554,6 +554,11 @@ end;
 
 function TPsionOOTokeniser.GetNextToken() : TToken;
 begin
+    if length(_TokenArray) = 0 then begin
+        GetNextToken := _NewToken(0, tknEOF, '');
+        exit;
+    end;
+
     if _CurToken < length(_TokenArray) then inc(_CurToken);
     GetNextToken := _TokenArray[_CurToken];
 end;

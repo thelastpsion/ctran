@@ -87,13 +87,14 @@ type
                 _slCategoryFile : TStringList;
                 _strFilename : String;
                 _strCurLine : String;
-                _status : TLexerState;
-                _bracelevel : Integer;
+                _LexerState : TLexerState;
+                _BraceLevel : Integer;
                 _TokenArray : TTokenArray;
                 _CurToken : Integer;
             function _GetNextLiteral() : String;
             function _NewToken(newTokenLineNum: Integer; newTokenType: TTokenType; newTokenLiteral: String): TToken;
             procedure _AddToken(newTokenType: TTokenType; newTokenLiteral: String);
+            procedure _ProcessCLine();
         public
             constructor Create();
             procedure LoadFile(strFilename : String);
@@ -129,10 +130,11 @@ begin
     _curLinePos := 0;
     _strCurLine := '';
     _strFilename := '';
-    _status := stateInitial;
-    _bracelevel := 0;
+    _LexerState := stateInitial;
+    _BraceLevel := 0;
     _slCategoryFile := TStringList.Create;
     _CurToken := -1;
+    _BraceLevel := 0;
 end;
 
 //TODO: Should this be a function that returns a char, or should it just put values into variables inside the class?
@@ -224,15 +226,43 @@ begin
     _curLinePos += length(_GetNextLiteral);
 end;
 
+procedure TPsionOOLexer._ProcessCLine();
+begin
+    if (_LexerState <> stateClassTypes) and (_LexerState <> stateClassProperty) then begin
+        WriteLn('_ProcessCBlock: Why am I here?');
+        halt;
+    end;
+    if _strCurLine[1] = '{' then begin
+        inc(_BraceLevel);
+        Writeln('>>>   Brace level: ', _BraceLevel);
+    end else if _strCurLine[1] = '}' then begin
+        dec(_BraceLevel);
+        Writeln('>>>   Brace level: ', _BraceLevel);
+        if _BraceLevel = 1 then begin
+            case _LexerState of
+                stateClassTypes:     Writeln('>>> End of TYPES section found!');
+                stateClassProperty:  Writeln('>>> End of PROPERTY section found!');
+            end;
+            _AddToken(tknBraceRight, '}');
+            _LexerState := stateClass;
+            Writeln('>>> Now in stateClass');
+        end;
+    end;
+    if _BraceLevel > 1 then begin
+        TrimAfterSemicolon(_strCurLine);
+        Writeln ('>>> Found string: ', _strCurLine);
+        _AddToken(tknString, _StrCurLine);
+    end;
+end;
+
 // TODO: Check for braces inside lines?
 procedure TPsionOOLexer.LoadFile(strFilename : String);
 var
     x : LongInt;
     curtoken : String;
-    status : TLexerState;
-    bracelevel: Integer = 0;
+//    _LexerState : TLexerState;
 begin
-    status := stateInitial;
+    _LexerState := stateInitial;
     _slCategoryFile := TStringList.Create;
 
     _slCategoryFile.LoadFromFile(strFilename);
@@ -255,27 +285,27 @@ begin
         else begin
             curtoken := '';
     
-            case status of
+            case _LexerState of
                 stateInitial: begin
                     curtoken := _GetNextLiteral();
                     case UpCase(curtoken) of 
                         'IMAGE': begin
                             Writeln('>>> IMAGE found!');
                             _AddToken(tknImage, curtoken);
-                            status := stateSeekKeyword;
+                            _LexerState := stateSeekKeyword;
                         end;
                         'LIBRARY': begin
                             Writeln('>>> LIBRARY found!');
                             _AddToken(tknLibrary, curtoken);
-                            status := stateSeekKeyword;
+                            _LexerState := stateSeekKeyword;
                         end;
                         'NAME': begin
                             Writeln('>>> NAME found!');
                             _AddToken(tknName, curtoken);
-                            status := stateSeekKeyword;
+                            _LexerState := stateSeekKeyword;
                         end;
                     end;
-                    if status = stateSeekKeyword then
+                    if _LexerState = stateSeekKeyword then
                     begin
                         WriteLn('>>>   Now in stateSeekKeyword');
                         curtoken := _GetNextLiteral();
@@ -316,7 +346,7 @@ begin
                                     _AddToken(tknString, curtoken);
                                 end;
                             end;
-                            status := stateClassSeekStart;
+                            _LexerState := stateClassSeekStart;
                             Writeln('>>>   Now in stateClassSeekStart (looking for brace)');
                         end;
                         'REQUIRE': begin
@@ -334,10 +364,10 @@ begin
                     if _strCurLine[1] = '{' then begin
                         Writeln('>>> Start of CLASS section found!');
                         _AddToken(tknBraceLeft, '{');
-                        status := stateClass;
+                        _LexerState := stateClass;
                         Writeln('>>>   Now in stateClass');
-                        inc(bracelevel);
-                        Writeln('>>>   Brace level: ', bracelevel);
+                        inc(_BraceLevel);
+                        Writeln('>>>   Brace level: ', _BraceLevel);
                     end;
                 end;
 
@@ -345,9 +375,9 @@ begin
                     if _strCurLine[1] = '}' then begin
                         _AddToken(tknBraceRight, '}');
                         Writeln('>>> End of CLASS section found!');
-                        dec(bracelevel);
-                        Writeln('>>>   Brace level: ', bracelevel);
-                        status := stateSeekKeyword;
+                        dec(_BraceLevel);
+                        Writeln('>>>   Brace level: ', _BraceLevel);
+                        _LexerState := stateSeekKeyword;
                         Writeln('>>> Now in stateSeekKeyword');
                     end else begin
                         curtoken := _GetNextLiteral();
@@ -376,13 +406,13 @@ begin
                             'CONSTANTS': begin
                                 Writeln('>>> CONSTANTS found!');
                                 _AddToken(tknConstants, curtoken);
-                                status := stateClassConstantsSeekStart;
+                                _LexerState := stateClassConstantsSeekStart;
                                 Writeln('>>>   Now in stateClassConstantsSeekStart');
                             end;
                             'TYPES': begin
                                 Writeln('>>> TYPES found!');
                                 _AddToken(tknTypes, curtoken);
-                                status := stateClassTypesSeekStart;
+                                _LexerState := stateClassTypesSeekStart;
                                 Writeln('>>>   Now in stateClassTypesSeekStart');
                             end;
                             'PROPERTY': begin
@@ -394,7 +424,7 @@ begin
                                     Writeln('>>> Number found!');
                                     _AddToken(tknString, curtoken);
                                 end;
-                                status := stateClassPropertySeekStart;
+                                _LexerState := stateClassPropertySeekStart;
                                 Writeln('>>>   Now in stateClassPropertySeekStart');
                             end;
                             // External reference (.EXT) keywords
@@ -421,10 +451,10 @@ begin
                     if _strCurLine[1] = '{' then begin
                         Writeln('>>> Start of CONSTANTS section found!');
                         _AddToken(tknBraceLeft, '{');
-                        status := stateClassConstants;
+                        _LexerState := stateClassConstants;
                         Writeln('>>>   Now in stateClassConstants');
-                        inc(bracelevel);
-                        Writeln('>>>   Brace level: ', bracelevel);
+                        inc(_BraceLevel);
+                        Writeln('>>>   Brace level: ', _BraceLevel);
                     end;
                 end;
 
@@ -432,9 +462,9 @@ begin
                     if _strCurLine[1] = '}' then begin
                         Writeln('>>> End of CONSTANTS section found!');
                         _AddToken(tknBraceRight, '}');
-                        dec(bracelevel);
-                        Writeln('>>>   Brace level: ', bracelevel);
-                        status := stateClass;
+                        dec(_BraceLevel);
+                        Writeln('>>>   Brace level: ', _BraceLevel);
+                        _LexerState := stateClass;
                         Writeln('>>> Now in stateClass');
                     end else if _strCurLine[1] = '{' then begin
                         Writeln('!!! Too many curly braces');
@@ -453,65 +483,37 @@ begin
                     if _strCurLine[1] = '{' then begin
                         Writeln('>>> Start of TYPES section found!');
                         _AddToken(tknBraceLeft, '{');
-                        status := stateClassTypes;
+                        _LexerState := stateClassTypes;
                         Writeln('>>>   Now in stateClassTypes');
-                        inc(bracelevel);
-                        Writeln('>>>   Brace level: ', bracelevel);
+                        inc(_BraceLevel);
+                        Writeln('>>>   Brace level: ', _BraceLevel);
                     end;
                 end;
 
                 stateClassTypes: begin
-                    if _strCurLine[1] = '{' then begin
-                        inc(bracelevel);
-                        Writeln('>>>   Brace level: ', bracelevel);
-                    end else if _strCurLine[1] = '}' then begin
-                        dec(bracelevel);
-                        Writeln('>>>   Brace level: ', bracelevel);
-                        if bracelevel = 1 then begin
-                            Writeln('>>> End of TYPES section found!');
-                            _AddToken(tknBraceRight, '}');
-                            status := stateClass;
-                            Writeln('>>> Now in stateClass');
-                        end;
-                    end;
-                    if bracelevel > 1 then begin
-                        TrimAfterSemicolon(_strCurLine);
-                        Writeln ('>>> Found string: ', _strCurLine);
-                        _AddToken(tknString, _StrCurLine);
-                    end;
+                    _ProcessCLine;
                 end;
 
                 stateClassPropertySeekStart: begin
                     if _strCurLine[1] = '{' then begin
                         Writeln('>>> Start of PROPERTY section found!');
                         _AddToken(tknBraceLeft, '{');
-                        status := stateClassProperty;
+                        _LexerState := stateClassProperty;
                         Writeln('>>>   Now in stateClassProperty');
-                        inc(bracelevel);
-                        Writeln('>>>   Brace level: ', bracelevel);
+                        inc(_BraceLevel);
+                        Writeln('>>>   Brace level: ', _BraceLevel);
                     end;
                 end;
 
                 stateClassProperty: begin
-                    if _strCurLine[1] = '}' then begin
-                        Writeln('>>> End of PROPERTY section found!');
-                        _AddToken(tknBraceRight, '}');
-                        dec(bracelevel);
-                        Writeln('>>>   Brace level: ', bracelevel);
-                        status := stateClass;
-                        Writeln('>>> Now in stateClass');
-                    end else begin
-                        TrimAfterSemicolon(_strCurLine);
-                        Writeln ('>>> Found string: ', _strCurLine);
-                        _AddToken(tknString, _strCurLine);
-                    end;
+                    _ProcessCLine;
                 end;
             end;
         end;
     end;
 
-    if bracelevel <> 0 then begin
-        WriteLn('Error with braces: Somehow at brace level ', bracelevel);
+    if _BraceLevel <> 0 then begin
+        WriteLn('Error with braces: Somehow at brace level ', _BraceLevel);
         exit;
     end;
 

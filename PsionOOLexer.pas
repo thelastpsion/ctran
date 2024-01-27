@@ -93,6 +93,7 @@ type
                 _CurToken : Integer;
             function _GetNextLiteral() : String;
             function _NewToken(newTokenLineNum: Integer; newTokenType: TTokenType; newTokenLiteral: String): TToken;
+            procedure _AddToken(newTokenType: TTokenType; newTokenLiteral: String);
         public
             constructor Create();
             procedure LoadFile(strFilename : String);
@@ -182,22 +183,22 @@ begin
     Writeln('Length: ', Length(_TokenArray));
 end;
 
-// TODO: Use a pointer to the array?
-// procedure TPsionOOLexer.AddToken(var tokenArray: TokenArray; newTokenType: TokenType; newTokenLiteral: String);
-// var
-//     newToken: TToken;
-// begin
-//     newToken.TType := newTokenType;
-//     newToken.Literal := newTokenLiteral;
-//     tokenArray := concat(tokenArray, [newToken]);
-// end;
-
 // Takes a TokenType and a String and puts it into a Token record
 function TPsionOOLexer._NewToken(newTokenLineNum: Integer; newTokenType: TTokenType; newTokenLiteral: String): TToken;
 begin
     _NewToken.TType := newTokenType;
     _NewToken.Literal := newTokenLiteral;
     _NewToken.LineNum := newTokenLineNum;
+end;
+
+procedure TPsionOOLexer._AddToken(newTokenType: TTokenType; newTokenLiteral: String);
+var
+    newToken: TToken;
+begin
+    newToken.TType := newTokenType;
+    newToken.Literal := newTokenLiteral;
+    newToken.LineNum := _curLineNum;
+    _TokenArray := concat(_TokenArray, [newToken]);
 end;
 
 function TPsionOOLexer._GetNextLiteral() : String;
@@ -226,7 +227,6 @@ end;
 // TODO: Check for braces inside lines?
 procedure TPsionOOLexer.LoadFile(strFilename : String);
 var
-    i : Integer;
     x : LongInt;
     curtoken : String;
     status : TLexerState;
@@ -261,18 +261,18 @@ begin
                     case UpCase(curtoken) of 
                         'IMAGE': begin
                             Writeln('>>> IMAGE found!');
+                            _AddToken(tknImage, curtoken);
                             status := stateSeekKeyword;
-                            _TokenArray := [_NewToken(_curLineNum, tknImage, curtoken)];
                         end;
                         'LIBRARY': begin
                             Writeln('>>> LIBRARY found!');
+                            _AddToken(tknLibrary, curtoken);
                             status := stateSeekKeyword;
-                            _TokenArray := [_NewToken(_curLineNum, tknLibrary, curtoken)];
                         end;
                         'NAME': begin
                             Writeln('>>> NAME found!');
+                            _AddToken(tknName, curtoken);
                             status := stateSeekKeyword;
-                            _TokenArray := [_NewToken(_curLineNum, tknName, curtoken)];
                         end;
                     end;
                     if status = stateSeekKeyword then
@@ -280,7 +280,7 @@ begin
                         WriteLn('>>>   Now in stateSeekKeyword');
                         curtoken := _GetNextLiteral();
                         Writeln('>>> Token grabbed: ', curtoken);
-                        _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknString, curtoken)]);
+                        _AddToken(tknString, curtoken);
                     end;
                 end;
 
@@ -289,33 +289,31 @@ begin
                     case UpCase(curtoken) of
                         'EXTERNAL': begin
                             Writeln('>>> EXTERNAL found!');
-                            _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknExternal, curtoken)]);
+                            _AddToken(tknExternal, curtoken);
                             curtoken := _GetNextLiteral();
                             Writeln('>>> Token grabbed: ', curtoken);
-                            _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknString, curtoken)]);
-                            Writeln('>>>   Do something with EXTERNAL here');
+                            _AddToken(tknString, curtoken);
                         end;
                         'INCLUDE': begin
                             Writeln('>>> INCLUDE found!');
-                            _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknInclude, curtoken)]);
+                            _AddToken(tknInclude, curtoken);
                             curtoken := _GetNextLiteral();
                             Writeln('>>> Token grabbed: ', curtoken);
-                            _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknString, curtoken)]);
-                            Writeln('>>>   Do something with INCLUDE here');
+                            _AddToken(tknString, curtoken);
                         end;
                         'CLASS': begin
                             Writeln('>>> CLASS found!');
-                            _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknClass, curtoken)]);
+                            _AddToken(tknClass, curtoken);
                             curtoken := _GetNextLiteral();
                             Writeln('>>> Token grabbed: ', curtoken);
-                            _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknString, curtoken)]);
+                            _AddToken(tknString, curtoken);
                             curtoken := _GetNextLiteral();
                             case curtoken of
                                 '': begin
                                     Writeln('>>> No more tokens on line ', _curLineNum);
                                 end else begin
                                     Writeln('>>> Token grabbed: ', curtoken);
-                                    _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknString, curtoken)]);
+                                    _AddToken(tknString, curtoken);
                                 end;
                             end;
                             status := stateClassSeekStart;
@@ -323,10 +321,10 @@ begin
                         end;
                         'REQUIRE': begin
                             Writeln('>>> REQUIRE found!');
-                            _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknRequire, curtoken)]);
+                            _AddToken(tknRequire, curtoken);
                             curtoken := _GetNextLiteral();
                             Writeln('>>> Token grabbed: ', curtoken);
-                            _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknString, curtoken)]);
+                            _AddToken(tknString, curtoken);
                             Writeln('>>>   Do something with REQUIRE here');
                         end;
                     end;
@@ -335,7 +333,7 @@ begin
                 stateClassSeekStart: begin
                     if _strCurLine[1] = '{' then begin
                         Writeln('>>> Start of CLASS section found!');
-                        _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknBraceLeft, '{')]);
+                        _AddToken(tknBraceLeft, '{');
                         status := stateClass;
                         Writeln('>>>   Now in stateClass');
                         inc(bracelevel);
@@ -345,7 +343,7 @@ begin
 
                 stateClass: begin
                     if _strCurLine[1] = '}' then begin
-                        _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknBraceRight, '}')]);
+                        _AddToken(tknBraceRight, '}');
                         Writeln('>>> End of CLASS section found!');
                         dec(bracelevel);
                         Writeln('>>>   Brace level: ', bracelevel);
@@ -356,45 +354,45 @@ begin
                         case curtoken of
                             'ADD': begin
                                 Writeln('>>> ADD found!');
-                                _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknAdd, curtoken)]);
+                                _AddToken(tknAdd, curtoken);
                                 curtoken := _GetNextLiteral();
                                 Writeln('>>> Token grabbed: ', curtoken);
-                                _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknString, curtoken)]);
+                                _AddToken(tknString, curtoken);
                             end;
                             'REPLACE': begin
                                 Writeln('>>> REPLACE found!');
-                                _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknReplace, curtoken)]);
+                                _AddToken(tknReplace, curtoken);
                                 curtoken := _GetNextLiteral();
                                 Writeln('>>> Token grabbed: ', curtoken);
-                                _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknString, curtoken)]);
+                                _AddToken(tknString, curtoken);
                             end;
                             'DEFER': begin
                                 Writeln('>>> DEFER found!');
-                                _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknDefer, curtoken)]);
+                                _AddToken(tknDefer, curtoken);
                                 curtoken := _GetNextLiteral();
                                 Writeln('>>> Token grabbed: ', curtoken);
-                                _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknString, curtoken)]);
+                                _AddToken(tknString, curtoken);
                             end;
                             'CONSTANTS': begin
                                 Writeln('>>> CONSTANTS found!');
-                                _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknConstants, curtoken)]);
+                                _AddToken(tknConstants, curtoken);
                                 status := stateClassConstantsSeekStart;
                                 Writeln('>>>   Now in stateClassConstantsSeekStart');
                             end;
                             'TYPES': begin
                                 Writeln('>>> TYPES found!');
-                                _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknTypes, curtoken)]);
+                                _AddToken(tknTypes, curtoken);
                                 status := stateClassTypesSeekStart;
                                 Writeln('>>>   Now in stateClassTypesSeekStart');
                             end;
                             'PROPERTY': begin
                                 Writeln('>>> PROPERTY found!');
-                                _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknProperty, curtoken)]);
+                                _AddToken(tknProperty, curtoken);
                                 curtoken := _GetNextLiteral();
                                 Writeln('>>> Token grabbed: ', curtoken);
                                 if TryStrToInt(curtoken, x) then begin
                                     Writeln('>>> Number found!');
-                                    _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknString, curtoken)]);
+                                    _AddToken(tknString, curtoken);
                                 end;
                                 status := stateClassPropertySeekStart;
                                 Writeln('>>>   Now in stateClassPropertySeekStart');
@@ -402,18 +400,18 @@ begin
                             // External reference (.EXT) keywords
                             'DECLARE': begin
                                 Writeln('>>> DECLARE found!');
-                                _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknDeclare, curtoken)]);
+                                _AddToken(tknDeclare, curtoken);
                                 curtoken := _GetNextLiteral();
                                 Writeln('>>> Token grabbed: ', curtoken);
-                                _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknString, curtoken)]);
+                                _AddToken(tknString, curtoken);
                             end;
                             'HAS_METHOD': begin
                                 Writeln('>>> HAS_METHOD found!');
-                                _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknHasMethod, curtoken)]);
+                                _AddToken(tknHasMethod, curtoken);
                             end;
                             'HAS_PROPERTY': begin
                                 Writeln('>>> HAS_PROPERTY found!');
-                                _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknHasProperty, curtoken)]);
+                                _AddToken(tknHasProperty, curtoken);
                             end;
                         end;
                     end;
@@ -422,7 +420,7 @@ begin
                 stateClassConstantsSeekStart: begin
                     if _strCurLine[1] = '{' then begin
                         Writeln('>>> Start of CONSTANTS section found!');
-                        _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknBraceLeft, '{')]);
+                        _AddToken(tknBraceLeft, '{');
                         status := stateClassConstants;
                         Writeln('>>>   Now in stateClassConstants');
                         inc(bracelevel);
@@ -433,7 +431,7 @@ begin
                 stateClassConstants: begin
                     if _strCurLine[1] = '}' then begin
                         Writeln('>>> End of CONSTANTS section found!');
-                        _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknBraceRight, '}')]);
+                        _AddToken(tknBraceRight, '}');
                         dec(bracelevel);
                         Writeln('>>>   Brace level: ', bracelevel);
                         status := stateClass;
@@ -444,17 +442,17 @@ begin
                     end else begin
                         curtoken := _GetNextLiteral();
                         Writeln('>>> Token grabbed: ', curtoken);
-                        _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknString, curtoken)]);
+                        _AddToken(tknString, curtoken);
                         curtoken := _GetNextLiteral();
                         Writeln('>>> Token grabbed: ', curtoken);
-                        _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknString, curtoken)]);
+                        _AddToken(tknString, curtoken);
                     end;
                 end;
 
                 stateClassTypesSeekStart: begin
                     if _strCurLine[1] = '{' then begin
                         Writeln('>>> Start of TYPES section found!');
-                        _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknBraceLeft, '{')]);
+                        _AddToken(tknBraceLeft, '{');
                         status := stateClassTypes;
                         Writeln('>>>   Now in stateClassTypes');
                         inc(bracelevel);
@@ -471,7 +469,7 @@ begin
                         Writeln('>>>   Brace level: ', bracelevel);
                         if bracelevel = 1 then begin
                             Writeln('>>> End of TYPES section found!');
-                            _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknBraceRight, '}')]);
+                            _AddToken(tknBraceRight, '}');
                             status := stateClass;
                             Writeln('>>> Now in stateClass');
                         end;
@@ -479,14 +477,14 @@ begin
                     if bracelevel > 1 then begin
                         TrimAfterSemicolon(_strCurLine);
                         Writeln ('>>> Found string: ', _strCurLine);
-                        _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknString, _strCurLine)]);
+                        _AddToken(tknString, _StrCurLine);
                     end;
                 end;
 
                 stateClassPropertySeekStart: begin
                     if _strCurLine[1] = '{' then begin
                         Writeln('>>> Start of PROPERTY section found!');
-                        _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknBraceLeft, '{')]);
+                        _AddToken(tknBraceLeft, '{');
                         status := stateClassProperty;
                         Writeln('>>>   Now in stateClassProperty');
                         inc(bracelevel);
@@ -497,7 +495,7 @@ begin
                 stateClassProperty: begin
                     if _strCurLine[1] = '}' then begin
                         Writeln('>>> End of PROPERTY section found!');
-                        _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknBraceRight, '}')]);
+                        _AddToken(tknBraceRight, '}');
                         dec(bracelevel);
                         Writeln('>>>   Brace level: ', bracelevel);
                         status := stateClass;
@@ -505,12 +503,11 @@ begin
                     end else begin
                         TrimAfterSemicolon(_strCurLine);
                         Writeln ('>>> Found string: ', _strCurLine);
-                        _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknString, _strCurLine)]);
+                        _AddToken(tknString, _strCurLine);
                     end;
                 end;
             end;
         end;
-        //inc(_CurLineNum);
     end;
 
     if bracelevel <> 0 then begin

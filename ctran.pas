@@ -271,15 +271,15 @@ begin
 
     _slCategoryFile.LoadFromFile(strFilename);
 
-    for i := 0 to _slCategoryFile.Count - 1 do
+    for i := 1 to _slCategoryFile.Count do
     begin
         curtoken := '';
         _curLineNum := i;
         _curLinePos := 1;
 
-        _strCurLine := _slCategoryFile[_curLineNum].Trim;
+        _strCurLine := _slCategoryFile[_curLineNum - 1].Trim;
 
-        WriteLn(format('%.3d:%s', [_curLineNum + 1, _strCurLine]));
+        WriteLn(format('%.3d:%s', [_curLineNum, _strCurLine]));
 
         if length(_strCurLine) = 0 then
             Writeln('>>> Empty line')

@@ -8,6 +8,8 @@ uses
 var
     strFilename : String;
     CatParser: TPsionOOLexer;
+    boolExternal : Boolean;
+    boolGenG : Boolean;
 
 procedure GetParams();
 var

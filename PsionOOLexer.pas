@@ -101,12 +101,6 @@ type
             procedure Reset();
     end;
 
-var
-    boolExternal : Boolean = false;
-//    strExternal : String;
-    boolGenG : Boolean = false;
-//    strGenG : String;
-
 implementation
 
 // Removes everything in a string after the first semicolon
@@ -351,6 +345,10 @@ begin
                             Writeln('>>> REQUIRE found!');
                             _AddToken(tknRequire, curtoken);
                             _GrabAndAddStringTokens(1);
+                        end;
+                        else begin
+                            WriteLn('!!! Invalid token found: ', curtoken);
+                            halt;
                         end;
                     end;
                 end;

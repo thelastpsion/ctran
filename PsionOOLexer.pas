@@ -1,7 +1,13 @@
 {$mode objfpc}{$H+}{$J-}
-program ctran;
+unit PsionOOLexer;
+{ *** Psion Object Oriented Lexer ***
 
-// uses fgl;
+The tokeniser/lexer part of the reverse-engineered CTRAN.
+
+}
+
+interface
+
 uses
     sysutils, Classes;
 
@@ -74,7 +80,7 @@ type
         stateClassPropertySeekStart
     );
 
-    TPsionOOTokeniser = class
+    TPsionOOLexer = class
         strict private
             var
                 _curLineNum, _curLinePos : Integer;
@@ -100,49 +106,9 @@ var
 //    strExternal : String;
     boolGenG : Boolean = false;
 //    strGenG : String;
-    strFilename : String;
-//    _TokenArray : TTokenArray;
-    CatParser: TPsionOOTokeniser;
+//    strFilename : String;
 
-//const
-//    EOF = 'EOF';
-//    NEWLINE = 'NEWLINE';
-//    SEMICOLON = ';';
-//
-//    ILLEGAL = 'ILLEGAL';
-//    IDENT = 'IDENT';
-//    PROPERTYTEXT = 'PROPERTYTEXT';
-//
-//    LPAREN = '(';
-//    RPAREN = ')';
-//    LBRACE = '{';
-//    RBRACE = '}';
-//    BANG = '!';
-//
-//    IMAGE = 'IMAGE';
-//    LIBR = 'LIBRARY';
-//    INCEXT = 'EXTERNAL';
-//    INCLUDE = 'INCLUDE';
-//    PCLASS = 'CLASS';
-//    REQUIRE = 'REQUIRE';
-//
-//    ADD = 'ADD';
-//    REPLACE = 'REPLACE';
-//    DEFER = 'DEFER';
-//
-//    PROP = 'PROPERTY';
-//    
-//    TYPES = 'TYPES';
-//    CONSTANTS = 'CONSTANTS';
-
-// procedure MakeDict();
-// begin
-//     dict := TokenDict.Create;
-
-//     dict.add('EOF',aur 'EOF');
-//     dict.add('NEWLINE', 'NEWLINE');
-//     Writeln('Called fine.');
-// end;
+implementation
 
 // Removes everything in a string after the first semicolon
 procedure TrimAfterSemicolon(var s: String);
@@ -156,7 +122,7 @@ end;
 //    Result := ((LowerCase(ch) in ['a' .. 'z']) or (ch = '_'));
 //end;
 
-constructor TPsionOOTokeniser.Create();
+constructor TPsionOOLexer.Create();
 begin
     inherited Create;
     _curLineNum := 0;
@@ -170,7 +136,7 @@ begin
 end;
 
 //TODO: Should this be a function that returns a char, or should it just put values into variables inside the class?
-//procedure TPsionOOTokeniser.GetNextGlyph();
+//procedure TPsionOOLexer.GetNextGlyph();
 //var
 //    nextpos : Integer;
 //    nextchar : char;
@@ -188,7 +154,7 @@ end;
 //    inc(curpos);
 //end;
 //
-//procedure TPsionOOTokeniser.FindStartOfLine();
+//procedure TPsionOOLexer.FindStartOfLine();
 //var
 //    ch : Char;
 //begin
@@ -196,7 +162,7 @@ end;
 //end;
 
 
-procedure TPsionOOTokeniser.PrintArray();
+procedure TPsionOOLexer.PrintArray();
 var
     s: String;
     recToken : TToken;
@@ -218,7 +184,7 @@ begin
 end;
 
 // TODO: Use a pointer to the array?
-// procedure TPsionOOTokeniser.AddToken(var tokenArray: TokenArray; newTokenType: TokenType; newTokenLiteral: String);
+// procedure TPsionOOLexer.AddToken(var tokenArray: TokenArray; newTokenType: TokenType; newTokenLiteral: String);
 // var
 //     newToken: TToken;
 // begin
@@ -228,14 +194,14 @@ end;
 // end;
 
 // Takes a TokenType and a String and puts it into a Token record
-function TPsionOOTokeniser._NewToken(newTokenLineNum: Integer; newTokenType: TTokenType; newTokenLiteral: String): TToken;
+function TPsionOOLexer._NewToken(newTokenLineNum: Integer; newTokenType: TTokenType; newTokenLiteral: String): TToken;
 begin
     _NewToken.TType := newTokenType;
     _NewToken.Literal := newTokenLiteral;
     _NewToken.LineNum := newTokenLineNum;
 end;
 
-function TPsionOOTokeniser._GetNextLiteral() : String;
+function TPsionOOLexer._GetNextLiteral() : String;
 var
     curpos : Integer;
     flgFoundText : Boolean = false;
@@ -258,7 +224,7 @@ begin
 end;
 
 // TODO: Check for braces inside lines?
-procedure TPsionOOTokeniser.LoadFile(strFilename : String);
+procedure TPsionOOLexer.LoadFile(strFilename : String);
 var
     i : Integer;
     x : LongInt;
@@ -553,7 +519,7 @@ begin
     _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknEOF, '')]);
 end;
 
-function TPsionOOTokeniser.GetNextToken() : TToken;
+function TPsionOOLexer.GetNextToken() : TToken;
 begin
     if length(_TokenArray) = 0 then begin
         GetNextToken := _NewToken(0, tknEOF, '');
@@ -564,86 +530,10 @@ begin
     GetNextToken := _TokenArray[_CurToken];
 end;
 
-procedure TPsionOOTokeniser.Reset();
+procedure TPsionOOLexer.Reset();
 begin
     _CurToken := -1;
 end;
 
-procedure GetParams();
-var
-    cur, tot : Integer;
-    thisParam : String;
-    flgFoundName: Boolean = false;
-begin
-    tot := paramCount();
-    cur := 1;
-    
-    while cur <= tot do
-    begin
-        thisParam := paramStr(cur);
-        if thisParam[1] = '-' then begin
-            case UpCase(thisParam[2]) of
-                'E': begin
-                    writeln('external includes found');
-                    boolExternal := true;
-                end;
-                'G': begin
-                    writeln('generate .G files');
-                    boolGenG := true;
-                end;
-                else begin
-                    writeln('Nope!');
-                    exit();
-                end;
-            end;
-            if length(thisParam) = 2 then begin
-                inc(cur);
-                thisParam := paramStr(cur);
-            end else begin
-                thisParam := copy(thisParam, 3);
-            end;
-            writeln('Found value: ', thisParam);
-        end else begin
-            if flgFoundName then begin
-                writeln('Too many items without a switch!');
-                exit();
-            end;
-            writeln('Found name of file to process: ', thisParam);
-            flgFoundName := true;
-            strFilename := thisParam;
-        end;
-        inc(cur);
-        // TODO: Avoid incrementing if a -thing is followed by another -thing
-        // TODO: Check for too many items without a switch
-        // TODO: is it worth catering for `-s value` as well as `-svalue`? 
-    end;
-end;
-
-begin
-    //TestTokeniser();
-
-    GetParams();
-    
-    if length(strFilename) = 0 then begin
-        WriteLn('No filename given.');
-        exit;
-    end;
-
-    if (length(strFilename) < 5) or ((length(strFilename) > 4) and (AnsiPos('.', UpCase(strFilename)) < 2)) then
-        strfilename += '.cat';
-    WriteLn('Filename: ', strFilename);
-    WriteLn;
-
-    Try
-    begin
-        CatParser := TPsionOOTokeniser.Create;
-        CatParser.LoadFile(strFilename);
-
-        WriteLn;
-        CatParser.PrintArray();
-    end
-    finally
-        FreeAndNil(CatParser);
-    end;
 end.
 

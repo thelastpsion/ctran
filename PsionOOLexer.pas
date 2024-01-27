@@ -57,15 +57,12 @@ type
         tknEOF
     );
 
-//    TokenDict = specialize TDictionary<TTokenType, string>;
-
     TToken = record
         TType : TTokenType;
         Literal : string;
         LineNum : Integer;
     end;
     TTokenArray = array of TToken;
-
 
     TLexerState = (
         stateInitial,
@@ -95,6 +92,7 @@ type
             function _NewToken(newTokenLineNum: Integer; newTokenType: TTokenType; newTokenLiteral: String): TToken;
             procedure _AddToken(newTokenType: TTokenType; newTokenLiteral: String);
             procedure _ProcessCLine();
+            procedure _GrabAndAddStringTokens(count : Integer);
         public
             constructor Create();
             procedure LoadFile(strFilename : String);
@@ -226,6 +224,24 @@ begin
     _curLinePos += length(_GetNextLiteral);
 end;
 
+procedure TPsionOOLexer._GrabAndAddStringTokens(count : Integer);
+var
+    i : Integer;
+    curtoken : String;
+begin
+    WriteLn('>>> Fetching up to ', count, ' token(s)');
+    for i := 1 to count do
+    begin
+        curtoken := _GetNextLiteral();
+        if curtoken = '' then begin
+            Writeln('>>>   No more tokens on line ', _curLineNum);
+            exit;
+        end;
+        Writeln(format('>>>   String token %d grabbed: %s', [i, curtoken]));
+        _AddToken(tknString, curtoken);
+    end;
+end;
+
 procedure TPsionOOLexer._ProcessCLine();
 begin
     if (_LexerState <> stateClassTypes) and (_LexerState <> stateClassProperty) then begin
@@ -260,7 +276,6 @@ procedure TPsionOOLexer.LoadFile(strFilename : String);
 var
     x : LongInt;
     curtoken : String;
-//    _LexerState : TLexerState;
 begin
     _LexerState := stateInitial;
     _slCategoryFile := TStringList.Create;
@@ -308,9 +323,7 @@ begin
                     if _LexerState = stateSeekKeyword then
                     begin
                         WriteLn('>>>   Now in stateSeekKeyword');
-                        curtoken := _GetNextLiteral();
-                        Writeln('>>> Token grabbed: ', curtoken);
-                        _AddToken(tknString, curtoken);
+                        _GrabAndAddStringTokens(1);
                     end;
                 end;
 
@@ -320,42 +333,24 @@ begin
                         'EXTERNAL': begin
                             Writeln('>>> EXTERNAL found!');
                             _AddToken(tknExternal, curtoken);
-                            curtoken := _GetNextLiteral();
-                            Writeln('>>> Token grabbed: ', curtoken);
-                            _AddToken(tknString, curtoken);
+                            _GrabAndAddStringTokens(1);
                         end;
                         'INCLUDE': begin
                             Writeln('>>> INCLUDE found!');
                             _AddToken(tknInclude, curtoken);
-                            curtoken := _GetNextLiteral();
-                            Writeln('>>> Token grabbed: ', curtoken);
-                            _AddToken(tknString, curtoken);
+                            _GrabAndAddStringTokens(1);
                         end;
                         'CLASS': begin
                             Writeln('>>> CLASS found!');
                             _AddToken(tknClass, curtoken);
-                            curtoken := _GetNextLiteral();
-                            Writeln('>>> Token grabbed: ', curtoken);
-                            _AddToken(tknString, curtoken);
-                            curtoken := _GetNextLiteral();
-                            case curtoken of
-                                '': begin
-                                    Writeln('>>> No more tokens on line ', _curLineNum);
-                                end else begin
-                                    Writeln('>>> Token grabbed: ', curtoken);
-                                    _AddToken(tknString, curtoken);
-                                end;
-                            end;
+                            _GrabAndAddStringTokens(2);
                             _LexerState := stateClassSeekStart;
                             Writeln('>>>   Now in stateClassSeekStart (looking for brace)');
                         end;
                         'REQUIRE': begin
                             Writeln('>>> REQUIRE found!');
                             _AddToken(tknRequire, curtoken);
-                            curtoken := _GetNextLiteral();
-                            Writeln('>>> Token grabbed: ', curtoken);
-                            _AddToken(tknString, curtoken);
-                            Writeln('>>>   Do something with REQUIRE here');
+                            _GrabAndAddStringTokens(1);
                         end;
                     end;
                 end;
@@ -385,23 +380,17 @@ begin
                             'ADD': begin
                                 Writeln('>>> ADD found!');
                                 _AddToken(tknAdd, curtoken);
-                                curtoken := _GetNextLiteral();
-                                Writeln('>>> Token grabbed: ', curtoken);
-                                _AddToken(tknString, curtoken);
+                                _GrabAndAddStringTokens(1);
                             end;
                             'REPLACE': begin
                                 Writeln('>>> REPLACE found!');
                                 _AddToken(tknReplace, curtoken);
-                                curtoken := _GetNextLiteral();
-                                Writeln('>>> Token grabbed: ', curtoken);
-                                _AddToken(tknString, curtoken);
+                                _GrabAndAddStringTokens(1);
                             end;
                             'DEFER': begin
                                 Writeln('>>> DEFER found!');
                                 _AddToken(tknDefer, curtoken);
-                                curtoken := _GetNextLiteral();
-                                Writeln('>>> Token grabbed: ', curtoken);
-                                _AddToken(tknString, curtoken);
+                                _GrabAndAddStringTokens(1);
                             end;
                             'CONSTANTS': begin
                                 Writeln('>>> CONSTANTS found!');
@@ -431,9 +420,7 @@ begin
                             'DECLARE': begin
                                 Writeln('>>> DECLARE found!');
                                 _AddToken(tknDeclare, curtoken);
-                                curtoken := _GetNextLiteral();
-                                Writeln('>>> Token grabbed: ', curtoken);
-                                _AddToken(tknString, curtoken);
+                                _GrabAndAddStringTokens(1);
                             end;
                             'HAS_METHOD': begin
                                 Writeln('>>> HAS_METHOD found!');
@@ -470,12 +457,7 @@ begin
                         Writeln('!!! Too many curly braces');
                         exit;
                     end else begin
-                        curtoken := _GetNextLiteral();
-                        Writeln('>>> Token grabbed: ', curtoken);
-                        _AddToken(tknString, curtoken);
-                        curtoken := _GetNextLiteral();
-                        Writeln('>>> Token grabbed: ', curtoken);
-                        _AddToken(tknString, curtoken);
+                        _GrabAndAddStringTokens(2);
                     end;
                 end;
 
@@ -517,7 +499,7 @@ begin
         exit;
     end;
 
-    _TokenArray := concat(_TokenArray, [_NewToken(_curLineNum, tknEOF, '')]);
+    _AddToken(tknEOF, '');
 end;
 
 function TPsionOOLexer.GetNextToken() : TToken;

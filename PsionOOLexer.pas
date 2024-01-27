@@ -106,7 +106,6 @@ var
 //    strExternal : String;
     boolGenG : Boolean = false;
 //    strGenG : String;
-//    strFilename : String;
 
 implementation
 
@@ -209,6 +208,7 @@ begin
     _GetNextLiteral := '';
 
     for curpos := _curLinePos to length(_strCurLine) do
+
     begin
         if _strCurLine[curpos] = ' ' then begin
             if flgFoundText then begin
@@ -237,10 +237,11 @@ begin
 
     _slCategoryFile.LoadFromFile(strFilename);
 
-    for i := 1 to _slCategoryFile.Count do
+    _curLineNum := 0;
+    while _CurLineNum < _slCategoryFile.Count do
     begin
         curtoken := '';
-        _curLineNum := i;
+        inc(_curLineNum);
         _curLinePos := 1;
 
         _strCurLine := _slCategoryFile[_curLineNum - 1].Trim;
@@ -509,6 +510,7 @@ begin
                 end;
             end;
         end;
+        //inc(_CurLineNum);
     end;
 
     if bracelevel <> 0 then begin

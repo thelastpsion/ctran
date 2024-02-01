@@ -93,6 +93,7 @@ type
             procedure _AddToken(newTokenType: TTokenType; newTokenLiteral: String);
             procedure _ProcessCLine();
             procedure _GrabAndAddStringTokens(count : Integer);
+            procedure _SeekStartOfSection(NextLexerState : TLexerState);
         public
             constructor Create();
             procedure LoadFile(strFilename : String);
@@ -266,6 +267,24 @@ begin
     end;
 end;
 
+procedure TPsionOOLexer._SeekStartOfSection(NextLexerState : TLexerState);
+var
+    strLexerState : string;
+begin
+    if _strCurLine[_curLinePos] = '{' then begin
+        Writeln('>>> Start of section found!');
+        _AddToken(tknBraceLeft, '{');
+
+        _LexerState := NextLexerState;
+        str(_LexerState, strLexerState);
+        Writeln('>>>   Now in ', strLexerState);
+
+        inc(_BraceLevel);
+        Writeln('>>>   Brace level: ', _BraceLevel);
+    end;
+end;
+
+
 // TODO: Check for braces inside lines?
 procedure TPsionOOLexer.LoadFile(strFilename : String);
 var
@@ -362,16 +381,7 @@ begin
                     end;
                 end;
 
-                stateClassSeekStart: begin
-                    if _strCurLine[_curLinePos] = '{' then begin
-                        Writeln('>>> Start of CLASS section found!');
-                        _AddToken(tknBraceLeft, '{');
-                        _LexerState := stateClass;
-                        Writeln('>>>   Now in stateClass');
-                        inc(_BraceLevel);
-                        Writeln('>>>   Brace level: ', _BraceLevel);
-                    end;
-                end;
+                stateClassSeekStart: _SeekStartOfSection(stateClass);
 
                 stateClass: begin
                     if _strCurLine[_curLinePos] = '}' then begin
@@ -441,62 +451,34 @@ begin
                     end;
                 end;
 
-                stateClassConstantsSeekStart: begin
-                    if _strCurLine[_curLinePos] = '{' then begin
-                        Writeln('>>> Start of CONSTANTS section found!');
-                        _AddToken(tknBraceLeft, '{');
-                        _LexerState := stateClassConstants;
-                        Writeln('>>>   Now in stateClassConstants');
-                        inc(_BraceLevel);
-                        Writeln('>>>   Brace level: ', _BraceLevel);
-                    end;
-                end;
+                stateClassConstantsSeekStart: _SeekStartOfSection(stateClassConstants);
 
                 stateClassConstants: begin
-                    if _strCurLine[_curLinePos] = '}' then begin
-                        Writeln('>>> End of CONSTANTS section found!');
-                        _AddToken(tknBraceRight, '}');
-                        dec(_BraceLevel);
-                        Writeln('>>>   Brace level: ', _BraceLevel);
-                        _LexerState := stateClass;
-                        Writeln('>>> Now in stateClass');
-                    end else if _strCurLine[1] = '{' then begin
-                        Writeln('!!! Too many curly braces');
-                        exit;
-                    end else begin
-                        _GrabAndAddStringTokens(2);
+                    case _strCurLine[_curLinePos] of
+                        '}': begin
+                            Writeln('>>> End of CONSTANTS section found!');
+                            _AddToken(tknBraceRight, '}');
+                            dec(_BraceLevel);
+                            Writeln('>>>   Brace level: ', _BraceLevel);
+                            _LexerState := stateClass;
+                            Writeln('>>> Now in stateClass');
+                        end;
+                        '{': begin
+                            Writeln('!!! Too many curly braces');
+                            exit;
+                        end else begin
+                            _GrabAndAddStringTokens(2);
+                        end;
                     end;
                 end;
 
-                stateClassTypesSeekStart: begin
-                    if _strCurLine[_curLinePos] = '{' then begin
-                        Writeln('>>> Start of TYPES section found!');
-                        _AddToken(tknBraceLeft, '{');
-                        _LexerState := stateClassTypes;
-                        Writeln('>>>   Now in stateClassTypes');
-                        inc(_BraceLevel);
-                        Writeln('>>>   Brace level: ', _BraceLevel);
-                    end;
-                end;
+                stateClassTypesSeekStart: _SeekStartOfSection(stateClassTypes);
 
-                stateClassTypes: begin
-                    _ProcessCLine;
-                end;
+                stateClassTypes: _ProcessCLine;
 
-                stateClassPropertySeekStart: begin
-                    if _strCurLine[_curLinePos] = '{' then begin
-                        Writeln('>>> Start of PROPERTY section found!');
-                        _AddToken(tknBraceLeft, '{');
-                        _LexerState := stateClassProperty;
-                        Writeln('>>>   Now in stateClassProperty');
-                        inc(_BraceLevel);
-                        Writeln('>>>   Brace level: ', _BraceLevel);
-                    end;
-                end;
+                stateClassPropertySeekStart: _SeekStartOfSection(stateClassProperty);
 
-                stateClassProperty: begin
-                    _ProcessCLine;
-                end;
+                stateClassProperty: _ProcessCLine;
             end;
         end;
     end;

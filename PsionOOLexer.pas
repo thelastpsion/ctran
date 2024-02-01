@@ -107,6 +107,7 @@ implementation
 procedure TrimAfterSemicolon(var s: String);
 begin
     if ansipos(';', s) > 0 then s := copy(s, 1, ansipos(';', s));
+    s := s.Trim;
 end;
 
 //function IsValidLetter(ch: Char): Boolean;
@@ -242,10 +243,10 @@ begin
         WriteLn('_ProcessCBlock: Why am I here?');
         halt;
     end;
-    if _strCurLine[1] = '{' then begin
+    if _strCurLine[_curLinePos] = '{' then begin
         inc(_BraceLevel);
         Writeln('>>>   Brace level: ', _BraceLevel);
-    end else if _strCurLine[1] = '}' then begin
+    end else if _strCurLine[_curLinePos] = '}' then begin
         dec(_BraceLevel);
         Writeln('>>>   Brace level: ', _BraceLevel);
         if _BraceLevel = 1 then begin
@@ -283,13 +284,21 @@ begin
         inc(_curLineNum);
         _curLinePos := 1;
 
-        _strCurLine := _slCategoryFile[_curLineNum - 1].Trim;
+        _strCurLine := _slCategoryFile[_curLineNum - 1]; //.Trim;
+
+        while _curLinePos <= length(_strCurLine) do
+        begin
+            case _strCurLine[_curLinePos] of
+                ' ', #1: inc(_curLinePos);
+                else break;
+            end;
+        end;
 
         WriteLn(format('%.3d:%s', [_curLineNum, _strCurLine]));
 
-        if length(_strCurLine) = 0 then
+        if length(_strCurLine.Trim) = 0 then
             Writeln('>>> Empty line')
-        else if _strCurLine[1] = '!' then
+        else if _strCurLine[_curLinePos] = '!' then
             Writeln('>>> Explicit comment, line skipped')
         else begin
             curtoken := '';
@@ -354,7 +363,7 @@ begin
                 end;
 
                 stateClassSeekStart: begin
-                    if _strCurLine[1] = '{' then begin
+                    if _strCurLine[_curLinePos] = '{' then begin
                         Writeln('>>> Start of CLASS section found!');
                         _AddToken(tknBraceLeft, '{');
                         _LexerState := stateClass;
@@ -365,7 +374,7 @@ begin
                 end;
 
                 stateClass: begin
-                    if _strCurLine[1] = '}' then begin
+                    if _strCurLine[_curLinePos] = '}' then begin
                         _AddToken(tknBraceRight, '}');
                         Writeln('>>> End of CLASS section found!');
                         dec(_BraceLevel);
@@ -433,7 +442,7 @@ begin
                 end;
 
                 stateClassConstantsSeekStart: begin
-                    if _strCurLine[1] = '{' then begin
+                    if _strCurLine[_curLinePos] = '{' then begin
                         Writeln('>>> Start of CONSTANTS section found!');
                         _AddToken(tknBraceLeft, '{');
                         _LexerState := stateClassConstants;
@@ -444,7 +453,7 @@ begin
                 end;
 
                 stateClassConstants: begin
-                    if _strCurLine[1] = '}' then begin
+                    if _strCurLine[_curLinePos] = '}' then begin
                         Writeln('>>> End of CONSTANTS section found!');
                         _AddToken(tknBraceRight, '}');
                         dec(_BraceLevel);
@@ -460,7 +469,7 @@ begin
                 end;
 
                 stateClassTypesSeekStart: begin
-                    if _strCurLine[1] = '{' then begin
+                    if _strCurLine[_curLinePos] = '{' then begin
                         Writeln('>>> Start of TYPES section found!');
                         _AddToken(tknBraceLeft, '{');
                         _LexerState := stateClassTypes;
@@ -475,7 +484,7 @@ begin
                 end;
 
                 stateClassPropertySeekStart: begin
-                    if _strCurLine[1] = '{' then begin
+                    if _strCurLine[_curLinePos] = '{' then begin
                         Writeln('>>> Start of PROPERTY section found!');
                         _AddToken(tknBraceLeft, '{');
                         _LexerState := stateClassProperty;

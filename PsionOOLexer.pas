@@ -268,16 +268,13 @@ begin
 end;
 
 procedure TPsionOOLexer._SeekStartOfSection(NextLexerState : TLexerState);
-var
-    strLexerState : string;
 begin
     if _strCurLine[_curLinePos] = '{' then begin
         Writeln('>>> Start of section found!');
         _AddToken(tknBraceLeft, '{');
 
         _LexerState := NextLexerState;
-        str(_LexerState, strLexerState);
-        Writeln('>>>   Now in ', strLexerState);
+        Writeln('>>>   Now in ', _LexerState);
 
         inc(_BraceLevel);
         Writeln('>>>   Brace level: ', _BraceLevel);

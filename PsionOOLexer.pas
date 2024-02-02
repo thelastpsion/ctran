@@ -16,14 +16,14 @@ type
     TTokenType = (
         // Breaks
         tknNewline,
-        tknSemicolon,
+//        tknSemicolon,
 
         // Symbols
-        tknParenLeft,
-        tknParenRight,
+//        tknParenLeft,
+//        tknParenRight,
         tknBraceLeft,
         tknBraceRight,
-        tknBang,
+//        tknBang,
 
         // Category type keywords
         tknImage,

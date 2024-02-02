@@ -478,6 +478,8 @@ begin
                 stateClassProperty: _ProcessCLine;
             end;
         end;
+
+    if _CurLineNum < _slCategoryFile.Count then _AddToken(tknNewline, '');
     end;
 
     if _BraceLevel <> 0 then begin

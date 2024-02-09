@@ -79,16 +79,15 @@ type
 
     TPsionOOLexer = class
         strict private
-            var
-                _curLineNum, _curLinePos : Integer;
-                _slCategoryFile : TStringList;
-                _strFilename : String;
-                _strCurLine : String;
-                _LexerState : TLexerState;
-                _BraceLevel : Integer;
-                _TokenArray : TTokenArray;
-                _CurTokenIndex : Integer;
-                _CurToken : TToken;
+            _curLineNum, _curLinePos : Integer;
+            _slCategoryFile : TStringList;
+            _strFilename : String;
+            _strCurLine : String;
+            _LexerState : TLexerState;
+            _BraceLevel : Integer;
+            _TokenArray : TTokenArray;
+            _CurTokenIndex : Integer;
+            _CurToken : TToken;
             function _GetNextLiteral() : String;
             function _NewToken(newTokenLineNum: Integer; newTokenType: TTokenType; newTokenLiteral: String): TToken;
             procedure _AddToken(newTokenType: TTokenType; newTokenLiteral: String);
@@ -145,6 +144,7 @@ begin
     if _CurTokenIndex < length(_TokenArray) then inc(_CurTokenIndex);
     _CurToken := _TokenArray[_CurTokenIndex];
 end;
+
 //TODO: Should this be a function that returns a char, or should it just put values into variables inside the class?
 //procedure TPsionOOLexer.GetNextGlyph();
 //var
@@ -170,7 +170,6 @@ end;
 //begin
 //    ch := content[curpos];
 //end;
-
 
 procedure TPsionOOLexer.PrintArray();
 var

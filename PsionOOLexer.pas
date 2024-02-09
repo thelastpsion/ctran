@@ -87,19 +87,23 @@ type
                 _LexerState : TLexerState;
                 _BraceLevel : Integer;
                 _TokenArray : TTokenArray;
-                _CurToken : Integer;
+                _CurTokenIndex : Integer;
+                _CurToken : TToken;
             function _GetNextLiteral() : String;
             function _NewToken(newTokenLineNum: Integer; newTokenType: TTokenType; newTokenLiteral: String): TToken;
             procedure _AddToken(newTokenType: TTokenType; newTokenLiteral: String);
             procedure _ProcessCLine();
             procedure _GrabAndAddStringTokens(count : Integer);
             procedure _SeekStartOfSection(NextLexerState : TLexerState);
+            function _getToken : TToken;
         public
             constructor Create();
             procedure LoadFile(strFilename : String);
             procedure PrintArray();
             function GetNextToken() : TToken;
+            procedure NextToken();
             procedure Reset();
+            property token : TToken read _getToken;
     end;
 
 implementation
@@ -127,10 +131,20 @@ begin
     _LexerState := stateInitial;
     _BraceLevel := 0;
     _slCategoryFile := TStringList.Create;
-    _CurToken := -1;
+    _CurTokenIndex := -1;
     _BraceLevel := 0;
 end;
 
+function TPsionOOLexer._GetToken(): TToken;
+begin
+    result := _TokenArray[_CurTokenIndex];
+end;
+
+procedure TPsionOOLexer.NextToken();
+begin
+    if _CurTokenIndex < length(_TokenArray) then inc(_CurTokenIndex);
+    _CurToken := _TokenArray[_CurTokenIndex];
+end;
 //TODO: Should this be a function that returns a char, or should it just put values into variables inside the class?
 //procedure TPsionOOLexer.GetNextGlyph();
 //var
@@ -497,13 +511,13 @@ begin
         exit;
     end;
 
-    if _CurToken < length(_TokenArray) then inc(_CurToken);
-    GetNextToken := _TokenArray[_CurToken];
+    if _CurTokenIndex < length(_TokenArray) then inc(_CurTokenIndex);
+    GetNextToken := _TokenArray[_CurTokenIndex];
 end;
 
 procedure TPsionOOLexer.Reset();
 begin
-    _CurToken := -1;
+    _CurTokenIndex := -1;
 end;
 
 end.

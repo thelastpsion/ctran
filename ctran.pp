@@ -2,12 +2,13 @@
 program ctran;
 
 uses
-    sysutils, PsionOOLexer;
+    sysutils, PsionOOLexer, PsionOOParser;
 
 
 var
     strFilename : String;
-    CatParser: TPsionOOLexer;
+    CatLexer : TPsionOOLexer;
+    CatParser : TPsionOOParser;
     boolExternal : Boolean;
     boolGenG : Boolean;
 
@@ -76,14 +77,18 @@ begin
 
     Try
     begin
-        CatParser := TPsionOOLexer.Create;
-        CatParser.LoadFile(strFilename);
+        CatLexer := TPsionOOLexer.Create;
+        CatLexer.LoadFile(strFilename);
 
         WriteLn;
-        CatParser.PrintArray();
+        CatLexer.PrintArray();
+        CatParser := TPsionOOParser.Create(CatLexer);
+
     end
-    finally
+    finally begin
         FreeAndNil(CatParser);
+        FreeAndNil(CatLexer);
+    end;
     end;
 end.
 

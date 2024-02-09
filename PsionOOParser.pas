@@ -3,20 +3,21 @@ unit PsionOOParser;
 
 interface
 
-uses PsionOOLexer;
+uses sysutils, PsionOOLexer;
 
 type
+    TPsionOOCatType = (
+        catName,
+        catImage,
+        catLibrary
+    );
+
     TElementType = (
         incInclude,
         incExternal,
         incRequire,
         incClass
     );
-
-//    TIncludedFile = record
-//        FileIdentifier : String;
-//        IncludeType : TIncludeType;
-//    end;
 
     TMethodType = (
         methodAdd,
@@ -44,6 +45,7 @@ type
         ClassConstants : array of TPsionOOConstantEntry;
         HasMethod : Boolean;
         HasProperty : Boolean;
+        PropertyAutodestroyCount : Integer;
     end;
 
     TPsionOOFileElement = record
@@ -53,22 +55,34 @@ type
 
     TPsionOOParser = class 
         strict private
+            // Lexer class (handed to class from Create()
+            _lex : TPsionOOLexer;
+
+            // Top-level info about the parsed file
+            _Name : String;
+            _Filename : String;
+            _ElementList : array of TPsionOOFileElement;
+            _CategoryType : TPsionOOCatType;
+
+            // Separated lists of things that make up the Element List
             _ClassList : array of TPsionOOClass;
             _RequireList : array of string;
             _IncludeList : array of string;
             _ExternalList : array of string;
-            _FileList : array of TPsionOOFileElement;
-            _TheLexer : TPsionOOLexer;
-            procedure _GetClass;
-            function _SeekNonNewlineToken(): TToken;
+
+            // Various methods
+            function _GetClass : TPsionOOClass;
+            function _SeekNonNewlineToken() : TToken;
             function _IsToken(curtoken : TToken; TestTokenType: TTokenType) : Boolean;
             function _IsToken(curtoken : TToken; PossibleTokenTypes: array of TTokenType) : Boolean;
+
         public
             constructor Create(Lexer : TPsionOOLexer);
-            
 
+//        published
+//            property Name read _Name;
+//            property Filename read _Filename;
     end;
-
 
 
 implementation
@@ -76,35 +90,38 @@ implementation
 constructor TPsionOOParser.Create(Lexer : TPsionOOLexer);
 var
     curtoken : TToken;
-    i : Integer;
+    i, j : Integer;
     curElement : TPsionOOFileElement;
 
 begin
     inherited Create;
 
-    _TheLexer := Lexer;
+    _lex := Lexer;
 
-    _TheLexer.Reset();
+    _lex.Reset();
 
-//    curtoken := _TheLexer.GetNextToken();
+//    curtoken := _lex.GetNextToken();
     curtoken := _SeekNonNewlineToken();
     
     case curtoken.TType of
-        tknName, tknImage, tknLibrary: begin end; // do nothing
+        tknName:     _CategoryType := catName;
+        tknImage:    _CategoryType := catImage;
+        tknLibrary:  _CategoryType := catLibrary;
         else begin
             Writeln(curtoken.LineNum, ': Bad token found. (Expected tknName, tknImage or tknLibrary, but got ', curtoken.TType, '.)');
             halt;
         end;
     end;
 
-    Writeln('File type is ', curtoken.TType);
+    Writeln('File type is ', _CategoryType);
 
     while curtoken.TType <> tknEOF do
     begin
         case curtoken.TType of
             tknNewline: begin end; // do nothing
+
             tknInclude: begin
-                curtoken := _TheLexer.GetNextToken();
+                curtoken := _lex.GetNextToken();
                 if curtoken.TType <> tknString then begin
                     Writeln(curtoken.LineNum, ': INCLUDE statement, bad token found. (Expected tknString but got ', curtoken.TType, '.)');
                     halt;
@@ -112,10 +129,11 @@ begin
                 _IncludeList := concat(_IncludeList, [curtoken.Literal]);
                 curElement.index := length(_IncludeList);
                 curElement.ElementType := incInclude;
-                _FileList := concat(_FileList, [curElement]);
+                _ElementList := concat(_ElementList, [curElement]);
             end;
+
             tknExternal: begin
-                curtoken := _TheLexer.GetNextToken();
+                curtoken := _lex.GetNextToken();
                 if curtoken.TType <> tknString then begin
                     Writeln(curtoken.LineNum, ': EXTERNAL statement, bad token found. (Expected tknString but got ', curtoken.TType, '.)');
                     halt;
@@ -123,10 +141,11 @@ begin
                 _ExternalList := concat(_ExternalList, [curtoken.Literal]);
                 curElement.index := length(_ExternalList);
                 curElement.ElementType := incExternal;
-                _FileList := concat(_FileList, [curElement]);
+                _ElementList := concat(_ElementList, [curElement]);
             end;
+
             tknRequire: begin
-                curtoken := _TheLexer.GetNextToken();
+                curtoken := _lex.GetNextToken();
                 if curtoken.TType <> tknString then begin
                     Writeln(curtoken.LineNum, ': REQUIRE statement, bad token found. (Expected tknString but got ', curtoken.TType, '.)');
                     halt;
@@ -134,16 +153,16 @@ begin
                 _RequireList := concat(_RequireList, [curtoken.Literal]);
                 curElement.index := length(_RequireList);
                 curElement.ElementType := incRequire;
-                _FileList := concat(_FileList, [curElement]);
+                _ElementList := concat(_ElementList, [curElement]);
             end;
 
             tknClass: begin
-                _GetClass();
+                _ClassList := concat(_ClassList, [_GetClass()]);
             end;
         end;
 
 
-        curtoken := _TheLexer.GetNextToken();
+        curtoken := _lex.GetNextToken();
     end;
 
     Writeln;
@@ -167,70 +186,137 @@ begin
         Writeln(_RequireList[i]);
     end;
 
+    Writeln;
+    Writeln('Classes:');
+
+    for i := 0 to length(_ClassList) - 1 do
+    begin
+        Writeln('Name: ', _ClassList[i].Name);
+        Writeln('Inherits from: ', _ClassList[i].Inherits);
+        for j := 0 to length(_ClassList[i].Methods) - 1 do
+        begin
+            Writeln('  ', _ClassList[i].Methods[j].MethodType, ' ', _ClassList[i].Methods[j].Name);
+        end;
+//        for j := 0 to length(_ClassList[i].ClassProperty) - 1 do
+//        begin
+//            Writeln('  ', _ClassList[i].ClassProperty[j]);
+//        end;
+    end;
 end;
 
-procedure TPsionOOParser._GetClass();
+function TPsionOOParser._GetClass() : TPsionOOClass;
 var
     curtoken : TToken;
-    curClass : TPsionOOClass;
     curMethodEntry : TPsionOOMethodEntry;
-    i : Integer;
 
 begin
-    curtoken := _TheLexer.GetNextToken();
+    Result.HasMethod := false;
+    Result.HasProperty := false;
+
+    curtoken := _lex.GetNextToken();
     //if curtoken.TType <> tknString then begin
     if not(_IsToken(curtoken, tknString)) then begin
         Writeln(curtoken.LineNum, ': CLASS statement, bad token found. (Expected tknString but got ', curtoken.TType, '.)');
         halt;
     end;
 
-    curClass.Name := curtoken.Literal;
-    Writeln('Found class: ', curClass.Name);
+    Result.Name := curtoken.Literal;
+    Writeln('Found class: ', Result.Name);
 
-    curtoken := _TheLexer.GetNextToken();
+    curtoken := _lex.GetNextToken();
     if not(_IsToken(curtoken, [tknString, tknNewline])) then begin
         Writeln(curtoken.LineNum, ': CLASS statement, bad token found. (Expected tknString or tknNewLine but got ', curtoken.TType, '.)');
         halt;
     end;
 
-    curClass.Inherits := curtoken.Literal;
-    Write('Class ', curClass.Name, ' inherits ');
-    case curClass.Inherits of
+    Result.Inherits := curtoken.Literal;
+    Write('Class ', Result.Name, ' inherits ');
+    case Result.Inherits of
         '': Writeln('nothing');
-        else Writeln(curClass.Inherits);
+        else Writeln(Result.Inherits);
     end;
 
-    if curtoken.TType = tknNewline then 
-    curtoken := _TheLexer.GetNextToken();
+//    if curtoken.TType = tknNewline then 
+//    curtoken := _lex.GetNextToken();
+    curtoken := _SeekNonNewlineToken();
 
     while curtoken.TType <> tknBraceleft do
     begin
-        curtoken := _TheLexer.GetNextToken();
+        curtoken := _lex.GetNextToken();
     end;
     
+    if not(_IsToken(curtoken, tknBraceLeft)) then begin
+        Writeln(curtoken.LineNum, ': CLASS statement, bad token found. (Expected tknBraceLeft but got ', curtoken.TType, '.)');
+        halt;
+    end;
+
     while not(_IsToken(curtoken,[tknBraceRight, tknEOF])) do
     begin
-        curtoken := _TheLexer.GetNextToken();
+        curtoken := _lex.GetNextToken();
 
         case curtoken.TType of
+            tknNewline: begin end;
+
             tknAdd: begin
                 curMethodEntry.MethodType := methodAdd;
-                curtoken := _TheLexer.GetNextToken();
+                curtoken := _lex.GetNextToken();
                 curMethodEntry.Name := curtoken.Literal;
+                Result.Methods := concat(Result.Methods, [curMethodEntry]);
             end;
+
             tknReplace: begin
                 curMethodEntry.MethodType := methodReplace;
-                curtoken := _TheLexer.GetNextToken();
+                curtoken := _lex.GetNextToken();
                 curMethodEntry.Name := curtoken.Literal;
+                Result.Methods := concat(Result.Methods, [curMethodEntry]);
             end;
+
             tknDefer: begin
                 curMethodEntry.MethodType := methodDefer;
-                curtoken := _TheLexer.GetNextToken();
+                curtoken := _lex.GetNextToken();
                 curMethodEntry.Name := curtoken.Literal;
+                Result.Methods := concat(Result.Methods, [curMethodEntry]);
+            end;
+
+//            tknProperty: begin
+//                curtoken := _lex.GetNextToken();
+//                if curtoken.TType = tknString then begin
+//                    TryStrToInt(curtoken.Literal, Result.PropertyAutodestroyCount);
+//                    curtoken := _lex.GetNextToken();
+//                end;
+//                
+//                curtoken := _SeekNonNewlineToken();
+//                Writeln('We''re in the Property section...');
+//                if not(_IsToken(curtoken, tknBraceLeft)) then begin
+//                    Writeln(curtoken.LineNum, ': CLASS-PROPERTY statement, bad token found. (Expected tknBraceLeft but got ', curtoken.TType, '.)');
+//                    halt;
+//                end;
+//                while not(_IsToken(curtoken, [tknEOF, tknBraceRight])) do
+//                begin
+//                    case curtoken.TType of
+//                        tknNewline: begin end;
+//                        tknString: begin
+//                            Result.ClassProperty := concat(Result.ClassProperty, [curtoken.Literal]);
+//                        end;
+//                        else begin
+//                            Writeln(curtoken.LineNum, ': CLASS-PROPERTY statement, bad token found. (Expected tknString but got ', curtoken.TType, '.)');
+//                            halt;
+//                        end;
+//                    end;    
+//                end;
+//            end;
+
+            tknHasMethod: begin
+                Result.HasMethod := true;
+            end;
+
+            tknHasProperty : begin
+                Result.HasProperty := true;
             end;
         end;
-        
+
     end;
+
 
 end;
 
@@ -240,7 +326,7 @@ var
     curtoken : TToken;
 begin
     while true do begin
-        curtoken := _TheLexer.GetNextToken();
+        curtoken := _lex.GetNextToken();
         if curtoken.TType <> tknNewline then begin
             result := curtoken;
             exit;
@@ -269,3 +355,4 @@ begin
 end;
 
 end.
+

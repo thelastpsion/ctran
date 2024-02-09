@@ -57,6 +57,7 @@ type
         TType : TTokenType;
         Literal : string;
         LineNum : Integer;
+        LinePos : Integer;
     end;
     TTokenArray = array of TToken;
 
@@ -174,14 +175,14 @@ var
 begin
     recToken := _NewToken(0, tknString, ''); // Just an empty token, so that the variable is initialised
 
-    Writeln(' Line | Token Type     | Literal');
-    Writeln('------+----------------+-------------');
+    Writeln(' Line | Pos | Token Type     | Literal');
+    Writeln('------+-----+----------------+-------------');
 
     while recToken.TType <> tknEOF do
     begin
         recToken := GetNextToken();
         Str(recToken.TType, s); // Because you can't simply use an enum in format()
-        Writeln(format(' %4d | %-14s | %s', [recToken.LineNum, s, recToken.Literal]));
+        Writeln(format(' %4d | %3d | %-14s | %s', [recToken.LineNum, recToken.LinePos, s, recToken.Literal]));
     end;
 
     Writeln;
@@ -203,6 +204,7 @@ begin
     newToken.TType := newTokenType;
     newToken.Literal := newTokenLiteral;
     newToken.LineNum := _curLineNum;
+    newToken.LinePos := _curLinePos;
     _TokenArray := concat(_TokenArray, [newToken]);
 end;
 
@@ -488,7 +490,11 @@ begin
             end;
         end;
 
-    if _CurLineNum < _slCategoryFile.Count then _AddToken(tknNewline, '');
+        if _CurLineNum < _slCategoryFile.Count then
+        begin
+            _curLinePos := length(_strCurLine) + 1;
+            _AddToken(tknNewline, '');
+        end;
     end;
 
     if _BraceLevel <> 0 then begin
@@ -496,6 +502,7 @@ begin
         exit;
     end;
 
+    _curLinePos := 0;
     _AddToken(tknEOF, '');
 end;
 

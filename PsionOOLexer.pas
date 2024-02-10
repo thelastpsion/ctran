@@ -59,6 +59,7 @@ type
         LineNum : Integer;
         LinePos : Integer;
     end;
+
     TTokenArray = array of TToken;
 
     TLexerState = (
@@ -74,8 +75,14 @@ type
         stateClassPropertySeekStart
     );
 
+    TTokenisedLine = record
+        LineNum : Integer;
+        Tokens : array of TToken;
+    end;
+
     TPsionOOLexer = class
         strict private
+            // Fields: Lexing
             _curLineNum, _curLinePos : Integer;
             _slCategoryFile : TStringList;
             _strFilename : String;
@@ -83,15 +90,29 @@ type
             _LexerState : TLexerState;
             _BraceLevel : Integer;
             _TokenArray : TTokenArray;
+
+            // Fields: Token Processing
             _CurTokenIndex : Integer;
             _CurToken : TToken;
-            function _GetNextLiteral() : String;
+
+            // Fields: Tokenised Line Builder
+            _nextTLBTokenIndex : Integer;
+
+            // Methods: Lexing
             function _NewToken(newTokenLineNum: Integer; newTokenType: TTokenType; newTokenLiteral: String): TToken;
             procedure _AddToken(newTokenType: TTokenType; newTokenLiteral: String);
             procedure _ProcessCLine();
             procedure _GrabAndAddStringTokens(count : Integer);
+            function _GetNextLiteral() : String;
             procedure _SeekStartOfSection(NextLexerState : TLexerState);
-            function _getToken : TToken;
+
+            // Methods: Token Processing
+            function _getToken() : TToken;
+
+            // Methods: Tokenised Line Builder
+            function _GetNextLine() : TTokenisedLine;
+            procedure _ResetTLB();
+
         public
             constructor Create();
             procedure LoadFile(strFilename : String);
@@ -100,6 +121,7 @@ type
             procedure NextToken();
             procedure Reset();
             property token : TToken read _getToken;
+            procedure PrintTokenisedLines();
     end;
 
 implementation
@@ -129,6 +151,38 @@ begin
     _slCategoryFile := TStringList.Create;
     _CurTokenIndex := -1;
     _BraceLevel := 0;
+
+    // Tokenised Line Builder
+    _resetTLB;
+end;
+
+//
+// TOKENISED LINE BUILDER
+//
+
+procedure TPsionOOLexer._ResetTLB();
+begin
+    _nextTLBTokenIndex := 0;
+end;
+
+function TPsionOOLexer._GetNextLine() : TTokenisedLine;
+begin
+    Result.Tokens := nil; // Because it remembers what was here before!
+
+    if _nextTLBTokenIndex >= length(_TokenArray) then begin
+        _nextTLBTokenIndex := length(_TokenArray);
+        Result.LineNum := 0;
+        Result.Tokens := [_NewToken(0, tknEOF, '')];
+        exit;
+    end;
+
+    Result.LineNum := _TokenArray[_nextTLBTokenIndex].LineNum;
+    while _nextTLBTokenIndex < length(_TokenArray) do
+    begin
+        if _TokenArray[_nextTLBTokenIndex].LineNum <> Result.LineNum then break;
+        Result.Tokens := concat(Result.Tokens, [_TokenArray[_nextTLBTokenIndex]]);
+        inc(_nextTLBTokenIndex);
+    end;
 end;
 
 function TPsionOOLexer._GetToken(): TToken;
@@ -142,31 +196,9 @@ begin
     _CurToken := _TokenArray[_CurTokenIndex];
 end;
 
-//TODO: Should this be a function that returns a char, or should it just put values into variables inside the class?
-//procedure TPsionOOLexer.GetNextGlyph();
-//var
-//    nextpos : Integer;
-//    nextchar : char;
-//begin
-//    nextpos := curpos + 1;
 //
-//    if curpos > length(content) then
-//    begin
-//        flagEOF := true;
-//        curchar := '';
-//        Exit();
-//    end;
+// OUTPUT (should really be in testing)
 //
-//    nextchar := content[nextpos];
-//    inc(curpos);
-//end;
-//
-//procedure TPsionOOLexer.FindStartOfLine();
-//var
-//    ch : Char;
-//begin
-//    ch := content[curpos];
-//end;
 
 procedure TPsionOOLexer.PrintArray();
 var
@@ -189,6 +221,38 @@ begin
     Writeln('Length: ', Length(_TokenArray));
 end;
 
+procedure TPsionOOLexer.PrintTokenisedLines();
+var
+    i : Integer;
+    tokline : TTokenisedLine;
+    tok : TToken;
+begin
+    WriteLn;
+    WriteLn('Tokenised Line Parser!');
+
+    tokline := _GetNextLine();
+    while tokline.Tokens[0].TType <> tknEOF do
+    begin
+        Writeln('Line ', tokline.LineNum, ': (returned ', length(tokline.Tokens), ' tokens)');
+        for tok in tokline.Tokens do
+        begin
+            WriteLn('   > ', tok.TType, ' ''', tok.Literal, ''' (', tok.LinePos, ')');
+        end;
+        Writeln('   O: ', _slCategoryFile[tokline.LineNum - 1]);
+        Write('   G:');
+        for tok in tokline.Tokens do
+        begin
+            Write(' ', tok.Literal);
+        end;
+        Writeln;
+        tokline := _GetNextLine();
+    end;
+end;
+
+//
+// TOKEN CREATION
+//
+
 // Takes a TokenType and a String and puts it into a Token record
 function TPsionOOLexer._NewToken(newTokenLineNum: Integer; newTokenType: TTokenType; newTokenLiteral: String): TToken;
 begin
@@ -201,12 +265,18 @@ procedure TPsionOOLexer._AddToken(newTokenType: TTokenType; newTokenLiteral: Str
 var
     newToken: TToken;
 begin
-    newToken.TType := newTokenType;
-    newToken.Literal := newTokenLiteral;
-    newToken.LineNum := _curLineNum;
-    newToken.LinePos := _curLinePos;
+    with newToken do begin
+        TType := newTokenType;
+        Literal := newTokenLiteral;
+        LineNum := _curLineNum;
+        LinePos := _curLinePos;
+    end;
     _TokenArray := concat(_TokenArray, [newToken]);
 end;
+
+//
+// LINE PROCESSING
+//
 
 function TPsionOOLexer._GetNextLiteral() : String;
 var
@@ -490,11 +560,11 @@ begin
             end;
         end;
 
-        if _CurLineNum < _slCategoryFile.Count then
-        begin
-            _curLinePos := length(_strCurLine) + 1;
-            _AddToken(tknNewline, '');
-        end;
+//        if _CurLineNum < _slCategoryFile.Count then
+//        begin
+//            _curLinePos := length(_strCurLine) + 1;
+//            _AddToken(tknNewline, '');
+//        end;
     end;
 
     if _BraceLevel <> 0 then begin

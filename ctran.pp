@@ -82,11 +82,12 @@ begin
 
         WriteLn;
         CatLexer.PrintArray();
-        CatParser := TPsionOOParser.Create(CatLexer);
+        CatLexer.PrintTokenisedLines();
+//        CatParser := TPsionOOParser.Create(CatLexer);
 
     end
     finally begin
-        FreeAndNil(CatParser);
+//        FreeAndNil(CatParser);
         FreeAndNil(CatLexer);
     end;
     end;

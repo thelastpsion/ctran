@@ -62,6 +62,7 @@ type
 
     TTokenArray = array of TToken;
 
+    // TODO: Rename this, as it's used by the lexer and parser
     TLexerState = (
         stateInitial,
         stateSeekKeyword,
@@ -98,6 +99,9 @@ type
             // Fields: Tokenised Line Builder
             _nextTLBTokenIndex : Integer;
 
+            // Fields: Parser
+            _ParserState : TLexerState;
+
             // Methods: Lexing
             function _NewToken(newTokenLineNum: Integer; newTokenType: TTokenType; newTokenLiteral: String): TToken;
             procedure _AddToken(newTokenType: TTokenType; newTokenLiteral: String);
@@ -123,6 +127,9 @@ type
             property token : TToken read _getToken;
             procedure PrintTokenisedLines();
 
+            // Methods: Parser
+            procedure Parse();
+
     end;
 
 implementation
@@ -132,6 +139,18 @@ procedure TrimAfterSemicolon(var s: String);
 begin
     if ansipos(';', s) > 0 then s := copy(s, 1, ansipos(';', s));
     s := s.Trim;
+end;
+
+function RepeatString(s: String; c: integer) : String;
+var
+    i : Integer;
+begin
+    Result := '';
+
+    for i := 1 to c do
+    begin
+        Result := Result + s;
+    end;
 end;
 
 //function IsValidLetter(ch: Char): Boolean;
@@ -575,6 +594,63 @@ begin
 
     _curLinePos := 0;
     _AddToken(tknEOF, '');
+end;
+
+procedure TPsionOOLexer.Parse();
+var
+    tokline : TTokenisedLine;
+    tok : TToken;
+begin
+    _ResetTLB();
+
+
+    // Check the first token is valid
+
+    tokline := _GetNextLine();
+    // TODO: Check based on filetype
+    case tokline.Tokens[0].TType of
+        tknName, tknImage, tknLibrary: begin end; // skip everything
+        tknEOF: begin
+            Writeln('INFO: EOF found in initial parser state. (Empty file, or no starter token?)');
+            halt;
+        end;
+        else begin
+            Writeln('ERROR: First token isn''t a valid starter token. (Is there a bug in the lexer?)');
+            Writeln(format('%.3d: %s', [tokline.LineNum, _slCategoryFile[tokline.LineNum - 1]]));
+            Writeln('    ', RepeatString(' ', tokline.Tokens[0].LinePos), '^');
+            halt;
+        end;
+    end;
+
+    if length(tokline.Tokens) = 1 then begin
+        Writeln('ERROR: Starter token found, but nothing following it on the line.');
+        Writeln(format('%.3d: %s', [tokline.LineNum, _slCategoryFile[tokline.LineNum - 1]]));
+        halt;
+    end;
+    if length(tokline.Tokens) > 2 then begin
+        Writeln('ERROR: Too many tokens on this line. (Is there a bug in the lexer?)');
+        Writeln(format('%.3d: %s', [tokline.LineNum, _slCategoryFile[tokline.LineNum - 1]]));
+        halt;
+    end;
+    if tokline.Tokens[1].TType <> tknString then begin
+        Writeln('ERROR: Incorrect token type. Expected tknString but got ', tokline.Tokens[1].TType, '. (Is there a bug in the lexer?)');
+        Writeln(format('%.3d: %s', [tokline.LineNum, _slCategoryFile[tokline.LineNum - 1]]));
+        halt;
+    end;
+
+    Writeln('Found ', tokline.Tokens[0].TType, ' with name ', tokline.Tokens[1].Literal);
+
+    _ParserState := stateSeekKeyword;
+    tokline := _GetNextLine();
+
+    while tokline.Tokens[0].TType <> tknEOF do
+    begin
+        case _ParserState of
+            stateSeekKeyword: begin
+            end;
+        end;
+        tokline := _GetNextLine();
+    end;
 end;
 
 function TPsionOOLexer.GetNextToken() : TToken;

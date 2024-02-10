@@ -122,6 +122,7 @@ type
             procedure Reset();
             property token : TToken read _getToken;
             procedure PrintTokenisedLines();
+
     end;
 
 implementation
@@ -367,7 +368,7 @@ end;
 procedure TPsionOOLexer.LoadFile(strFilename : String);
 var
     x : LongInt;
-    curtoken : String;
+    lit : String;
 begin
     _LexerState := stateInitial;
     _slCategoryFile := TStringList.Create;
@@ -377,7 +378,7 @@ begin
     _curLineNum := 0;
     while _CurLineNum < _slCategoryFile.Count do
     begin
-        curtoken := '';
+        lit := '';
         inc(_curLineNum);
         _curLinePos := 1;
 
@@ -398,25 +399,25 @@ begin
         else if _strCurLine[_curLinePos] = '!' then
             Writeln('>>> Explicit comment, line skipped')
         else begin
-            curtoken := '';
+            lit := '';
     
             case _LexerState of
                 stateInitial: begin
-                    curtoken := _GetNextLiteral();
-                    case UpCase(curtoken) of 
+                    lit := _GetNextLiteral();
+                    case UpCase(lit) of
                         'IMAGE': begin
                             Writeln('>>> IMAGE found!');
-                            _AddToken(tknImage, curtoken);
+                            _AddToken(tknImage, lit);
                             _LexerState := stateSeekKeyword;
                         end;
                         'LIBRARY': begin
                             Writeln('>>> LIBRARY found!');
-                            _AddToken(tknLibrary, curtoken);
+                            _AddToken(tknLibrary, lit);
                             _LexerState := stateSeekKeyword;
                         end;
                         'NAME': begin
                             Writeln('>>> NAME found!');
-                            _AddToken(tknName, curtoken);
+                            _AddToken(tknName, lit);
                             _LexerState := stateSeekKeyword;
                         end;
                     end;
@@ -428,32 +429,32 @@ begin
                 end;
 
                 stateSeekKeyword: begin
-                    curtoken := _GetNextLiteral();
-                    case UpCase(curtoken) of
+                    lit := _GetNextLiteral();
+                    case UpCase(lit) of
                         'EXTERNAL': begin
                             Writeln('>>> EXTERNAL found!');
-                            _AddToken(tknExternal, curtoken);
+                            _AddToken(tknExternal, lit);
                             _GrabAndAddStringTokens(1);
                         end;
                         'INCLUDE': begin
                             Writeln('>>> INCLUDE found!');
-                            _AddToken(tknInclude, curtoken);
+                            _AddToken(tknInclude, lit);
                             _GrabAndAddStringTokens(1);
                         end;
                         'CLASS': begin
                             Writeln('>>> CLASS found!');
-                            _AddToken(tknClass, curtoken);
+                            _AddToken(tknClass, lit);
                             _GrabAndAddStringTokens(2);
                             _LexerState := stateClassSeekStart;
                             Writeln('>>>   Now in stateClassSeekStart (looking for brace)');
                         end;
                         'REQUIRE': begin
                             Writeln('>>> REQUIRE found!');
-                            _AddToken(tknRequire, curtoken);
+                            _AddToken(tknRequire, lit);
                             _GrabAndAddStringTokens(1);
                         end;
                         else begin
-                            WriteLn('!!! Invalid token found: ', curtoken);
+                            WriteLn('!!! Invalid token found: ', lit);
                             halt;
                         end;
                     end;
@@ -470,43 +471,43 @@ begin
                         _LexerState := stateSeekKeyword;
                         Writeln('>>> Now in stateSeekKeyword');
                     end else begin
-                        curtoken := _GetNextLiteral();
-                        case curtoken of
+                        lit := _GetNextLiteral();
+                        case UpCase(lit) of
                             'ADD': begin
                                 Writeln('>>> ADD found!');
-                                _AddToken(tknAdd, curtoken);
+                                _AddToken(tknAdd, lit);
                                 _GrabAndAddStringTokens(1);
                             end;
                             'REPLACE': begin
                                 Writeln('>>> REPLACE found!');
-                                _AddToken(tknReplace, curtoken);
+                                _AddToken(tknReplace, lit);
                                 _GrabAndAddStringTokens(1);
                             end;
                             'DEFER': begin
                                 Writeln('>>> DEFER found!');
-                                _AddToken(tknDefer, curtoken);
+                                _AddToken(tknDefer, lit);
                                 _GrabAndAddStringTokens(1);
                             end;
                             'CONSTANTS': begin
                                 Writeln('>>> CONSTANTS found!');
-                                _AddToken(tknConstants, curtoken);
+                                _AddToken(tknConstants, lit);
                                 _LexerState := stateClassConstantsSeekStart;
                                 Writeln('>>>   Now in stateClassConstantsSeekStart');
                             end;
                             'TYPES': begin
                                 Writeln('>>> TYPES found!');
-                                _AddToken(tknTypes, curtoken);
+                                _AddToken(tknTypes, lit);
                                 _LexerState := stateClassTypesSeekStart;
                                 Writeln('>>>   Now in stateClassTypesSeekStart');
                             end;
                             'PROPERTY': begin
                                 Writeln('>>> PROPERTY found!');
-                                _AddToken(tknProperty, curtoken);
-                                curtoken := _GetNextLiteral();
-                                Writeln('>>> Token grabbed: ', curtoken);
-                                if TryStrToInt(curtoken, x) then begin
+                                _AddToken(tknProperty, lit);
+                                lit := _GetNextLiteral();
+                                Writeln('>>> Literal grabbed: ', lit);
+                                if TryStrToInt(lit, x) then begin
                                     Writeln('>>> Number found!');
-                                    _AddToken(tknString, curtoken);
+                                    _AddToken(tknString, lit);
                                 end;
                                 _LexerState := stateClassPropertySeekStart;
                                 Writeln('>>>   Now in stateClassPropertySeekStart');
@@ -514,16 +515,16 @@ begin
                             // External reference (.EXT) keywords
                             'DECLARE': begin
                                 Writeln('>>> DECLARE found!');
-                                _AddToken(tknDeclare, curtoken);
+                                _AddToken(tknDeclare, lit);
                                 _GrabAndAddStringTokens(1);
                             end;
                             'HAS_METHOD': begin
                                 Writeln('>>> HAS_METHOD found!');
-                                _AddToken(tknHasMethod, curtoken);
+                                _AddToken(tknHasMethod, lit);
                             end;
                             'HAS_PROPERTY': begin
                                 Writeln('>>> HAS_PROPERTY found!');
-                                _AddToken(tknHasProperty, curtoken);
+                                _AddToken(tknHasProperty, lit);
                             end;
                         end;
                     end;

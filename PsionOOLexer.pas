@@ -118,6 +118,9 @@ type
             function _GetNextLine() : TTokenisedLine;
             procedure _ResetTLB();
 
+            // Methods: Misc
+            procedure _ErrShowLine(linenum : Integer; linepos : Integer);
+
         public
             constructor Create();
             procedure LoadFile(strFilename : String);
@@ -215,6 +218,13 @@ procedure TPsionOOLexer.NextToken();
 begin
     if _CurTokenIndex < length(_TokenArray) then inc(_CurTokenIndex);
     _CurToken := _TokenArray[_CurTokenIndex];
+end;
+
+procedure TPsionOOLexer._ErrShowLine(linenum : Integer; linepos : Integer);
+begin
+    Writeln(format('%.3d: %s', [LineNum, _slCategoryFile[LineNum - 1]]));
+    Writeln('    ', RepeatString(' ', linepos), '^');
+    halt;
 end;
 
 //
@@ -599,12 +609,6 @@ begin
                 stateClassProperty: _ProcessCLine;
             end;
         end;
-
-//        if _CurLineNum < _slCategoryFile.Count then
-//        begin
-//            _curLinePos := length(_strCurLine) + 1;
-//            _AddToken(tknNewline, '');
-//        end;
     end;
 
     if _BraceLevel <> 0 then begin
@@ -636,26 +640,21 @@ begin
         end;
         else begin
             Writeln('ERROR: First token isn''t a valid starter token. (Is there a bug in the lexer?)');
-            Writeln(format('%.3d: %s', [tokline.LineNum, _slCategoryFile[tokline.LineNum - 1]]));
-            Writeln('    ', RepeatString(' ', tokline.Tokens[0].LinePos), '^');
-            halt;
+            _ErrShowLine(tokline.LineNum, tokline.Tokens[0].LinePos);
         end;
     end;
 
     if length(tokline.Tokens) = 1 then begin
         Writeln('ERROR: Starter token found, but nothing following it on the line.');
-        Writeln(format('%.3d: %s', [tokline.LineNum, _slCategoryFile[tokline.LineNum - 1]]));
-        halt;
+        _ErrShowLine(tokline.LineNum, length(_slCategoryFile[tokline.LineNum - 1]));
     end;
     if length(tokline.Tokens) > 2 then begin
         Writeln('ERROR: Too many tokens on this line. (Is there a bug in the lexer?)');
-        Writeln(format('%.3d: %s', [tokline.LineNum, _slCategoryFile[tokline.LineNum - 1]]));
-        halt;
+        _ErrShowLine(tokline.LineNum, tokline.Tokens[2].LinePos);
     end;
     if tokline.Tokens[1].TType <> tknString then begin
         Writeln('ERROR: Incorrect token type. Expected tknString but got ', tokline.Tokens[1].TType, '. (Is there a bug in the lexer?)');
-        Writeln(format('%.3d: %s', [tokline.LineNum, _slCategoryFile[tokline.LineNum - 1]]));
-        halt;
+        _ErrShowLine(tokline.LineNum, tokline.Tokens[1].LinePos);
     end;
 
     Writeln('Found ', tokline.Tokens[0].TType, ' with name ', tokline.Tokens[1].Literal);

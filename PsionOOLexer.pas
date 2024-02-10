@@ -166,28 +166,33 @@ end;
 constructor TPsionOOLexer.Create();
 begin
     inherited Create;
+    _slCategoryFile := TStringList.Create;
+
+    Reset();
+
+    // Tokenised Line Builder
+    _resetTLB();
+end;
+
+procedure TPsionOOLexer.Reset();
+begin
+    _LexerState := stateInitial;
     _curLineNum := 0;
     _curLinePos := 0;
     _strCurLine := '';
     _strFilename := '';
-    _LexerState := stateInitial;
-    _BraceLevel := 0;
-    _slCategoryFile := TStringList.Create;
     _CurTokenIndex := -1;
     _BraceLevel := 0;
-
-    // Tokenised Line Builder
-    _resetTLB;
 end;
-
-//
-// TOKENISED LINE BUILDER
-//
 
 procedure TPsionOOLexer._ResetTLB();
 begin
     _nextTLBTokenIndex := 0;
 end;
+
+//
+// TOKENISED LINE BUILDER
+//
 
 function TPsionOOLexer._GetNextLine() : TTokenisedLine;
 begin
@@ -681,11 +686,6 @@ begin
 
     if _CurTokenIndex < length(_TokenArray) then inc(_CurTokenIndex);
     GetNextToken := _TokenArray[_CurTokenIndex];
-end;
-
-procedure TPsionOOLexer.Reset();
-begin
-    _CurTokenIndex := -1;
 end;
 
 end.

@@ -374,7 +374,7 @@ end;
 procedure TPsionOOLexer._ProcessCLine();
 begin
     if (_LexerState <> stateClassTypes) and (_LexerState <> stateClassProperty) then begin
-        WriteLn('_ProcessCBlock: Why am I here?');
+        WriteLn('_ProcessCLine: Why am I here?');
         halt;
     end;
     if _strCurLine[_curLinePos] = '{' then begin

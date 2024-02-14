@@ -12,7 +12,7 @@ uses
     sysutils, Classes;
 
 type
-//    TokenType = string;
+    // TokenType = string;
     TTokenType = (
         // Breaks
         tknNewline,
@@ -157,11 +157,11 @@ begin
     end;
 end;
 
-//function IsValidLetter(ch: Char): Boolean;
-//begin
-    //Result := (((ord(ch) >= 97) and (ord(ch) <= 122)) or ((ord(ch) >= 65) and (ord(ch) <= 90)) or (ch = '_'));
-//    Result := ((LowerCase(ch) in ['a' .. 'z']) or (ch = '_'));
-//end;
+// function IsValidLetter(ch: Char): Boolean;
+// begin
+//     Result := (((ord(ch) >= 97) and (ord(ch) <= 122)) or ((ord(ch) >= 65) and (ord(ch) <= 90)) or (ch = '_'));
+//     Result := ((LowerCase(ch) in ['a' .. 'z']) or (ch = '_'));
+// end;
 
 constructor TPsionOOLexer.Create();
 begin

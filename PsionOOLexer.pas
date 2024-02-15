@@ -124,6 +124,7 @@ type
         public
             constructor Create();
             procedure LoadFile(strFilename : String);
+            procedure Lex();
             procedure PrintArray();
             function GetNextToken() : TToken;
             procedure NextToken();
@@ -415,18 +416,22 @@ begin
 end;
 
 
-// TODO: Check for braces inside lines?
 procedure TPsionOOLexer.LoadFile(strFilename : String);
+begin
+    _slCategoryFile := TStringList.Create;
+
+    _slCategoryFile.LoadFromFile(strFilename);
+end;
+
+// TODO: Check for braces inside lines?
+procedure TPsionOOLexer.Lex();
 var
     x : LongInt;
     tok : TToken;
 begin
     _LexerState := stateInitial;
-    _slCategoryFile := TStringList.Create;
-
-    _slCategoryFile.LoadFromFile(strFilename);
-
     _curLineNum := 0;
+
     while _CurLineNum < _slCategoryFile.Count do
     begin
         tok.Literal := '';

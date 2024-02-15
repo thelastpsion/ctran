@@ -79,6 +79,7 @@ begin
     begin
         CatLexer := TPsionOOLexer.Create;
         CatLexer.LoadFile(strFilename);
+        CatLexer.Lex();
 
         WriteLn;
         CatLexer.PrintArray();

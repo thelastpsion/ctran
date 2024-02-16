@@ -4,7 +4,6 @@ program ctran;
 uses
     sysutils, PsionOOLexer, PsionOOParser;
 
-
 var
     strFilename : String;
     CatLexer : TPsionOOLexer;
@@ -70,8 +69,10 @@ begin
         exit;
     end;
 
-    if (length(strFilename) < 5) or ((length(strFilename) > 4) and (AnsiPos('.', UpCase(strFilename)) < 2)) then
-        strfilename += '.cat';
+    case ExtractFileExt(strFilename) of
+        '.', '': strfilename += '.cat';
+    end;
+
     WriteLn('Filename: ', strFilename);
     WriteLn;
 
@@ -83,6 +84,7 @@ begin
 
         WriteLn;
         CatLexer.PrintArray();
+        WriteLn;
         // CatLexer.PrintTokenisedLines();
         // CatParser := TPsionOOParser.Create(CatLexer);
         CatLexer.Parse();
@@ -92,6 +94,7 @@ begin
         // FreeAndNil(CatParser);
         FreeAndNil(CatLexer);
     end;
-    end;
+end;
+
 end.
 

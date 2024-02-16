@@ -722,9 +722,10 @@ begin
                 _ErrShowLine(tokline.LineNum, tokline.Tokens[0].LinePos);
             end;
         end;
-        else
+        else begin
             WriteLn('ERROR: File type is undefined.');
             halt;
+        end;
     end;
 
     if length(tokline.Tokens) = 1 then begin
@@ -745,7 +746,7 @@ begin
         _ErrShowLine(tokline.LineNum, tokline.Tokens[1].LinePos);
     end;
 
-    Writeln('Found ', tokline.Tokens[0].TType, ' with name ', tokline.Tokens[1].Literal);
+    Writeln('Found ', tokline.Tokens[0].TType, ' in ', _FileType, ' file with name ', _ModuleName);
 
     _ParserState := stateSeekKeyword;
     tokline := _GetNextLine();

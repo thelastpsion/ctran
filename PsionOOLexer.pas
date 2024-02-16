@@ -76,6 +76,12 @@ type
         stateClassPropertySeekStart
     );
 
+    TFileType = (
+        ooCategory,
+        ooSubCat,
+        ooExternal
+    );
+
     TTokenisedLine = record
         LineNum : Integer;
         Tokens : array of TToken;
@@ -83,9 +89,12 @@ type
 
     TPsionOOLexer = class
         strict private
+            // Fields: File Information
+            _slCategoryFile : TStringList;
+            _FileType : TFileType;
+            _ModuleName : String;
             // Fields: Lexing
             _curLineNum, _curLinePos : Integer;
-            _slCategoryFile : TStringList;
             _strFilename : String;
             _strCurLine : String;
             _LexerState : TLexerState;
@@ -103,6 +112,8 @@ type
             _ParserState : TLexerState;
 
             // Methods: Lexing
+            procedure _DetectFileType(strFilename : String);
+            procedure _DetectModuleName(strFilename : String);
             function _NewToken(newTokenLineNum: Integer; newTokenType: TTokenType; newTokenLiteral: String): TToken;
             procedure _AddToken(newTokenType: TTokenType; newTokenLiteral: String);
             procedure _AddToken(newTokenType: TTokenType; tok : TToken);
@@ -416,11 +427,50 @@ begin
 end;
 
 
+procedure TPsionOOLexer._DetectFileType(strFilename : String);
+var
+    ext : String;
+begin
+    ext := UpCase(ExtractFileExt(strFilename));
+
+    case ext of
+        '', '.': begin
+            _FileType := ooCategory;
+        end;
+        '.CAT': begin
+            _FileType := ooCategory;
+        end;
+        '.CL': begin
+            _FileType := ooSubCat;
+        end;
+        '.EXT': begin
+            _FileType := ooExternal;
+        end;
+        else begin
+            WriteLn('ERROR: Unknown file type.');
+            halt;
+        end;
+    end;
+    WriteLn('File is ', _FileType);
+end;
+
+procedure TPsionOOLexer._DetectModuleName(strFilename : String);
+var
+    s : String;
+begin
+    s := ExtractFileName(strFilename);
+    _ModuleName := Copy(UpCase(s), 1, Length(s) - length(ExtractFileExt(s)));
+
+    Writeln('Module name: ', _ModuleName);
+end;
+
 procedure TPsionOOLexer.LoadFile(strFilename : String);
 begin
     _slCategoryFile := TStringList.Create;
 
     _slCategoryFile.LoadFromFile(strFilename);
+    _DetectFileType(strFilename);
+    _DetectModuleName(strFilename);
 end;
 
 // TODO: Check for braces inside lines?
@@ -637,11 +687,10 @@ var
 begin
     _ResetTLB();
 
-
     // Check the first token is valid
 
     tokline := _GetNextLine();
-    // TODO: Check based on filetype
+ 
     case tokline.Tokens[0].TType of
         tknName, tknImage, tknLibrary: begin end; // skip everything
         tknEOF: begin
@@ -654,6 +703,30 @@ begin
         end;
     end;
 
+    case _FileType of
+        ooCategory: begin
+            if tokline.Tokens[0].TType = tknName then begin
+                WriteLn('ERROR: Category file can''t start with a NAME token');
+                _ErrShowLine(tokline.LineNum, tokline.Tokens[0].LinePos);
+            end;
+        end;
+        ooSubCat: begin
+            if tokline.Tokens[0].TType <> tknName then begin
+                WriteLn('ERROR: Sub-category file can only start with a NAME token');
+                _ErrShowLine(tokline.LineNum, tokline.Tokens[0].LinePos);
+            end;
+        end;
+        ooExternal: begin
+            if tokline.Tokens[0].TType = tknName then begin
+                WriteLn('ERROR: External file can''t start with a NAME token');
+                _ErrShowLine(tokline.LineNum, tokline.Tokens[0].LinePos);
+            end;
+        end;
+        else
+            WriteLn('ERROR: File type is undefined.');
+            halt;
+    end;
+
     if length(tokline.Tokens) = 1 then begin
         Writeln('ERROR: Starter token found, but nothing following it on the line.');
         _ErrShowLine(tokline.LineNum, length(_slCategoryFile[tokline.LineNum - 1]));
@@ -664,6 +737,11 @@ begin
     end;
     if tokline.Tokens[1].TType <> tknString then begin
         Writeln('ERROR: Incorrect token type. Expected tknString but got ', tokline.Tokens[1].TType, '. (Is there a bug in the lexer?)');
+        _ErrShowLine(tokline.LineNum, tokline.Tokens[1].LinePos);
+    end;
+    
+    if _ModuleName <> UpCase(tokline.Tokens[1].Literal) then begin
+        WriteLn('ERROR: Token ', tokline.Tokens[1].Literal, ' doesn''t match module name ', _ModuleName);
         _ErrShowLine(tokline.LineNum, tokline.Tokens[1].LinePos);
     end;
 

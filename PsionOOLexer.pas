@@ -129,6 +129,9 @@ type
             function _GetNextLine() : TTokenisedLine;
             procedure _ResetTLB();
 
+            // Methods: Parser
+            procedure _CheckLine(tokline : TTokenisedLine; args : Integer; compulsary_args : Integer; toktypes : array of TTokenType);
+
             // Methods: Misc
             procedure _ErrShowLine(linenum : Integer; linepos : Integer);
 
@@ -271,7 +274,7 @@ end;
 
 procedure TPsionOOLexer.PrintTokenisedLines();
 var
-    i : Integer;
+    // i : Integer;
     tokline : TTokenisedLine;
     tok : TToken;
 begin
@@ -680,6 +683,38 @@ begin
     _AddToken(tknEOF, '');
 end;
 
+procedure TPsionOOLexer._CheckLine(tokline : TTokenisedLine; args : Integer; compulsary_args : Integer; toktypes : array of TTokenType);
+var
+    i : integer;
+begin
+    if args < compulsary_args then begin
+        WriteLn('_CheckLine: args is less than compulsary_args');
+        halt;
+    end;
+    if length(toktypes) <> args then begin
+        Writeln('_CheckLine: args doesn''t equal the number of token types provided');
+        halt;
+    end;
+
+    if length(tokline.Tokens) - 1 < compulsary_args then begin
+        Writeln('ERROR: Current line has too few arguments');
+        _ErrShowLine(tokline.LineNum, tokline.Tokens[length(tokline.Tokens)].LinePos);
+    end;
+
+    if length(tokline.Tokens) - 1 > args then begin
+        Writeln('ERROR: Current line has too many arguments');
+        _ErrShowLine(tokline.LineNum, tokline.Tokens[args].LinePos);
+    end;
+
+    for i := 1 to length(tokline.Tokens) - 1 do
+    begin
+        if (tokline.Tokens[i].TType <> toktypes[i-1]) then begin
+            WriteLn('ERROR: Incorrect token type (', tokline.LineNum, ') Expected ', toktypes[i-1], ' but got ', tokline.Tokens[i].TType);
+            _ErrShowLine(tokline.LineNum, tokline.Tokens[i].LinePos);
+            halt;
+        end;
+    end;
+end;
 procedure TPsionOOLexer.Parse();
 var
     tokline : TTokenisedLine;
@@ -687,10 +722,10 @@ var
 begin
     _ResetTLB();
 
-    // Check the first token is valid
+    // First line check
 
     tokline := _GetNextLine();
- 
+
     case tokline.Tokens[0].TType of
         tknName, tknImage, tknLibrary: begin end; // skip everything
         tknEOF: begin
@@ -748,6 +783,8 @@ begin
 
     Writeln('Found ', tokline.Tokens[0].TType, ' in ', _FileType, ' file with name ', _ModuleName);
 
+    // Check the rest of the file
+
     _ParserState := stateSeekKeyword;
     tokline := _GetNextLine();
 
@@ -755,6 +792,38 @@ begin
     begin
         case _ParserState of
             stateSeekKeyword: begin
+                case tokline.Tokens[0].TType of
+                    tknInclude: begin
+                        _CheckLine(tokline, 1, 1, [tknString]);
+                        WriteLn('Found INCLUDE with value ', tokline.Tokens[1].Literal);
+                    end;
+                    tknExternal: begin
+                        _CheckLine(tokline, 1, 1, [tknString]);
+                        WriteLn('Found EXTERNAL with value ', tokline.Tokens[1].Literal);
+                    end;
+                    tknRequire: begin
+                        _CheckLine(tokline, 1, 1, [tknString]);
+                        WriteLn('Found REQUIRE with value ', tokline.Tokens[1].Literal);
+                    end;
+                    tknClass: begin
+                        _CheckLine(tokline, 2, 1, [tknString, tknString]);
+                        Write('Found CLASS with name ', tokline.Tokens[1].Literal);
+                        if length(tokline.Tokens) = 3 then begin
+                            Writeln(', inheriting ', tokline.Tokens[2].Literal);
+                        end else begin
+                            Writeln(' (does not inherit)');
+                        end;
+
+                        tokline := _GetNextLine();
+                        if tokline.Tokens[0].TType <> tknBraceLeft then begin
+                            Writeln('ERROR: Expected tknBraceLeft, got ', tokline.Tokens[0].TType);
+                            _ErrShowLine(tokline.LineNum, 1);
+                        end;
+                        _CheckLine(tokline, 0, 0, []);
+                        WriteLn('Found left brace');
+                        // Jump out to a dedicated class function
+                    end;
+                end;
             end;
         end;
         tokline := _GetNextLine();

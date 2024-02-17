@@ -83,6 +83,20 @@ type
         ooExternal
     );
 
+    TElementType = (
+        incInclude,
+        incExternal,
+        incRequire,
+        incClass
+    );
+
+    TMethodType = (
+        methodAdd,
+        methodReplace,
+        methodDefer,
+        methodDeclare
+    );
+
     TPsionOOMethodEntry = record
         MethodType : TMethodType;
         Name : String;
@@ -93,13 +107,19 @@ type
         Value : String;
     end;
 
+    TPsionOOConstants = array of TPsionOOConstantEntry;
+
+    TPsionOOProperty = array of string;
+
+    TPsionOOTypes = array of string;
+
     TPsionOOClass = record
         Name : String;
         Inherits : String;
         Methods : array of TPsionOOMethodEntry;
-        ClassProperty : array of String;
-        ClassTypes : array of String;
-        ClassConstants : array of TPsionOOConstantEntry;
+        ClassProperty : TPsionOOProperty;
+        ClassTypes : TPsionOOTypes;
+        ClassConstants : TPsionOOConstants;
         HasMethod : Boolean;
         HasProperty : Boolean;
         PropertyAutodestroyCount : Integer;
@@ -132,7 +152,10 @@ type
             _nextTLBTokenIndex : Integer;
 
             // Fields: Parser
-            _ParserState : TLexerState;
+            _ClassList : array of TPsionOOClass;
+            _RequireList : array of string;
+            _IncludeList : array of string;
+            _ExternalList : array of string;
 
             // Methods: Lexing
             procedure _DetectFileType(strFilename : String);
@@ -155,6 +178,11 @@ type
             // Methods: Parser
             procedure _CheckLine(tokline : TTokenisedLine; args : Integer; compulsary_args : Integer; toktypes : array of TTokenType);
             function _GetClass() : TPsionOOClass;
+            function _GetConstants() : TPsionOOConstants;
+            function _BuildConstant(tokline : TTokenisedLine) : TPsionOOConstantEntry;
+            function _GetTypes() : TPsionOOTypes;
+            function _GetProperty() : TPsionOOProperty;
+            procedure _CheckForBrace();
 
             // Methods: Misc
             procedure _ErrShowLine(linenum : Integer; linepos : Integer);
@@ -740,16 +768,206 @@ begin
     end;
 end;
 
+function TPsionOOLexer._BuildConstant(tokline : TTokenisedLine) : TPsionOOConstantEntry;
+begin
+    Result.Name := tokline.Tokens[0].Literal;
+    Result.Value := tokline.Tokens[1].Literal;
+end;
+
+function TPsionOOLexer._GetConstants() : TPsionOOConstants;
+var
+    tokline : TTokenisedLine;
+begin
+    tokline := _GetNextLine();
+    Result := nil;
+
+    while tokline.Tokens[0].TType <> tknEOF do
+    begin
+        case tokline.Tokens[0].TType of
+            tknBraceRight: begin
+                exit;
+            end;
+            tknString: begin
+                _CheckLine(tokline, 1, 1, [tknString]);
+                Result := concat(Result, [_BuildConstant(tokline)]);
+            end;
+            else begin
+                WriteLn('ERROR: Incorrect token, found ', tokline.Tokens[0].TType);
+                _ErrShowLine(tokline.LineNum, 1);
+            end;
+        end;
+        tokline := _GetNextLine();
+    end;
+end;
+
+function TPsionOOLexer._GetTypes() : TPsionOOTypes;
+var
+    tokline : TTokenisedLine;
+begin
+    tokline := _GetNextLine();
+    Result := nil;
+
+    while tokline.Tokens[0].TType <> tknEOF do
+    begin
+        case tokline.Tokens[0].TType of
+            tknBraceRight: begin
+                exit;
+            end;
+            tknString: begin
+                _CheckLine(tokline, 0, 0, []);
+                Result := concat(Result, [tokline.Tokens[0].Literal]);
+            end;
+            else begin
+                WriteLn('ERROR: Incorrect token, found ', tokline.Tokens[0].TType);
+                _ErrShowLine(tokline.LineNum, 1);
+            end;
+        end;
+        tokline := _GetNextLine();
+    end;
+end;
+
+function TPsionOOLexer._GetProperty() : TPsionOOProperty;
+var
+    tokline : TTokenisedLine;
+begin
+    tokline := _GetNextLine();
+    Result := nil;
+
+    while tokline.Tokens[0].TType <> tknEOF do
+    begin
+        case tokline.Tokens[0].TType of
+            tknBraceRight: begin
+                exit;
+            end;
+            tknString: begin
+                _CheckLine(tokline, 0, 0, []);
+                Result := concat(Result, [tokline.Tokens[0].Literal]);
+            end;
+            else begin
+                WriteLn('ERROR: Incorrect token, found ', tokline.Tokens[0].TType);
+                _ErrShowLine(tokline.LineNum, 1);
+            end;
+        end;
+        tokline := _GetNextLine();
+    end;
+end;
+
+procedure TPsionOOLexer._CheckForBrace();
+var
+    tokline : TTokenisedLine;
+begin
+    tokline := _GetNextLine();
+    if tokline.Tokens[0].TType <> tknBraceLeft then begin
+        Writeln('ERROR: Expected tknBraceLeft, got ', tokline.Tokens[0].TType);
+        _ErrShowLine(tokline.LineNum, 1);
+    end;
+    _CheckLine(tokline, 0, 0, []);
+end;
+
+
 function TPsionOOLexer._GetClass() : TPsionOOClass;
 var
     tokline : TTokenisedLine;
+    curMethodEntry : TPsionOOMethodEntry;
 begin
     Result.HasMethod := false;
     Result.HasProperty := false;
 
     tokline := _GetNextLine();
 
+    while tokline.Tokens[0].TType <> tknEOF do
+    begin
+        case tokline.Tokens[0].TType of
+            tknAdd: begin
+                _CheckLine(tokline, 1, 1, [tknString]);
+                // WriteLn('ADD ', tokline.Tokens[1].Literal);
+                curMethodEntry.MethodType := methodAdd;
+                curMethodEntry.Name := tokline.Tokens[1].Literal;
+                Result.Methods := concat(Result.Methods, [curMethodEntry]);
+            end;
 
+            tknReplace: begin
+                _CheckLine(tokline, 1, 1, [tknString]);
+                // WriteLn('REPLACE ', tokline.Tokens[1].Literal);
+                curMethodEntry.MethodType := methodReplace;
+                curMethodEntry.Name := tokline.Tokens[1].Literal;
+                Result.Methods := concat(Result.Methods, [curMethodEntry]);
+            end;
+
+            tknDefer: begin
+                _CheckLine(tokline, 1, 1, [tknString]);
+                // WriteLn('DEFER ', tokline.Tokens[1].Literal);
+                curMethodEntry.MethodType := methodDefer;
+                curMethodEntry.Name := tokline.Tokens[1].Literal;
+                Result.Methods := concat(Result.Methods, [curMethodEntry]);
+            end;
+
+            tknDeclare: begin
+                if _FileType <> ooExternal then begin
+                    WriteLn('ERROR: tknDeclare only valid in External files');
+                    _ErrShowLine(tokline.LineNum, 1);
+                end;
+                Result.HasProperty := true;
+                _CheckLine(tokline, 1, 1, [tknString]);
+                // WriteLn('DECLARE ', tokline.Tokens[1].Literal);
+                curMethodEntry.MethodType := methodDeclare;
+                curMethodEntry.Name := tokline.Tokens[1].Literal;
+                Result.Methods := concat(Result.Methods, [curMethodEntry]);
+            end;
+
+            tknTypes: begin
+                _CheckLine(tokline, 0, 0, []);
+                WriteLn('Found TYPES');
+                _CheckForBrace();
+                Result.ClassTypes := _GetTypes();
+            end;
+
+            tknProperty: begin
+                _CheckLine(tokline, 1, 0, [tknString]);
+                WriteLn('Found PROPERTY');
+                if length(tokline.Tokens) = 3 then begin
+                    if not TryStrToInt(tokline.Tokens[2].Literal, Result.PropertyAutodestroyCount) then begin
+                        WriteLn('ERROR: Expected a number, got something else.');
+                        _ErrShowLine(tokline.LineNum, tokline.Tokens[2].LinePos);
+                    end;
+                end;
+                _CheckForBrace();
+                Result.ClassProperty := _GetProperty();
+            end;
+
+            tknConstants: begin
+                _CheckLine(tokline, 0, 0, []);
+                WriteLn('Found CONSTANTS');
+                _CheckForBrace();
+                Result.ClassConstants := _GetConstants();
+            end;
+
+            tknHasMethod: begin
+                if _FileType <> ooExternal then begin
+                    WriteLn('ERROR: tknHasMethod only valid in External files');
+                    _ErrShowLine(tokline.LineNum, 1);
+                end;
+                Result.HasMethod := true;
+            end;
+
+            tknHasProperty : begin
+                if _FileType <> ooExternal then begin
+                    WriteLn('ERROR: tknHasProperty only valid in External files');
+                    _ErrShowLine(tokline.LineNum, 1);
+                end;
+                Result.HasProperty := true;
+            end;
+
+            tknBraceRight: begin
+                exit;
+            end;
+            else begin
+                Writeln('ERROR: Invalid token. Found ', tokline.Tokens[0].TType);
+                _ErrShowLine(tokline.LineNum, 1);
+            end;
+        end;
+        tokline := _GetNextLine();
+    end;
 end;
 
 procedure TPsionOOLexer.Parse();
@@ -822,45 +1040,34 @@ begin
 
     // Check the rest of the file
 
-    _ParserState := stateSeekKeyword;
     tokline := _GetNextLine();
 
     while tokline.Tokens[0].TType <> tknEOF do
     begin
-        case _ParserState of
-            stateSeekKeyword: begin
-                case tokline.Tokens[0].TType of
-                    tknInclude: begin
-                        _CheckLine(tokline, 1, 1, [tknString]);
-                        WriteLn('Found INCLUDE with value ', tokline.Tokens[1].Literal);
-                    end;
-                    tknExternal: begin
-                        _CheckLine(tokline, 1, 1, [tknString]);
-                        WriteLn('Found EXTERNAL with value ', tokline.Tokens[1].Literal);
-                    end;
-                    tknRequire: begin
-                        _CheckLine(tokline, 1, 1, [tknString]);
-                        WriteLn('Found REQUIRE with value ', tokline.Tokens[1].Literal);
-                    end;
-                    tknClass: begin
-                        _CheckLine(tokline, 2, 1, [tknString, tknString]);
-                        Write('Found CLASS with name ', tokline.Tokens[1].Literal);
-                        if length(tokline.Tokens) = 3 then begin
-                            Writeln(', inheriting ', tokline.Tokens[2].Literal);
-                        end else begin
-                            Writeln(' (does not inherit)');
-                        end;
-
-                        tokline := _GetNextLine();
-                        if tokline.Tokens[0].TType <> tknBraceLeft then begin
-                            Writeln('ERROR: Expected tknBraceLeft, got ', tokline.Tokens[0].TType);
-                            _ErrShowLine(tokline.LineNum, 1);
-                        end;
-                        _CheckLine(tokline, 0, 0, []);
-                        WriteLn('Found left brace');
-                        // Jump out to a dedicated class function
-                    end;
+        case tokline.Tokens[0].TType of
+            tknInclude: begin
+                _CheckLine(tokline, 1, 1, [tknString]);
+                WriteLn('Found INCLUDE with value ', tokline.Tokens[1].Literal);
+            end;
+            tknExternal: begin
+                _CheckLine(tokline, 1, 1, [tknString]);
+                WriteLn('Found EXTERNAL with value ', tokline.Tokens[1].Literal);
+            end;
+            tknRequire: begin
+                _CheckLine(tokline, 1, 1, [tknString]);
+                WriteLn('Found REQUIRE with value ', tokline.Tokens[1].Literal);
+            end;
+            tknClass: begin
+                _CheckLine(tokline, 2, 1, [tknString, tknString]);
+                Write('Found CLASS with name ', tokline.Tokens[1].Literal);
+                if length(tokline.Tokens) = 3 then begin
+                    Writeln(', inheriting ', tokline.Tokens[2].Literal);
+                end else begin
+                    Writeln(' (does not inherit)');
                 end;
+
+                _CheckForBrace();
+                _GetClass();
             end;
         end;
         tokline := _GetNextLine();

@@ -76,11 +76,34 @@ type
         stateClassPropertySeekStart
     );
 
+    // Parser-specific types
     TFileType = (
         ooCategory,
         ooSubCat,
         ooExternal
     );
+
+    TPsionOOMethodEntry = record
+        MethodType : TMethodType;
+        Name : String;
+    end;
+
+    TPsionOOConstantEntry = record
+        Name : String;
+        Value : String;
+    end;
+
+    TPsionOOClass = record
+        Name : String;
+        Inherits : String;
+        Methods : array of TPsionOOMethodEntry;
+        ClassProperty : array of String;
+        ClassTypes : array of String;
+        ClassConstants : array of TPsionOOConstantEntry;
+        HasMethod : Boolean;
+        HasProperty : Boolean;
+        PropertyAutodestroyCount : Integer;
+    end;
 
     TTokenisedLine = record
         LineNum : Integer;
@@ -131,6 +154,7 @@ type
 
             // Methods: Parser
             procedure _CheckLine(tokline : TTokenisedLine; args : Integer; compulsary_args : Integer; toktypes : array of TTokenType);
+            function _GetClass() : TPsionOOClass;
 
             // Methods: Misc
             procedure _ErrShowLine(linenum : Integer; linepos : Integer);
@@ -715,6 +739,19 @@ begin
         end;
     end;
 end;
+
+function TPsionOOLexer._GetClass() : TPsionOOClass;
+var
+    tokline : TTokenisedLine;
+begin
+    Result.HasMethod := false;
+    Result.HasProperty := false;
+
+    tokline := _GetNextLine();
+
+
+end;
+
 procedure TPsionOOLexer.Parse();
 var
     tokline : TTokenisedLine;

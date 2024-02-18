@@ -83,6 +83,12 @@ type
         ooExternal
     );
 
+    TCategoryType = (
+        catImage,
+        catLibrary,
+        catName
+    );
+
     TElementType = (
         incInclude,
         incExternal,
@@ -162,6 +168,7 @@ type
             _IncludeList : array of string;
             _ExternalList : array of string;
             _ElementList : array of TPsionOOFileElement;
+            _CategoryType : TCategoryType;
 
             // Methods: Lexing
             procedure _DetectFileType(strFilename : String);
@@ -850,8 +857,8 @@ function TPsionOOLexer._GetProperty() : TPsionOOProperty;
 var
     tokline : TTokenisedLine;
 begin
-    tokline := _GetNextLine();
     Result := nil;
+    tokline := _GetNextLine();
 
     while tokline.Tokens[0].TType <> tknEOF do
     begin
@@ -954,7 +961,6 @@ begin
                     WriteLn('ERROR: tknDeclare only valid in External files');
                     _ErrShowLine(tokline.LineNum, 1);
                 end;
-                Result.HasProperty := true;
                 _CheckLine(tokline, 1, 1, [tknString]);
                 // WriteLn('DECLARE ', tokline.Tokens[1].Literal);
                 curMethodEntry.MethodType := methodDeclare;
@@ -972,11 +978,12 @@ begin
             tknProperty: begin
                 _CheckLine(tokline, 1, 0, [tknString]);
                 WriteLn('Found PROPERTY');
-                if length(tokline.Tokens) = 3 then begin
-                    if not TryStrToInt(tokline.Tokens[2].Literal, Result.PropertyAutodestroyCount) then begin
+                if length(tokline.Tokens) = 2 then begin
+                    if not TryStrToInt(tokline.Tokens[1].Literal, Result.PropertyAutodestroyCount) then begin
                         WriteLn('ERROR: Expected a number, got something else.');
                         _ErrShowLine(tokline.LineNum, tokline.Tokens[2].LinePos);
                     end;
+                    WriteLn('>>> Property has Autodestroy Count of ', Result.PropertyAutodestroyCount);
                 end;
                 _CheckForBrace();
                 Result.ClassProperty := _GetProperty();
@@ -990,6 +997,7 @@ begin
             end;
 
             tknHasMethod: begin
+                WriteLn('Detected HAS_METHOD');
                 // if _FileType <> ooExternal then begin
                 if not _TokenValidForFiletypes(tknHasMethod, [ooExternal]) then begin
                     WriteLn('ERROR: tknHasMethod only valid in External files');
@@ -999,6 +1007,7 @@ begin
             end;
 
             tknHasProperty : begin
+                WriteLn('Detected HAS_PROPERTY');
                 // if _FileType <> ooExternal then begin
                 if not _TokenValidForFiletypes(tknHasProperty, [ooExternal]) then begin
                     WriteLn('ERROR: tknHasProperty only valid in External files');
@@ -1032,11 +1041,13 @@ begin
     tokline := _GetNextLine();
 
     case tokline.Tokens[0].TType of
-        tknName, tknImage, tknLibrary: begin end; // skip everything
         tknEOF: begin
             Writeln('INFO: EOF found in initial parser state. (Empty file, or no starter token?)');
             halt;
         end;
+        tknName:    _CategoryType := catName;
+        tknImage:   _CategoryType := catImage;
+        tknLibrary: _CategoryType := catLibrary;
         else begin
             Writeln('ERROR: First token isn''t a valid starter token. (Is there a bug in the lexer?)');
             _ErrShowLine(tokline.LineNum, tokline.Tokens[0].LinePos);
@@ -1155,6 +1166,8 @@ var
     i, j : integer;
     element : TPsionOOFileElement;
     method: TPsionOOMethodEntry;
+    s: String;
+    constant_entry: TPsionOOConstantEntry;
 begin
     Writeln;
     Writeln('INCLUDEs');
@@ -1211,22 +1224,35 @@ begin
         begin
             Writeln('    ', _ClassList[i].ClassProperty[j]);
         end;
+        if _ClassList[i].HasMethod then WriteLn('  HAS_METHOD set');
+        if _ClassList[i].HasProperty then WriteLn('  HAS_PROPERTY set');
+        
     end;
 
     Writeln;
     Writeln('Element List');
     Writeln('------------');
 
+    WriteLn(' Element | Type        | Index');
+    WriteLn('---------+-------------+-------');
+
     for i := 0 to length(_ElementList) - 1 do
     begin
-        WriteLn(i, ' ', _ElementList[i].ElementType, ' ', _ElementList[i].index);
+        Str(_ElementList[i].ElementType, s);
+        WriteLn(format('    %04d | %-11s | %04d', [i, s, _ElementList[i].index]));
     end;
 
     Writeln;
     Writeln('Full Tree');
     Writeln('---------');
 
-    // TODO: Print the file type and module name here
+    case _CategoryType of
+        catName:    Write('NAME');
+        catImage:   Write('IMAGE');
+        catLibrary: Write('LIBRARY');
+        else        Write(_CategoryType);
+    end;
+    WriteLn(' ', LowerCase(_ModuleName));
 
     for element in _ElementList do
     begin
@@ -1241,23 +1267,55 @@ begin
                 WriteLn('REQUIRE ', _RequireList[element.index]);
             end;
             incClass: begin
-                Write('CLASS ', _ClassList[element.index].Name);
+                Write('CLASS ', _ClassList[element.index].Name, ' ');
                 if _ClassList[element.index].Inherits <> '' then
-                    Write(' ', _ClassList[element.index].Inherits);
+                    Write(_ClassList[element.index].Inherits);
                 WriteLn;
-                WriteLn('  {');
+                WriteLn('{');
                 for method in _ClassList[element.index].Methods do
                 begin
                     case method.MethodType of
-                        methodReplace: Write('  REPLACE ');
-                        methodDefer:   Write('  DEFER ');
-                        methodAdd:     Write('  ADD ');
-                        methodDeclare: Write('  DECLARE ');
-                        else           Write('  ', method.MethodType, ' ');
+                        methodReplace: Write('REPLACE ');
+                        methodDefer:   Write('DEFER ');
+                        methodAdd:     Write('ADD ');
+                        methodDeclare: Write('DECLARE ');
+                        else           Write(method.MethodType, ' ');
                     end;
                     WriteLn(method.Name);
                 end;
-                WriteLn('  }');
+                if _ClassList[element.index].HasMethod then WriteLn('HAS_METHOD');
+                if _ClassList[element.index].HasProperty then WriteLn('HAS_PROPERTY');
+                if length(_ClassList[element.index].ClassConstants) > 0 then begin
+                    WriteLn('CONSTANTS');
+                    Writeln('{');
+                    for constant_entry in _ClassList[element.index].ClassConstants do
+                    begin
+                        WriteLn(constant_entry.Name, ' ', constant_entry.Value);
+                    end;
+                    Writeln('}');
+                end;
+                if length(_ClassList[element.index].ClassTypes) > 0 then begin
+                    WriteLn('TYPES');
+                    Writeln('{');
+                    for s in _ClassList[element.index].ClassTypes do
+                    begin
+                        WriteLn(s);
+                    end;
+                    Writeln('}');
+                end;
+                if length(_ClassList[element.index].ClassProperty) > 0 then begin
+                    Write('PROPERTY');
+                    if _ClassList[element.index].PropertyAutodestroyCount > 0 then
+                        Write(' ', _ClassList[element.index].PropertyAutodestroyCount);
+                    WriteLn;
+                    Writeln('{');
+                    for s in _ClassList[element.index].ClassProperty do
+                    begin
+                        WriteLn(s);
+                    end;
+                    Writeln('}');
+                end;
+                WriteLn('}');
             end;
         end;
     end;

@@ -183,6 +183,7 @@ type
             function _GetTypes() : TPsionOOTypes;
             function _GetProperty() : TPsionOOProperty;
             procedure _CheckForBrace();
+            function _TokenValidForFiletypes(toktype: TTokenType; valid_filetypes: array of TFileType) : boolean;
 
             // Methods: Misc
             procedure _ErrShowLine(linenum : Integer; linepos : Integer);
@@ -768,6 +769,18 @@ begin
     end;
 end;
 
+function TPsionOOLexer._TokenValidForFiletypes(toktype: TTokenType; valid_filetypes: array of TFileType) : boolean;
+var
+    filetype: TFileType;
+begin
+    Result := false;
+
+    for filetype in valid_filetypes do
+    begin
+        if filetype = _FileType then exit(true);
+    end;
+end;
+
 function TPsionOOLexer._BuildConstant(tokline : TTokenisedLine) : TPsionOOConstantEntry;
 begin
     Result.Name := tokline.Tokens[0].Literal;
@@ -864,6 +877,14 @@ begin
     _CheckLine(tokline, 0, 0, []);
 end;
 
+// procedure TPsionOOLexer._AddMethodEntry(method_type: TMethodType, s: String);
+// var
+//     curMethodEntry : TPsionOOMethodEntry;
+// begin
+//     curMethodEntry.MethodType := method_type;
+//     curMethodEntry.Name := s;
+//     Result.Methods := concat(Result.Methods, [curMethodEntry]);
+// end;
 
 function TPsionOOLexer._GetClass() : TPsionOOClass;
 var
@@ -943,7 +964,8 @@ begin
             end;
 
             tknHasMethod: begin
-                if _FileType <> ooExternal then begin
+                // if _FileType <> ooExternal then begin
+                if not _TokenValidForFiletypes(tknHasMethod, [ooExternal]) then begin
                     WriteLn('ERROR: tknHasMethod only valid in External files');
                     _ErrShowLine(tokline.LineNum, 1);
                 end;
@@ -951,7 +973,8 @@ begin
             end;
 
             tknHasProperty : begin
-                if _FileType <> ooExternal then begin
+                // if _FileType <> ooExternal then begin
+                if not _TokenValidForFiletypes(tknHasProperty, [ooExternal]) then begin
                     WriteLn('ERROR: tknHasProperty only valid in External files');
                     _ErrShowLine(tokline.LineNum, 1);
                 end;

@@ -19,7 +19,7 @@ var
 begin
     tot := paramCount();
     cur := 1;
-    
+
     while cur <= tot do
     begin
         thisParam := paramStr(cur);
@@ -63,7 +63,7 @@ end;
 
 begin
     GetParams();
-    
+
     if length(strFilename) = 0 then begin
         WriteLn('No filename given.');
         exit;
@@ -88,6 +88,8 @@ begin
         // CatLexer.PrintTokenisedLines();
         // CatParser := TPsionOOParser.Create(CatLexer);
         CatLexer.Parse();
+
+        CatLexer.ShowTree();
 
     end
     finally begin

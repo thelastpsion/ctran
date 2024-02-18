@@ -2,7 +2,7 @@
 program ctran;
 
 uses
-    sysutils, PsionOOLexer, PsionOOParser;
+    sysutils, PsionOOLexer;
 
 var
     strFilename : String;

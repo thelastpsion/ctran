@@ -125,6 +125,11 @@ type
         PropertyAutodestroyCount : Integer;
     end;
 
+    TPsionOOFileElement = record
+        ElementType : TElementType;
+        index : integer;
+    end;
+
     TTokenisedLine = record
         LineNum : Integer;
         Tokens : array of TToken;
@@ -156,6 +161,7 @@ type
             _RequireList : array of string;
             _IncludeList : array of string;
             _ExternalList : array of string;
+            _ElementList : array of TPsionOOFileElement;
 
             // Methods: Lexing
             procedure _DetectFileType(strFilename : String);
@@ -177,7 +183,7 @@ type
 
             // Methods: Parser
             procedure _CheckLine(tokline : TTokenisedLine; args : Integer; compulsary_args : Integer; toktypes : array of TTokenType);
-            function _GetClass() : TPsionOOClass;
+            function _GetClass(tokline_class : TTokenisedLine) : TPsionOOClass;
             function _GetConstants() : TPsionOOConstants;
             function _BuildConstant(tokline : TTokenisedLine) : TPsionOOConstantEntry;
             function _GetTypes() : TPsionOOTypes;
@@ -201,6 +207,7 @@ type
 
             // Methods: Parser
             procedure Parse();
+            procedure ShowTree();
 
     end;
 
@@ -886,13 +893,32 @@ end;
 //     Result.Methods := concat(Result.Methods, [curMethodEntry]);
 // end;
 
-function TPsionOOLexer._GetClass() : TPsionOOClass;
+function TPsionOOLexer._GetClass(tokline_class : TTokenisedLine) : TPsionOOClass;
 var
     tokline : TTokenisedLine;
     curMethodEntry : TPsionOOMethodEntry;
 begin
+    if tokline_class.Tokens[0].TType <> tknClass then begin
+        WriteLn('_GetClass: Been sent the wrong line.');
+        _ErrShowLine(tokline_class.LineNum, 1);
+    end;
+
+    _CheckLine(tokline_class, 2, 1, [tknString, tknString]);
+
+    Result.Name := tokline_class.Tokens[1].Literal;
+    if length(tokline_class.Tokens) = 3 then begin
+        Result.Inherits := tokline_class.Tokens[2].Literal;
+    end else begin
+        Result.Inherits := '';
+    end;
+
     Result.HasMethod := false;
     Result.HasProperty := false;
+    Result.ClassConstants := nil;
+    Result.ClassProperty := nil;
+    Result.ClassTypes := nil;
+    Result.Methods := nil;
+    Result.PropertyAutodestroyCount := 0;
 
     tokline := _GetNextLine();
 
@@ -997,6 +1023,7 @@ procedure TPsionOOLexer.Parse();
 var
     tokline : TTokenisedLine;
     tok : TToken;
+    curElement : TPsionOOFileElement;
 begin
     _ResetTLB();
 
@@ -1071,14 +1098,26 @@ begin
             tknInclude: begin
                 _CheckLine(tokline, 1, 1, [tknString]);
                 WriteLn('Found INCLUDE with value ', tokline.Tokens[1].Literal);
+                curElement.index := length(_IncludeList);
+                curElement.ElementType := incInclude;
+                _ElementList := concat(_ElementList, [curElement]);
+                _IncludeList := concat(_IncludeList, [tokline.Tokens[1].Literal]);
             end;
             tknExternal: begin
                 _CheckLine(tokline, 1, 1, [tknString]);
                 WriteLn('Found EXTERNAL with value ', tokline.Tokens[1].Literal);
+                curElement.index := length(_ExternalList);
+                curElement.ElementType := incExternal;
+                _ElementList := concat(_ElementList, [curElement]);
+                _ExternalList := concat(_ExternalList, [tokline.Tokens[1].Literal]);
             end;
             tknRequire: begin
                 _CheckLine(tokline, 1, 1, [tknString]);
                 WriteLn('Found REQUIRE with value ', tokline.Tokens[1].Literal);
+                curElement.index := length(_RequireList);
+                curElement.ElementType := incRequire;
+                _ElementList := concat(_ElementList, [curElement]);
+                _RequireList := concat(_RequireList, [tokline.Tokens[1].Literal]);
             end;
             tknClass: begin
                 _CheckLine(tokline, 2, 1, [tknString, tknString]);
@@ -1090,7 +1129,10 @@ begin
                 end;
 
                 _CheckForBrace();
-                _GetClass();
+                curElement.index := length(_ClassList);
+                curElement.ElementType := incClass;
+                _ElementList := concat(_ElementList, [curElement]);
+                _ClassList := concat(_ClassList, [_GetClass(tokline)]);
             end;
         end;
         tokline := _GetNextLine();
@@ -1106,6 +1148,120 @@ begin
 
     if _CurTokenIndex < length(_TokenArray) then inc(_CurTokenIndex);
     GetNextToken := _TokenArray[_CurTokenIndex];
+end;
+
+procedure TPsionOOLexer.ShowTree();
+var
+    i, j : integer;
+    element : TPsionOOFileElement;
+    method: TPsionOOMethodEntry;
+begin
+    Writeln;
+    Writeln('INCLUDEs');
+    Writeln('--------');
+    for i := 0 to length(_IncludeList) - 1 do
+    begin
+        Writeln(_Includelist[i]);
+    end;
+
+    Writeln;
+    Writeln('EXTERNALs');
+    Writeln('---------');
+    for i := 0 to length(_ExternalList) - 1 do
+    begin
+        Writeln(_ExternalList[i]);
+    end;
+
+    Writeln;
+    Writeln('REQUIREs');
+    Writeln('--------');
+    for i := 0 to length(_RequireList) - 1 do
+    begin
+        Writeln(_RequireList[i]);
+    end;
+
+    Writeln;
+    Writeln('CLASSes');
+    Writeln('-------');
+
+    for i := 0 to length(_ClassList) - 1 do
+    begin
+        Write('Name: ', _ClassList[i].Name);
+        if _ClassList[i].Inherits = '' then begin
+            Writeln(' (root class)');
+        end else begin
+            Writeln(' (inherits from ', _classList[i].Inherits, ')');
+        end;
+        for j := 0 to length(_ClassList[i].Methods) - 1 do
+        begin
+            Writeln('  ', _ClassList[i].Methods[j].MethodType, ' ', _ClassList[i].Methods[j].Name);
+        end;
+        Writeln('  Types:');
+        for j := 0 to length(_ClassList[i].ClassTypes) - 1 do
+        begin
+            Writeln('    ', _ClassList[i].ClassTypes[j]);
+        end;
+        Writeln('  Constants:');
+        for j := 0 to length(_ClassList[i].ClassConstants) - 1 do
+        begin
+            Writeln('    ', _ClassList[i].ClassConstants[j].Name, ' ', _ClassList[i].ClassConstants[i].Value);
+        end;
+        Writeln('  Property:');
+        for j := 0 to length(_ClassList[i].ClassProperty) - 1 do
+        begin
+            Writeln('    ', _ClassList[i].ClassProperty[j]);
+        end;
+    end;
+
+    Writeln;
+    Writeln('Element List');
+    Writeln('------------');
+
+    for i := 0 to length(_ElementList) - 1 do
+    begin
+        WriteLn(i, ' ', _ElementList[i].ElementType, ' ', _ElementList[i].index);
+    end;
+
+    Writeln;
+    Writeln('Full Tree');
+    Writeln('---------');
+
+    // TODO: Print the file type and module name here
+
+    for element in _ElementList do
+    begin
+        case element.ElementType of
+            incExternal: begin
+                WriteLn('EXTERNAL ', _ExternalList[element.index]);
+            end;
+            incInclude: begin
+                WriteLn('INCLUDE ', _IncludeList[element.index]);
+            end;
+            incRequire: begin
+                WriteLn('REQUIRE ', _RequireList[element.index]);
+            end;
+            incClass: begin
+                Write('CLASS ', _ClassList[element.index].Name);
+                if _ClassList[element.index].Inherits <> '' then
+                    Write(' ', _ClassList[element.index].Inherits);
+                WriteLn;
+                WriteLn('  {');
+                for method in _ClassList[element.index].Methods do
+                begin
+                    case method.MethodType of
+                        methodReplace: Write('  REPLACE ');
+                        methodDefer:   Write('  DEFER ');
+                        methodAdd:     Write('  ADD ');
+                        methodDeclare: Write('  DECLARE ');
+                        else           Write('  ', method.MethodType, ' ');
+                    end;
+                    WriteLn(method.Name);
+                end;
+                WriteLn('  }');
+            end;
+        end;
+    end;
+
 end;
 
 end.

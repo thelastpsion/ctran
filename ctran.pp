@@ -7,7 +7,6 @@ uses
 var
     strFilename : String;
     CatLexer : TPsionOOLexer;
-    CatParser : TPsionOOParser;
     boolExternal : Boolean;
     boolGenG : Boolean;
 
@@ -85,15 +84,12 @@ begin
         WriteLn;
         CatLexer.PrintArray();
         WriteLn;
-        // CatLexer.PrintTokenisedLines();
-        // CatParser := TPsionOOParser.Create(CatLexer);
         CatLexer.Parse();
 
         CatLexer.ShowTree();
 
     end
     finally begin
-        // FreeAndNil(CatParser);
         FreeAndNil(CatLexer);
     end;
 end;

@@ -416,7 +416,6 @@ function TPsionOOLexer._GetNextToken() : TToken;
 var
     pos : Integer;
     flgFoundText : Boolean = false;
-    startpos : Integer;
 begin
     Result.Literal := '';
     Result.TType := tknEOF;
@@ -1038,7 +1037,6 @@ end;
 procedure TPsionOOLexer.Parse();
 var
     tokline : TTokenisedLine;
-    tok : TToken;
     curElement : TPsionOOFileElement;
 begin
     _ResetTLB();

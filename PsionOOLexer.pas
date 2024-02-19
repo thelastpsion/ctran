@@ -62,7 +62,6 @@ type
 
     TTokenArray = array of TToken;
 
-    // TODO: Rename this, as it's used by the lexer and parser
     TLexerState = (
         stateInitial,
         stateSeekKeyword,
@@ -114,10 +113,8 @@ type
     end;
 
     TPsionOOConstants = array of TPsionOOConstantEntry;
-
-    TPsionOOProperty = array of string;
-
-    TPsionOOTypes = array of string;
+    TPsionOOTypes = TStringArray;
+    TPsionOOProperty = TStringArray;
 
     TPsionOOClass = record
         Name : String;
@@ -131,10 +128,14 @@ type
         PropertyAutodestroyCount : Integer;
     end;
 
+    TPsionOOClassList = array of TPsionOOClass;
+
     TPsionOOFileElement = record
         ElementType : TElementType;
         index : integer;
     end;
+
+    TPsionOOFileElementList = array of TPsionOOFileElement;
 
     TTokenisedLine = record
         LineNum : Integer;
@@ -147,6 +148,7 @@ type
             _slCategoryFile : TStringList;
             _FileType : TFileType;
             _ModuleName : String;
+
             // Fields: Lexing
             _curLineNum, _curLinePos : Integer;
             _strFilename : String;
@@ -163,12 +165,12 @@ type
             _nextTLBTokenIndex : Integer;
 
             // Fields: Parser
-            _ClassList : array of TPsionOOClass;
-            _RequireList : array of string;
-            _IncludeList : array of string;
-            _ExternalList : array of string;
-            _ElementList : array of TPsionOOFileElement;
             _CategoryType : TCategoryType;
+            _ElementList : array of TPsionOOFileElement;
+            _ExternalList : TStringArray;
+            _IncludeList : TStringArray;
+            _ClassList : array of TPsionOOClass;
+            _RequireList : TStringArray; //TStringArray;
 
             // Methods: Lexing
             procedure _DetectFileType(strFilename : String);
@@ -216,6 +218,11 @@ type
             procedure Parse();
             procedure ShowTree();
 
+            property ElementList : TPsionOOFileElementList read _ElementList;
+            property RequireList : TStringArray read _RequireList;
+            property IncludeList : TStringArray read _IncludeList;
+            property ClassList : TPsionOOClassList read _ClassList;
+            property ExternalList : TStringArray read _ExternalList;
     end;
 
 implementation

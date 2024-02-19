@@ -14,8 +14,7 @@ uses
 type
     // TokenType = string;
     TTokenType = (
-        // Breaks
-        tknNewline,
+        tknString,
 
         // Symbols
         tknBraceLeft,
@@ -49,7 +48,6 @@ type
         tknHasProperty,
         tknDeclare,
 
-        tknString,
         tknEOF
     );
 

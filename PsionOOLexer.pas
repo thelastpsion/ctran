@@ -939,6 +939,10 @@ begin
     begin
         case tokline.Tokens[0].TType of
             tknAdd: begin
+                if _FileType = ooExternal then begin
+                    WriteLn('ERROR: tknAdd not valid in External files');
+                    _ErrShowLine(tokline.LineNum, tokline.Tokens[0].LinePos);
+                end;
                 _CheckLine(tokline, 1, 1, [tknString]);
                 // WriteLn('ADD ', tokline.Tokens[1].Literal);
                 curMethodEntry.MethodType := methodAdd;
@@ -947,6 +951,10 @@ begin
             end;
 
             tknReplace: begin
+                if _FileType = ooExternal then begin
+                    WriteLn('ERROR: tknAdd not valid in External files');
+                    _ErrShowLine(tokline.LineNum, tokline.Tokens[0].LinePos);
+                end;
                 _CheckLine(tokline, 1, 1, [tknString]);
                 // WriteLn('REPLACE ', tokline.Tokens[1].Literal);
                 curMethodEntry.MethodType := methodReplace;
@@ -955,6 +963,10 @@ begin
             end;
 
             tknDefer: begin
+                if _FileType = ooExternal then begin
+                    WriteLn('ERROR: tknAdd not valid in External files');
+                    _ErrShowLine(tokline.LineNum, tokline.Tokens[0].LinePos);
+                end;
                 _CheckLine(tokline, 1, 1, [tknString]);
                 // WriteLn('DEFER ', tokline.Tokens[1].Literal);
                 curMethodEntry.MethodType := methodDefer;
@@ -965,7 +977,7 @@ begin
             tknDeclare: begin
                 if _FileType <> ooExternal then begin
                     WriteLn('ERROR: tknDeclare only valid in External files');
-                    _ErrShowLine(tokline.LineNum, 1);
+                    _ErrShowLine(tokline.LineNum, tokline.Tokens[0].LinePos);
                 end;
                 _CheckLine(tokline, 1, 1, [tknString]);
                 // WriteLn('DECLARE ', tokline.Tokens[1].Literal);
@@ -975,6 +987,10 @@ begin
             end;
 
             tknTypes: begin
+                if _FileType = ooExternal then begin
+                    WriteLn('ERROR: tknTypes not valid in External files');
+                    _ErrShowLine(tokline.LineNum, tokline.Tokens[0].LinePos);
+                end;
                 _CheckLine(tokline, 0, 0, []);
                 WriteLn('Found TYPES');
                 _CheckForBrace();
@@ -982,6 +998,10 @@ begin
             end;
 
             tknProperty: begin
+                if _FileType = ooExternal then begin
+                    WriteLn('ERROR: tknProperty not valid in External files');
+                    _ErrShowLine(tokline.LineNum, tokline.Tokens[0].LinePos);
+                end;
                 _CheckLine(tokline, 1, 0, [tknString]);
                 WriteLn('Found PROPERTY');
                 if length(tokline.Tokens) = 2 then begin
@@ -996,6 +1016,10 @@ begin
             end;
 
             tknConstants: begin
+                if _FileType = ooExternal then begin
+                    WriteLn('ERROR: tknConstants not valid in External files');
+                    _ErrShowLine(tokline.LineNum, 1);
+                end;
                 _CheckLine(tokline, 0, 0, []);
                 WriteLn('Found CONSTANTS');
                 _CheckForBrace();
@@ -1003,22 +1027,22 @@ begin
             end;
 
             tknHasMethod: begin
-                WriteLn('Detected HAS_METHOD');
                 // if _FileType <> ooExternal then begin
                 if not _TokenValidForFiletypes(tknHasMethod, [ooExternal]) then begin
                     WriteLn('ERROR: tknHasMethod only valid in External files');
-                    _ErrShowLine(tokline.LineNum, 1);
+                    _ErrShowLine(tokline.LineNum, tokline.Tokens[0].LinePos);
                 end;
+                WriteLn('Detected HAS_METHOD');
                 Result.HasMethod := true;
             end;
 
             tknHasProperty : begin
-                WriteLn('Detected HAS_PROPERTY');
                 // if _FileType <> ooExternal then begin
                 if not _TokenValidForFiletypes(tknHasProperty, [ooExternal]) then begin
                     WriteLn('ERROR: tknHasProperty only valid in External files');
-                    _ErrShowLine(tokline.LineNum, 1);
+                    _ErrShowLine(tokline.LineNum, tokline.Tokens[0].LinePos);
                 end;
+                WriteLn('Detected HAS_PROPERTY');
                 Result.HasProperty := true;
             end;
 
@@ -1027,7 +1051,7 @@ begin
             end;
             else begin
                 Writeln('ERROR: Invalid token. Found ', tokline.Tokens[0].TType);
-                _ErrShowLine(tokline.LineNum, 1);
+                _ErrShowLine(tokline.LineNum, tokline.Tokens[0].LinePos);
             end;
         end;
         tokline := _GetNextLine();

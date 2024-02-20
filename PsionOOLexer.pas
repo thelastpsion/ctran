@@ -214,7 +214,10 @@ type
 
             // Methods: Parser
             procedure Parse();
-            procedure ShowTree();
+
+            property FileType : TFileType read _FileType;
+            property ModuleName : String read _ModuleName;
+            property CategoryType : TCategoryType read _CategoryType;
 
             property ElementList : TPsionOOFileElementList read _ElementList;
             property RequireList : TStringArray read _RequireList;
@@ -346,7 +349,6 @@ end;
 
 procedure TPsionOOLexer.PrintTokenisedLines();
 var
-    // i : Integer;
     tokline : TTokenisedLine;
     tok : TToken;
 begin
@@ -789,13 +791,13 @@ end;
 
 function TPsionOOLexer._TokenValidForFiletypes(toktype: TTokenType; valid_filetypes: array of TFileType) : boolean;
 var
-    filetype: TFileType;
+    ft: TFileType;
 begin
     Result := false;
 
-    for filetype in valid_filetypes do
+    for ft in valid_filetypes do
     begin
-        if filetype = _FileType then exit(true);
+        if ft = self.FileType then exit(true);
     end;
 end;
 
@@ -1162,167 +1164,6 @@ begin
 
     if _CurTokenIndex < length(_TokenArray) then inc(_CurTokenIndex);
     GetNextToken := _TokenArray[_CurTokenIndex];
-end;
-
-procedure TPsionOOLexer.ShowTree();
-var
-    i, j : integer;
-    element : TPsionOOFileElement;
-    method: TPsionOOMethodEntry;
-    s: String;
-    constant_entry: TPsionOOConstantEntry;
-begin
-    Writeln;
-    Writeln('INCLUDEs');
-    Writeln('--------');
-    for i := 0 to length(_IncludeList) - 1 do
-    begin
-        Writeln(_Includelist[i]);
-    end;
-
-    Writeln;
-    Writeln('EXTERNALs');
-    Writeln('---------');
-    for i := 0 to length(_ExternalList) - 1 do
-    begin
-        Writeln(_ExternalList[i]);
-    end;
-
-    Writeln;
-    Writeln('REQUIREs');
-    Writeln('--------');
-    for i := 0 to length(_RequireList) - 1 do
-    begin
-        Writeln(_RequireList[i]);
-    end;
-
-    Writeln;
-    Writeln('CLASSes');
-    Writeln('-------');
-
-    for i := 0 to length(_ClassList) - 1 do
-    begin
-        Write('Name: ', _ClassList[i].Name);
-        if _ClassList[i].Inherits = '' then begin
-            Writeln(' (root class)');
-        end else begin
-            Writeln(' (inherits from ', _classList[i].Inherits, ')');
-        end;
-        for j := 0 to length(_ClassList[i].Methods) - 1 do
-        begin
-            Writeln('  ', _ClassList[i].Methods[j].MethodType, ' ', _ClassList[i].Methods[j].Name);
-        end;
-        Writeln('  Types:');
-        for j := 0 to length(_ClassList[i].ClassTypes) - 1 do
-        begin
-            Writeln('    ', _ClassList[i].ClassTypes[j]);
-        end;
-        Writeln('  Constants:');
-        for j := 0 to length(_ClassList[i].ClassConstants) - 1 do
-        begin
-            Writeln('    ', _ClassList[i].ClassConstants[j].Name, ' ', _ClassList[i].ClassConstants[i].Value);
-        end;
-        Writeln('  Property:');
-        for j := 0 to length(_ClassList[i].ClassProperty) - 1 do
-        begin
-            Writeln('    ', _ClassList[i].ClassProperty[j]);
-        end;
-        if _ClassList[i].HasMethod then WriteLn('  HAS_METHOD set');
-        if _ClassList[i].HasProperty then WriteLn('  HAS_PROPERTY set');
-        
-    end;
-
-    Writeln;
-    Writeln('Element List');
-    Writeln('------------');
-
-    WriteLn(' Element | Type        | Index');
-    WriteLn('---------+-------------+-------');
-
-    for i := 0 to length(_ElementList) - 1 do
-    begin
-        Str(_ElementList[i].ElementType, s);
-        WriteLn(format('    %04d | %-11s | %04d', [i, s, _ElementList[i].index]));
-    end;
-
-    Writeln;
-    Writeln('Full Tree');
-    Writeln('---------');
-
-    case _CategoryType of
-        catName:    Write('NAME');
-        catImage:   Write('IMAGE');
-        catLibrary: Write('LIBRARY');
-        else        Write(_CategoryType);
-    end;
-    WriteLn(' ', LowerCase(_ModuleName));
-
-    for element in _ElementList do
-    begin
-        case element.ElementType of
-            incExternal: begin
-                WriteLn('EXTERNAL ', _ExternalList[element.index]);
-            end;
-            incInclude: begin
-                WriteLn('INCLUDE ', _IncludeList[element.index]);
-            end;
-            incRequire: begin
-                WriteLn('REQUIRE ', _RequireList[element.index]);
-            end;
-            incClass: begin
-                Write('CLASS ', _ClassList[element.index].Name, ' ');
-                if _ClassList[element.index].Inherits <> '' then
-                    Write(_ClassList[element.index].Inherits);
-                WriteLn;
-                WriteLn('{');
-                for method in _ClassList[element.index].Methods do
-                begin
-                    case method.MethodType of
-                        methodReplace: Write('REPLACE ');
-                        methodDefer:   Write('DEFER ');
-                        methodAdd:     Write('ADD ');
-                        methodDeclare: Write('DECLARE ');
-                        else           Write(method.MethodType, ' ');
-                    end;
-                    WriteLn(method.Name);
-                end;
-                if _ClassList[element.index].HasMethod then WriteLn('HAS_METHOD');
-                if _ClassList[element.index].HasProperty then WriteLn('HAS_PROPERTY');
-                if length(_ClassList[element.index].ClassConstants) > 0 then begin
-                    WriteLn('CONSTANTS');
-                    Writeln('{');
-                    for constant_entry in _ClassList[element.index].ClassConstants do
-                    begin
-                        WriteLn(constant_entry.Name, ' ', constant_entry.Value);
-                    end;
-                    Writeln('}');
-                end;
-                if length(_ClassList[element.index].ClassTypes) > 0 then begin
-                    WriteLn('TYPES');
-                    Writeln('{');
-                    for s in _ClassList[element.index].ClassTypes do
-                    begin
-                        WriteLn(s);
-                    end;
-                    Writeln('}');
-                end;
-                if length(_ClassList[element.index].ClassProperty) > 0 then begin
-                    Write('PROPERTY');
-                    if _ClassList[element.index].PropertyAutodestroyCount > 0 then
-                        Write(' ', _ClassList[element.index].PropertyAutodestroyCount);
-                    WriteLn;
-                    Writeln('{');
-                    for s in _ClassList[element.index].ClassProperty do
-                    begin
-                        WriteLn(s);
-                    end;
-                    Writeln('}');
-                end;
-                WriteLn('}');
-            end;
-        end;
-    end;
-
 end;
 
 end.

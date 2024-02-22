@@ -60,6 +60,24 @@ begin
     end;
 end;
 
+procedure PrintArray(lex : TPsionOOLexer);
+var
+    s: String;
+    tok : TToken;
+begin
+    Writeln(' Line | Pos | Token Type     | Literal');
+    Writeln('------+-----+----------------+-------------');
+
+    for tok in lex.Tokens do
+    begin
+        Str(tok.TType, s); // Because you can't simply use an enum in format()
+        Writeln(format(' %4d | %3d | %-14s | %s', [tok.LineNum, tok.LinePos, s, tok.Literal]));
+    end;
+
+    Writeln;
+    Writeln('Length: ', Length(lex.Tokens));
+end;
+
 procedure ShowTree(lex : TPsionOOLexer);
 var
     i, j : integer;
@@ -248,7 +266,7 @@ begin
         CatLexer.Lex();
 
         WriteLn;
-        CatLexer.PrintArray();
+        PrintArray(CatLexer);
         WriteLn;
         CatLexer.Parse();
 

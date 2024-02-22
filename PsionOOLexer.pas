@@ -218,6 +218,7 @@ type
             property FileType : TFileType read _FileType;
             property ModuleName : String read _ModuleName;
             property CategoryType : TCategoryType read _CategoryType;
+            property Tokens : TTokenArray read _TokenArray;
 
             property ElementList : TPsionOOFileElementList read _ElementList;
             property RequireList : TStringArray read _RequireList;
@@ -325,27 +326,6 @@ end;
 //
 // OUTPUT (should really be in testing)
 //
-
-procedure TPsionOOLexer.PrintArray();
-var
-    s: String;
-    recToken : TToken;
-begin
-    recToken := _NewToken(0, tknString, ''); // Just an empty token, so that the variable is initialised
-
-    Writeln(' Line | Pos | Token Type     | Literal');
-    Writeln('------+-----+----------------+-------------');
-
-    while recToken.TType <> tknEOF do
-    begin
-        recToken := GetNextToken();
-        Str(recToken.TType, s); // Because you can't simply use an enum in format()
-        Writeln(format(' %4d | %3d | %-14s | %s', [recToken.LineNum, recToken.LinePos, s, recToken.Literal]));
-    end;
-
-    Writeln;
-    Writeln('Length: ', Length(_TokenArray));
-end;
 
 procedure TPsionOOLexer.PrintTokenisedLines();
 var

@@ -13,6 +13,9 @@ type
     TPsionSDKParamList = array of TPsionSDKParam;
 
     TPsionSDKAppParams = class
+        // TODO: Add allowed params (switch, description, optional, type?)
+        // TODO: Check that param exists
+        // TODO: Seek param and get value
         strict private
             _Filename : string;
             _ParamList : TPsionSDKParamList;
@@ -63,9 +66,7 @@ begin
             flgFoundName := true;
             _Filename := thisParam;
         end;
-        // TODO: Avoid incrementing if a -thing is followed by another -thing
         // TODO: Check for too many items without a switch
-        // TODO: is it worth catering for `-s value` as well as `-svalue`? 
     end;
 end;
 

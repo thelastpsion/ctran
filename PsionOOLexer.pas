@@ -178,7 +178,7 @@ type
             procedure _AddToken(newTokenType: TTokenType; tok : TToken);
             procedure _ProcessCLine();
             procedure _GrabAndAddStringTokens(count : Integer);
-            function _GetNextToken() : TToken;
+            function _GrabNextToken() : TToken;
             procedure _SeekStartOfSection(NextLexerState : TLexerState);
 
             // Methods: Token Processing
@@ -412,7 +412,7 @@ end;
 // LINE PROCESSING
 //
 
-function TPsionOOLexer._GetNextToken() : TToken;
+function TPsionOOLexer._GrabNextToken() : TToken;
 var
     pos : Integer;
     flgFoundText : Boolean = false;
@@ -449,7 +449,7 @@ begin
     WriteLn('>>> Fetching up to ', count, ' token(s)');
     for i := 1 to count do
     begin
-        tok := _GetNextToken();
+        tok := _GrabNextToken();
         if tok.Literal = '' then begin
             Writeln('>>>   No more tokens on line ', _curLineNum);
             exit;
@@ -588,7 +588,7 @@ begin
     
             case _LexerState of
                 stateInitial: begin
-                    tok := _GetNextToken();
+                    tok := _GrabNextToken();
                     case UpCase(tok.Literal) of
                         'IMAGE': begin
                             Writeln('>>> IMAGE found!');
@@ -614,7 +614,7 @@ begin
                 end;
 
                 stateSeekKeyword: begin
-                    tok := _GetNextToken();
+                    tok := _GrabNextToken();
                     case UpCase(tok.Literal) of
                         'EXTERNAL': begin
                             Writeln('>>> EXTERNAL found!');
@@ -656,7 +656,7 @@ begin
                         _LexerState := stateSeekKeyword;
                         Writeln('>>> Now in stateSeekKeyword');
                     end else begin
-                        tok := _GetNextToken();
+                        tok := _GrabNextToken();
                         case UpCase(tok.Literal) of
                             'ADD': begin
                                 Writeln('>>> ADD found!');
@@ -688,7 +688,7 @@ begin
                             'PROPERTY': begin
                                 Writeln('>>> PROPERTY found!');
                                 _AddToken(tknProperty, tok);
-                                tok := _GetNextToken();
+                                tok := _GrabNextToken();
                                 Writeln('>>> Literal grabbed: ', tok.Literal);
                                 if TryStrToInt(tok.Literal, x) then begin
                                     Writeln('>>> Number found!');

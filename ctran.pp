@@ -2,13 +2,14 @@
 program ctran;
 
 uses
-    sysutils, PsionOOLexer, PsionOOCatDiagnostics;
+    sysutils, PsionOOLexer, PsionOOCatDiagnostics, PsionSDKApp;
 
 var
     strFilename : String;
     CatLexer : TPsionOOLexer;
     boolExternal : Boolean;
     boolGenG : Boolean;
+    params : TPsionSDKAppParams;
 
 procedure GetParams();
 var
@@ -87,13 +88,21 @@ begin
 end;
 
 begin
-    GetParams();
+    // GetParams();
+    params := TPsionSDKAppParams.Create;
+    params.Grab;
 
-    if length(strFilename) = 0 then begin
+    if length(params.Filename) = 0 then begin
         HelpText();
         exit;
     end;
 
+    if params.Filename = '' then begin
+        HelpText();
+        exit;
+    end;
+
+    strFilename := params.Filename;
     case ExtractFileExt(strFilename) of
         '.', '': strfilename += '.cat';
     end;

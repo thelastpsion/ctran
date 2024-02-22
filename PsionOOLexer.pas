@@ -181,9 +181,6 @@ type
             function _GrabNextToken() : TToken;
             procedure _SeekStartOfSection(NextLexerState : TLexerState);
 
-            // Methods: Token Processing
-            function _getToken() : TToken;
-
             // Methods: Tokenised Line Builder
             function _GetNextLine() : TTokenisedLine;
             procedure _ResetTLB();
@@ -205,11 +202,7 @@ type
             constructor Create();
             procedure LoadFile(strFilename : String);
             procedure Lex();
-            procedure PrintArray();
-            function GetNextToken() : TToken;
-            procedure NextToken();
             procedure Reset();
-            property token : TToken read _getToken;
             procedure PrintTokenisedLines();
 
             // Methods: Parser
@@ -247,12 +240,6 @@ begin
         Result := Result + s;
     end;
 end;
-
-// function IsValidLetter(ch: Char): Boolean;
-// begin
-//     Result := (((ord(ch) >= 97) and (ord(ch) <= 122)) or ((ord(ch) >= 65) and (ord(ch) <= 90)) or (ch = '_'));
-//     Result := ((LowerCase(ch) in ['a' .. 'z']) or (ch = '_'));
-// end;
 
 constructor TPsionOOLexer.Create();
 begin
@@ -303,17 +290,6 @@ begin
         Result.Tokens := concat(Result.Tokens, [_TokenArray[_nextTLBTokenIndex]]);
         inc(_nextTLBTokenIndex);
     end;
-end;
-
-function TPsionOOLexer._GetToken(): TToken;
-begin
-    result := _TokenArray[_CurTokenIndex];
-end;
-
-procedure TPsionOOLexer.NextToken();
-begin
-    if _CurTokenIndex < length(_TokenArray) then inc(_CurTokenIndex);
-    _CurToken := _TokenArray[_CurTokenIndex];
 end;
 
 procedure TPsionOOLexer._ErrShowLine(linenum : Integer; linepos : Integer);
@@ -1157,17 +1133,6 @@ begin
         end;
         tokline := _GetNextLine();
     end;
-end;
-
-function TPsionOOLexer.GetNextToken() : TToken;
-begin
-    if length(_TokenArray) = 0 then begin
-        GetNextToken := _NewToken(0, tknEOF, '');
-        exit;
-    end;
-
-    if _CurTokenIndex < length(_TokenArray) then inc(_CurTokenIndex);
-    GetNextToken := _TokenArray[_CurTokenIndex];
 end;
 
 end.

@@ -157,7 +157,7 @@ type
 
             // Fields: Token Processing
             _CurTokenIndex : Integer;
-            _CurToken : TToken;
+            // _CurToken : TToken;
 
             // Fields: Tokenised Line Builder
             _nextTLBTokenIndex : Integer;
@@ -174,8 +174,8 @@ type
             procedure _DetectFileType(strFilename : String);
             procedure _DetectModuleName(strFilename : String);
             function _NewToken(newTokenLineNum: Integer; newTokenType: TTokenType; newTokenLiteral: String): TToken;
-            procedure _AddToken(newTokenType: TTokenType; newTokenLiteral: String);
-            procedure _AddToken(newTokenType: TTokenType; tok : TToken);
+            procedure _AddToken(toktype: TTokenType; tokliteral: String);
+            procedure _AddToken(toktype: TTokenType; part_tok : TToken);
             procedure _ProcessCLine();
             procedure _GrabAndAddStringTokens(count : Integer);
             function _GrabNextToken() : TToken;
@@ -337,31 +337,31 @@ end;
 // Takes a TokenType and a String and puts it into a Token record
 function TPsionOOLexer._NewToken(newTokenLineNum: Integer; newTokenType: TTokenType; newTokenLiteral: String): TToken;
 begin
-    _NewToken.TType := newTokenType;
-    _NewToken.Literal := newTokenLiteral;
-    _NewToken.LineNum := newTokenLineNum;
+    Result.TType := newTokenType;
+    Result.Literal := newTokenLiteral;
+    Result.LineNum := newTokenLineNum;
 end;
 
-procedure TPsionOOLexer._AddToken(newTokenType: TTokenType; tok: TToken);
+procedure TPsionOOLexer._AddToken(toktype: TTokenType; part_tok: TToken);
 var
-    newToken: TToken;
+    tok: TToken;
 begin
-    newToken := tok;
-    newToken.TType := newTokenType;
-    _TokenArray := concat(_TokenArray, [newToken]);
+    // TODO: Add checks here (e.g. valid line number and line position)
+    tok := part_tok;
+    tok.TType := toktype;
+    _TokenArray := concat(_TokenArray, [tok]);
 end;
 
-procedure TPsionOOLexer._AddToken(newTokenType: TTokenType; newTokenLiteral: String);
+procedure TPsionOOLexer._AddToken(toktype: TTokenType; tokliteral: String);
 var
-    newToken: TToken;
+    tok: TToken;
 begin
-    with newToken do begin
-        TType := newTokenType;
-        Literal := newTokenLiteral;
-        LineNum := _curLineNum;
-        LinePos := _curLinePos;
-    end;
-    _TokenArray := concat(_TokenArray, [newToken]);
+    tok.TType := toktype;
+    tok.Literal := tokliteral;
+    tok.LineNum := _curLineNum;
+    tok.LinePos := _curLinePos;
+
+    _TokenArray := concat(_TokenArray, [tok]);
 end;
 
 //

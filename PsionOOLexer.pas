@@ -538,7 +538,7 @@ begin
 
         if length(_strCurLine.Trim) = 0 then
             Writeln('>>> Empty line')
-        else if _strCurLine[_curLinePos] = '!' then
+        else if leftstr(trim(_strCurLine), 1) = '!' then
             Writeln('>>> Explicit comment, line skipped')
         else begin
     

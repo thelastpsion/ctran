@@ -30,8 +30,10 @@ end;
 
 procedure ShowTree(lex : TPsionOOLexer);
 var
-    i, j : integer;
+    i : integer;
     s: String;
+    constant_entry: TPsionOOConstantEntry;
+    method_entry: TPsionOOMethodEntry;
 begin
     Writeln;
     Writeln('EXTERNALs');
@@ -70,27 +72,28 @@ begin
             Writeln(' (inherits from ', lex.classList[i].Inherits, ')');
         end;
 
-        for j := 0 to length(lex.ClassList[i].Methods) - 1 do
+        for method_entry in lex.ClassList[i].Methods do
         begin
-            Writeln('  ', lex.ClassList[i].Methods[j].MethodType, ' ', lex.ClassList[i].Methods[j].Name);
+            Writeln('  ', method_entry.MethodType, ' ', method_entry.Name);
         end;
 
-        Writeln('  Types:');
-        for j := 0 to length(lex.ClassList[i].ClassTypes) - 1 do
+        Writeln('  Types (',  length(lex.ClassList[i].ClassTypes), '):');
+        for s in lex.ClassList[i].ClassTypes do
         begin
-            Writeln('    ', lex.ClassList[i].ClassTypes[j]);
+            Writeln('    ', s);
         end;
 
-        Writeln('  Constants:');
-        for j := 0 to length(lex.ClassList[i].ClassConstants) - 1 do
+
+        Writeln('  Constants (', length(lex.ClassList[i].ClassConstants), '):');
+        for constant_entry in lex.ClassList[i].ClassConstants do
         begin
-            Writeln('    ', lex.ClassList[i].ClassConstants[j].Name, ' ', lex.ClassList[i].ClassConstants[i].Value);
+            Writeln('    ', constant_entry.Name, ' ', constant_entry.Value);
         end;
 
-        Writeln('  Property:');
-        for j := 0 to length(lex.ClassList[i].ClassProperty) - 1 do
+        Writeln('  Property (', length(lex.ClassList[i].ClassProperty),'):');
+        for s in lex.ClassList[i].ClassProperty do
         begin
-            Writeln('    ', lex.ClassList[i].ClassProperty[j]);
+            Writeln('    ', s);
         end;
 
         if lex.ClassList[i].HasMethod then WriteLn('  HAS_METHOD set');

@@ -87,6 +87,69 @@ begin
     WriteLn(s);
 end;
 
+procedure MakeEXT(lex: TPsionOOLexer);
+var
+    s: String;
+    element : TPsionOOFileElement;
+    method: TPsionOOMethodEntry;
+    constant_entry: TPsionOOConstantEntry;
+    flgHasMethod: boolean;
+begin
+    WriteLn('Generate by Ctran from ', lex.ModuleName, '.cat'); // TODO: Use real filename here
+    case lex.CategoryType of
+        catName:    Write('NAME');
+        catImage:   Write('IMAGE');
+        catLibrary: Write('LIBRARY');
+        else        Write(lex.CategoryType);
+    end;
+    WriteLn(' ', LowerCase(lex.ModuleName));
+
+    for element in lex.ElementList do
+    begin
+        case element.ElementType of
+            incExternal, incInclude: begin end;
+
+            incRequire: begin
+                WriteLn('REQUIRE ', lex.RequireList[element.index]);
+            end;
+
+            incClass: begin
+                flgHasMethod := false;
+                Write('CLASS ', lex.ClassList[element.index].Name, ' ');
+                if lex.ClassList[element.index].Inherits <> '' then
+                    Write(lex.ClassList[element.index].Inherits);
+                WriteLn;
+                WriteLn('{');
+                for method in lex.ClassList[element.index].Methods do
+                begin
+                    case method.MethodType of
+                        methodReplace: flgHasMethod := true;
+                        methodDefer, methodAdd: begin
+                            WriteLn('DECLARE ', method.Name);
+                            flgHasMethod := true;
+                        end;
+                        methodDeclare: begin
+                            WriteLn('MakeEXT: Can''t have a DECLARE in a Category file... What''s happened?');
+                            exit;
+                        end;
+                        else begin
+                            WriteLn('MakeEXT: Unknown token in a Category file... What''s happened?');
+                            exit;
+                        end;
+                    end;
+                end;
+                if flgHasMethod then WriteLn('HAS_METHOD');
+                if length(lex.ClassList[element.index].ClassProperty) > 0 then begin
+                    WriteLn('HAS_PROPERTY');
+                end;
+                WriteLn('}');
+            end;
+        end;
+    end;
+    WriteLn;
+end;
+
+
 begin
     // GetParams();
     params := TPsionSDKAppParams.Create;
@@ -123,6 +186,9 @@ begin
 
         ShowTree(CatLexer);
         Reconstruct(CatLexer);
+
+        WriteLn;
+        MakeEXT(CatLexer);
 
     end
     finally begin

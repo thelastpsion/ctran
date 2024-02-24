@@ -764,7 +764,6 @@ begin
         if (tokline.Tokens[i].TType <> toktypes[i-1]) then begin
             WriteLn('ERROR: Incorrect token type (', tokline.LineNum, ') Expected ', toktypes[i-1], ' but got ', tokline.Tokens[i].TType);
             _ErrShowLine(tokline.LineNum, tokline.Tokens[i].LinePos);
-            halt;
         end;
     end;
 end;

@@ -89,10 +89,8 @@ end;
 
 procedure MakeEXT(lex: TPsionOOLexer);
 var
-    s: String;
     element : TPsionOOFileElement;
     method: TPsionOOMethodEntry;
-    constant_entry: TPsionOOConstantEntry;
     flgHasMethod: boolean;
 begin
     WriteLn('Generate by Ctran from ', lex.ModuleName, '.cat'); // TODO: Use real filename here
@@ -185,10 +183,10 @@ begin
         CatLexer.Parse();
 
         ShowTree(CatLexer);
-        Reconstruct(CatLexer);
+        // Reconstruct(CatLexer);
 
-        WriteLn;
-        MakeEXT(CatLexer);
+        // WriteLn;
+        // MakeEXT(CatLexer);
 
     end
     finally begin

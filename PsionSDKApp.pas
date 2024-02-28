@@ -6,11 +6,11 @@ uses sysutils;
 
 type
     TPsionSDKParam = record
-        Switch : string[1];
+        Exists : Boolean;
         Value : string;
     end;
 
-    TPsionSDKParamList = array of TPsionSDKParam;
+    TPsionSDKParamList = array[1..36] of TPsionSDKParam;
 
     TPsionSDKAppParams = class
         // TODO: Add allowed params (switch, description, optional, type?)
@@ -19,6 +19,8 @@ type
         strict private
             _Filename : string;
             _ParamList : TPsionSDKParamList;
+            function _EncodeParamID(s : String) : Integer;
+            function _DecodeParamID(id : Integer) : String;
         public
             constructor Create();
             procedure Grab();
@@ -32,12 +34,33 @@ begin
     inherited Create;
 end;
 
+function TPsionSDKAppParams._EncodeParamID(s : String) : Integer;
+begin
+    case Ord(s[1]) of
+        65..90:  Result := Ord(s[1]) - 64;
+        97..122: Result := Ord(s[1]) - 96;
+        48..57:  Result := Ord(s[1]) - 21;
+        else     Result := 0;
+    end;
+end;
+
+function TPsionSDKAppParams._DecodeParamID(id : Integer) : String;
+begin
+    case id of
+        1..26:  Result := Chr(id + 64);
+        27..36: Result := Chr(id + 21);
+        else    Result := '';
+    end;
+end;
+
 procedure TPsionSDKAppParams.Grab();
 var
     cur, tot : Integer;
     thisParam : String;
     flgFoundName: Boolean = false;
     param : TPsionSDKParam;
+    switch : String[1];
+    switch_id : Integer;
 begin
     tot := paramCount();
     cur := 1;
@@ -45,28 +68,29 @@ begin
     for cur := 1 to tot do
     begin
         thisParam := paramStr(cur);
-        if thisParam[1] = '-' then begin
-            if length(thisParam) > 1 then begin
-                param.Switch := copy(thisParam, 2, 1);
-                if length(thisParam) > 2 then begin
-                    param.Value := copy(thisParam, 3);
-                end else begin
-                    param.Value := '';
+        if (thisParam[1] = '-') and (length(thisParam) > 1) then begin
+            switch_id := _EncodeParamID(thisParam[2]);
+            if switch_id > 0 then begin
+                if _ParamList[switch_id].Exists then begin
+                    WriteLn('Switch ''', UpCase(thisParam[2]), ''' already used.');
+                    halt;
                 end;
-            end else begin
-                WriteLn('Hyphen without switch contents found.');
-                exit;
+
+                _ParamList[switch_id].Exists := true;
+                if length(thisParam) > 2 then begin
+                    _ParamList[switch_id].Value := copy(thisParam, 3);
+                end;
+                WriteLn('Switch ''', _DecodeParamID(switch_id), ''' (', switch_id, ') value ''', _ParamList[switch_id].Value, '''');
             end;
         end else begin
             if flgFoundName then begin
-                writeln('Too many items without a switch!');
-                exit();
+                WriteLn('Too many items without a switch.');
+                halt;
             end;
             writeln('Found name of file to process: ', thisParam);
             flgFoundName := true;
             _Filename := thisParam;
         end;
-        // TODO: Check for too many items without a switch
     end;
 end;
 

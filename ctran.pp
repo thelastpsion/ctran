@@ -178,15 +178,16 @@ begin
         CatLexer.Lex();
 
         WriteLn;
-        PrintArray(CatLexer);
+        if params.Params[22].Exists and (Pos('T', UpCase(params.Params[22].Value)) > 0) then PrintArray(CatLexer);
         WriteLn;
         CatLexer.Parse();
 
-        ShowTree(CatLexer);
+        if params.Params[22].Exists and (Pos('A', UpCase(params.Params[22].Value)) > 0) then ShowTree(CatLexer);
+
         // Reconstruct(CatLexer);
 
-        // WriteLn;
-        // MakeEXT(CatLexer);
+        WriteLn;
+        if params.Params[24].Exists then MakeEXT(CatLexer);
 
     end
     finally begin

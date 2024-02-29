@@ -149,7 +149,6 @@ end;
 
 
 begin
-    // GetParams();
     params := TPsionSDKAppParams.Create;
     params.Grab;
 
@@ -169,24 +168,22 @@ begin
     end;
 
     WriteLn('Filename: ', strFilename);
-    WriteLn;
 
     Try
     begin
         CatLexer := TPsionOOLexer.Create;
         CatLexer.LoadFile(strFilename);
+
+        CatLExer.Verbose := params.InSwitch('V', 'L');
         CatLexer.Lex();
 
-        WriteLn;
-        if params.Params[22].Exists and (Pos('T', UpCase(params.Params[22].Value)) > 0) then PrintArray(CatLexer);
-        WriteLn;
+        if params.InSwitch('V', 'T') then PrintArray(CatLexer);
+
+        CatLexer.Verbose := params.InSwitch('V', 'P');
         CatLexer.Parse();
 
-        if params.Params[22].Exists and (Pos('A', UpCase(params.Params[22].Value)) > 0) then ShowTree(CatLexer);
-
-        // Reconstruct(CatLexer);
-
-        WriteLn;
+        if params.InSwitch('V', 'A') then ShowTree(CatLexer);
+        if params.InSwitch('V', 'R') then Reconstruct(CatLexer);
         if params.Params[24].Exists then MakeEXT(CatLexer);
 
     end

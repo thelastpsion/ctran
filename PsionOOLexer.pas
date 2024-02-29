@@ -199,6 +199,7 @@ type
             procedure _ErrShowLine(linenum : Integer; linepos : Integer);
 
         public
+            Verbose : boolean;
             constructor Create();
             procedure LoadFile(strFilename : String);
             procedure Lex();
@@ -402,15 +403,15 @@ var
     i : Integer;
     tok : TToken;
 begin
-    WriteLn('>>> Fetching up to ', count, ' token(s)');
+    if Verbose then WriteLn('>>> Fetching up to ', count, ' token(s)');
     for i := 1 to count do
     begin
         tok := _GrabNextToken();
         if tok.Literal = '' then begin
-            Writeln('>>>   No more tokens on line ', _curLineNum);
+            if Verbose then Writeln('>>>   No more tokens on line ', _curLineNum);
             exit;
         end;
-        Writeln(format('>>>   String token %d grabbed: %s', [i, tok.Literal]));
+        if Verbose then Writeln(format('>>>   String token %d grabbed: %s', [i, tok.Literal]));
         _AddToken(tknString, tok);
     end;
 end;
@@ -430,19 +431,19 @@ begin
     case tok.Literal of
         '{': begin
             inc(_BraceLevel);
-            Writeln('>>>   Brace level: ', _BraceLevel);
+            if Verbose then Writeln('>>>   Brace level: ', _BraceLevel);
         end;
         '}': begin
             dec(_BraceLevel);
-            Writeln('>>>   Brace level: ', _BraceLevel);
+            if Verbose then Writeln('>>>   Brace level: ', _BraceLevel);
             if _BraceLevel = 1 then begin
-                case _LexerState of
+                if Verbose then case _LexerState of
                     stateClassTypes:     Writeln('>>> End of TYPES section found!');
                     stateClassProperty:  Writeln('>>> End of PROPERTY section found!');
                 end;
                 _AddToken(tknBraceRight, tok);
                 _LexerState := stateClass;
-                Writeln('>>> Now in stateClass');
+                if Verbose then Writeln('>>> Now in stateClass');
             end;
         end;
     end;
@@ -451,7 +452,7 @@ begin
 
     if _BraceLevel > 1 then begin
         TrimAfterSemicolon(_strCurLine);
-        Writeln ('>>> Found string: ', _strCurLine);
+        if Verbose then Writeln ('>>> Found string: ', _strCurLine);
         _AddToken(tknString, _StrCurLine);
     end;
 end;
@@ -464,14 +465,14 @@ begin
     tok.Literal := tok.Literal[1];
 
     if tok.Literal = '{' then begin
-        Writeln('>>> Start of section found!');
+        if Verbose then Writeln('>>> Start of section found!');
         _AddToken(tknBraceLeft, tok);
 
         _LexerState := NextLexerState;
-        Writeln('>>>   Now in ', _LexerState);
+        if Verbose then Writeln('>>>   Now in ', _LexerState);
 
         inc(_BraceLevel);
-        Writeln('>>>   Brace level: ', _BraceLevel);
+        if Verbose then Writeln('>>>   Brace level: ', _BraceLevel);
     end;
 end;
 
@@ -500,7 +501,7 @@ begin
             halt;
         end;
     end;
-    WriteLn('File is ', _FileType);
+    if Verbose then WriteLn('File is ', _FileType);
 end;
 
 procedure TPsionOOLexer._DetectModuleName(strFilename : String);
@@ -510,7 +511,7 @@ begin
     s := ExtractFileName(strFilename);
     _ModuleName := Copy(UpCase(s), 1, Length(s) - length(ExtractFileExt(s)));
 
-    Writeln('Module name: ', _ModuleName);
+    if Verbose then Writeln('Module name: ', _ModuleName);
 end;
 
 procedure TPsionOOLexer.LoadFile(strFilename : String);
@@ -541,20 +542,22 @@ begin
         inc(_curLineNum);
         _curLinePos := 1;
 
+        if Verbose then WriteLn;
+
         while LeftStr(_slCategoryFile[_curLineNum - 1], 1) = #12 do
             _slCategoryFile[_curLineNum - 1] := copy(_slCategoryFile[_curLineNum - 1], 2);
 
         _strCurLine := _slCategoryFile[_curLineNum - 1];
 
-        WriteLn(format('%.3d:%s', [_curLineNum, _strCurLine]));
+        if Verbose then WriteLn(format('%.3d:%s', [_curLineNum, _strCurLine]));
 
         if length(_strCurLine.Trim) = 0 then begin
-            Writeln('>>> Empty line');
+            if Verbose then Writeln('>>> Empty line');
             continue;
         end;
 
         if _strCurLine.Trim[1] = '!' then begin
-            Writeln('>>> Explicit comment, line skipped');
+            if Verbose then Writeln('>>> Explicit comment, line skipped');
             continue;
         end;
 
@@ -563,24 +566,24 @@ begin
                 tok := _GrabNextToken();
                 case UpCase(tok.Literal) of
                     'IMAGE': begin
-                        Writeln('>>> IMAGE found!');
+                        if Verbose then Writeln('>>> IMAGE found!');
                         _AddToken(tknImage, tok);
                         _LexerState := stateSeekKeyword;
                     end;
                     'LIBRARY': begin
-                        Writeln('>>> LIBRARY found!');
+                        if Verbose then Writeln('>>> LIBRARY found!');
                         _AddToken(tknLibrary, tok);
                         _LexerState := stateSeekKeyword;
                     end;
                     'NAME': begin
-                        Writeln('>>> NAME found!');
+                        if Verbose then Writeln('>>> NAME found!');
                         _AddToken(tknName, tok);
                         _LexerState := stateSeekKeyword;
                     end;
                 end;
                 if _LexerState = stateSeekKeyword then
                 begin
-                    WriteLn('>>>   Now in stateSeekKeyword');
+                    if Verbose then WriteLn('>>>   Now in stateSeekKeyword');
                     _GrabAndAddStringTokens(1);
                 end;
             end;
@@ -589,24 +592,24 @@ begin
                 tok := _GrabNextToken();
                 case UpCase(tok.Literal) of
                     'EXTERNAL': begin
-                        Writeln('>>> EXTERNAL found!');
+                        if Verbose then Writeln('>>> EXTERNAL found!');
                         _AddToken(tknExternal, tok);
                         _GrabAndAddStringTokens(1);
                     end;
                     'INCLUDE': begin
-                        Writeln('>>> INCLUDE found!');
+                        if Verbose then Writeln('>>> INCLUDE found!');
                         _AddToken(tknInclude, tok);
                         _GrabAndAddStringTokens(1);
                     end;
                     'CLASS': begin
-                        Writeln('>>> CLASS found!');
+                        if Verbose then Writeln('>>> CLASS found!');
                         _AddToken(tknClass, tok);
                         _GrabAndAddStringTokens(2);
                         _LexerState := stateClassSeekStart;
-                        Writeln('>>>   Now in stateClassSeekStart (looking for brace)');
+                        if Verbose then Writeln('>>>   Now in stateClassSeekStart (looking for brace)');
                     end;
                     'REQUIRE': begin
-                        Writeln('>>> REQUIRE found!');
+                        if Verbose then Writeln('>>> REQUIRE found!');
                         _AddToken(tknRequire, tok);
                         _GrabAndAddStringTokens(1);
                     end;
@@ -624,64 +627,64 @@ begin
                 if tok.Literal[1] = '}' then begin
                     tok.Literal := tok.Literal[1];
                     _AddToken(tknBraceRight, tok);
-                    Writeln('>>> End of CLASS section found!');
+                    if Verbose then Writeln('>>> End of CLASS section found!');
                     dec(_BraceLevel);
-                    Writeln('>>>   Brace level: ', _BraceLevel);
+                    if Verbose then Writeln('>>>   Brace level: ', _BraceLevel);
                     _LexerState := stateSeekKeyword;
-                    Writeln('>>> Now in stateSeekKeyword');
+                    if Verbose then Writeln('>>> Now in stateSeekKeyword');
                 end else begin
                     case UpCase(tok.Literal) of
                         'ADD': begin
-                            Writeln('>>> ADD found!');
+                            if Verbose then Writeln('>>> ADD found!');
                             _AddToken(tknAdd, tok);
                             _GrabAndAddStringTokens(1);
                         end;
                         'REPLACE': begin
-                            Writeln('>>> REPLACE found!');
+                            if Verbose then Writeln('>>> REPLACE found!');
                             _AddToken(tknReplace, tok);
                             _GrabAndAddStringTokens(1);
                         end;
                         'DEFER': begin
-                            Writeln('>>> DEFER found!');
+                            if Verbose then Writeln('>>> DEFER found!');
                             _AddToken(tknDefer, tok);
                             _GrabAndAddStringTokens(1);
                         end;
                         'CONSTANTS': begin
-                            Writeln('>>> CONSTANTS found!');
+                            if Verbose then Writeln('>>> CONSTANTS found!');
                             _AddToken(tknConstants, tok);
                             _LexerState := stateClassConstantsSeekStart;
-                            Writeln('>>>   Now in stateClassConstantsSeekStart');
+                            if Verbose then Writeln('>>>   Now in stateClassConstantsSeekStart');
                         end;
                         'TYPES': begin
-                            Writeln('>>> TYPES found!');
+                            if Verbose then Writeln('>>> TYPES found!');
                             _AddToken(tknTypes, tok);
                             _LexerState := stateClassTypesSeekStart;
-                            Writeln('>>>   Now in stateClassTypesSeekStart');
+                            if Verbose then Writeln('>>>   Now in stateClassTypesSeekStart');
                         end;
                         'PROPERTY': begin
-                            Writeln('>>> PROPERTY found!');
+                            if Verbose then Writeln('>>> PROPERTY found!');
                             _AddToken(tknProperty, tok);
                             tok := _GrabNextToken();
-                            Writeln('>>> Literal grabbed: ', tok.Literal);
+                            if Verbose then Writeln('>>> Literal grabbed: ', tok.Literal);
                             if TryStrToInt(tok.Literal, x) then begin
-                                Writeln('>>> Number found!');
+                                if Verbose then Writeln('>>> Number found!');
                                 _AddToken(tknString, tok);
                             end;
                             _LexerState := stateClassPropertySeekStart;
-                            Writeln('>>>   Now in stateClassPropertySeekStart');
+                            if Verbose then Writeln('>>>   Now in stateClassPropertySeekStart');
                         end;
                         // External reference (.EXT) keywords
                         'DECLARE': begin
-                            Writeln('>>> DECLARE found!');
+                            if Verbose then Writeln('>>> DECLARE found!');
                             _AddToken(tknDeclare, tok);
                             _GrabAndAddStringTokens(1);
                         end;
                         'HAS_METHOD': begin
-                            Writeln('>>> HAS_METHOD found!');
+                            if Verbose then Writeln('>>> HAS_METHOD found!');
                             _AddToken(tknHasMethod, tok);
                         end;
                         'HAS_PROPERTY': begin
-                            Writeln('>>> HAS_PROPERTY found!');
+                            if Verbose then Writeln('>>> HAS_PROPERTY found!');
                             _AddToken(tknHasProperty, tok);
                         end;
                         else begin
@@ -700,12 +703,14 @@ begin
 
                 case tok.Literal of
                     '}': begin
-                        Writeln('>>> End of CONSTANTS section found!');
                         _AddToken(tknBraceRight, tok);
                         dec(_BraceLevel);
-                        Writeln('>>>   Brace level: ', _BraceLevel);
                         _LexerState := stateClass;
-                        Writeln('>>> Now in stateClass');
+                        if Verbose then begin
+                            Writeln('>>> End of CONSTANTS section found!');
+                            Writeln('>>>   Brace level: ', _BraceLevel);
+                            Writeln('>>> Now in stateClass');
+                        end;
                     end;
                     '{': begin
                         Writeln('!!! Too many curly braces');
@@ -728,7 +733,7 @@ begin
     end;
 
     if _BraceLevel <> 0 then begin
-        WriteLn('Error with braces: Somehow at brace level ', _BraceLevel);
+        WriteLn('ERROR: Somehow at brace level ', _BraceLevel);
         exit;
     end;
 
@@ -971,7 +976,7 @@ begin
                     _ErrShowLine(tokline.LineNum, tokline.Tokens[0].LinePos);
                 end;
                 _CheckLine(tokline, 0, 0, []);
-                WriteLn('Found TYPES');
+                if Verbose then WriteLn('Found TYPES');
                 _CheckForBrace();
                 Result.ClassTypes := _GetTypes();
             end;
@@ -982,13 +987,13 @@ begin
                     _ErrShowLine(tokline.LineNum, tokline.Tokens[0].LinePos);
                 end;
                 _CheckLine(tokline, 1, 0, [tknString]);
-                WriteLn('Found PROPERTY');
+                if Verbose then WriteLn('Found PROPERTY');
                 if length(tokline.Tokens) = 2 then begin
                     if not TryStrToInt(tokline.Tokens[1].Literal, Result.PropertyAutodestroyCount) then begin
                         WriteLn('ERROR: Expected a number, got something else.');
                         _ErrShowLine(tokline.LineNum, tokline.Tokens[2].LinePos);
                     end;
-                    WriteLn('>>> Property has Autodestroy Count of ', Result.PropertyAutodestroyCount);
+                    if Verbose then WriteLn('>>> Property has Autodestroy Count of ', Result.PropertyAutodestroyCount);
                 end;
                 _CheckForBrace();
                 Result.ClassProperty := _GetProperty();
@@ -1000,7 +1005,7 @@ begin
                     _ErrShowLine(tokline.LineNum, 1);
                 end;
                 _CheckLine(tokline, 0, 0, []);
-                WriteLn('Found CONSTANTS');
+                if Verbose then WriteLn('Found CONSTANTS');
                 _CheckForBrace();
                 Result.ClassConstants := _GetConstants();
             end;
@@ -1105,7 +1110,7 @@ begin
         _ErrShowLine(tokline.LineNum, tokline.Tokens[1].LinePos);
     end;
 
-    Writeln('Found ', tokline.Tokens[0].TType, ' in ', _FileType, ' file with name ', _ModuleName);
+    if Verbose then Writeln('Found ', tokline.Tokens[0].TType, ' in ', _FileType, ' file with name ', _ModuleName);
 
     // Check the rest of the file
 
@@ -1116,7 +1121,7 @@ begin
         case tokline.Tokens[0].TType of
             tknInclude: begin
                 _CheckLine(tokline, 1, 1, [tknString]);
-                WriteLn('Found INCLUDE with value ', tokline.Tokens[1].Literal);
+                if Verbose then WriteLn('Found INCLUDE with value ', tokline.Tokens[1].Literal);
                 curElement.index := length(_IncludeList);
                 curElement.ElementType := incInclude;
                 _ElementList := concat(_ElementList, [curElement]);
@@ -1124,7 +1129,7 @@ begin
             end;
             tknExternal: begin
                 _CheckLine(tokline, 1, 1, [tknString]);
-                WriteLn('Found EXTERNAL with value ', tokline.Tokens[1].Literal);
+                if Verbose then WriteLn('Found EXTERNAL with value ', tokline.Tokens[1].Literal);
                 curElement.index := length(_ExternalList);
                 curElement.ElementType := incExternal;
                 _ElementList := concat(_ElementList, [curElement]);
@@ -1132,7 +1137,7 @@ begin
             end;
             tknRequire: begin
                 _CheckLine(tokline, 1, 1, [tknString]);
-                WriteLn('Found REQUIRE with value ', tokline.Tokens[1].Literal);
+                if Verbose then WriteLn('Found REQUIRE with value ', tokline.Tokens[1].Literal);
                 curElement.index := length(_RequireList);
                 curElement.ElementType := incRequire;
                 _ElementList := concat(_ElementList, [curElement]);
@@ -1140,11 +1145,13 @@ begin
             end;
             tknClass: begin
                 _CheckLine(tokline, 2, 1, [tknString, tknString]);
-                Write('Found CLASS with name ', tokline.Tokens[1].Literal);
-                if length(tokline.Tokens) = 3 then begin
-                    Writeln(', inheriting ', tokline.Tokens[2].Literal);
-                end else begin
-                    Writeln(' (does not inherit)');
+                if Verbose then begin
+                    Write('Found CLASS with name ', tokline.Tokens[1].Literal);
+                    if length(tokline.Tokens) = 3 then begin
+                        Writeln(', inheriting ', tokline.Tokens[2].Literal);
+                    end else begin
+                        Writeln(' (does not inherit)');
+                    end;
                 end;
 
                 _CheckForBrace();

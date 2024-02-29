@@ -15,6 +15,7 @@ var
     s: String;
     tok : TToken;
 begin
+    WriteLn;
     Writeln(' Line | Pos | Token Type     | Literal');
     Writeln('------+-----+----------------+-------------');
 

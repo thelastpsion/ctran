@@ -1016,7 +1016,7 @@ begin
                     WriteLn('ERROR: tknHasMethod only valid in External files');
                     _ErrShowLine(tokline.LineNum, tokline.Tokens[0].LinePos);
                 end;
-                WriteLn('Detected HAS_METHOD');
+                if Verbose then WriteLn('Detected HAS_METHOD');
                 Result.HasMethod := true;
             end;
 
@@ -1026,7 +1026,7 @@ begin
                     WriteLn('ERROR: tknHasProperty only valid in External files');
                     _ErrShowLine(tokline.LineNum, tokline.Tokens[0].LinePos);
                 end;
-                WriteLn('Detected HAS_PROPERTY');
+                if Verbose then WriteLn('Detected HAS_PROPERTY');
                 Result.HasProperty := true;
             end;
 

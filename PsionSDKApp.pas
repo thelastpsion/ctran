@@ -24,6 +24,7 @@ type
         public
             constructor Create();
             procedure Grab();
+            function SwitchExists(sw: String) : Boolean;
             function InSwitch(sw: String; val: String) : Boolean;
             property Filename : string read _Filename;
             property Params : TPsionSDKParamList read _ParamList;
@@ -52,6 +53,11 @@ begin
         27..36: Result := Chr(id + 21);
         else    Result := '';
     end;
+end;
+
+function TPsionSDKAppParams.SwitchExists(sw: String) : Boolean;
+begin
+    Result := _ParamList[_EncodeParamID(LeftStr(sw, 1))].Exists;
 end;
 
 function TPsionSDKAppParams.InSwitch(sw: String; val: String) : Boolean;

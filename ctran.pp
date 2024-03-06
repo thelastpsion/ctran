@@ -2,11 +2,20 @@
 program ctran;
 
 uses
-    sysutils, PsionOOLexer, PsionOOCatDiagnostics, PsionSDKApp;
+    sysutils, PsionOOLexer, PsionOOCatDiagnostics, PsionSDKApp, Generics.Collections;
+
+type
+    TPsionOOMethodList = Array of String;
+
+    TPsionOOCatClass = record
+        parent : String;
+        methods : TPsionOOMethodList;
+    end;
 
 var
     strFilename : String;
     CatLexer : TPsionOOLexer;
+    ExtLexer : TPsionOOLexer;
     // boolExternal : Boolean;
     // boolGenG : Boolean;
     params : TPsionSDKAppParams;
@@ -133,6 +142,18 @@ begin
             WriteLn;
             MakeEXT(CatLexer);
         end;
+        
+        // TODO: Get the path for external files (from `-e`)
+
+        // TODO: Get the list of external files from the category class
+
+        // TODO: Build a dictionary of all the external classes
+        // TODO: Check the parent field for a valid parent class - fail immediately if broken
+        // TODO: Check the parent class (and all classes above) for duplicate methods
+
+        // TODO: Build a dictionary of all the category file classes
+        // TODO: Check the parent field for a valid parent class (in both dictionaries) - fail immediately if broken
+        // TODO: Check the parent class (and all classes above) for duplicate methods
     end
     finally begin
         FreeAndNil(CatLexer);

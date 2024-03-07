@@ -137,11 +137,13 @@ begin
             possiblefile := path + s + ext;
             if FileExists(possiblefile) then exit(possiblefile);
 
+            {$IFNDEF GO32V2} // Don't bother checking case-sensitive options
             possiblefile := path + LowerCase(s) + ext;
             if FileExists(possiblefile) then exit(possiblefile);
 
             possiblefile := path + UpCase(s) + ext;
             if FileExists(possiblefile) then exit(possiblefile);
+            {$ENDIF} // GO32V2
         end;
     end;
     Result := '';

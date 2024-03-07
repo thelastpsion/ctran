@@ -26,6 +26,7 @@ type
             procedure Grab();
             function SwitchExists(sw: String) : Boolean;
             function InSwitch(sw: String; val: String) : Boolean;
+            function SwitchVal(sw: String) : String;
             property Filename : string read _Filename;
             property Params : TPsionSDKParamList read _ParamList;
     end;
@@ -64,6 +65,12 @@ function TPsionSDKAppParams.InSwitch(sw: String; val: String) : Boolean;
 begin
     Result := (_ParamList[_EncodeParamID(LeftStr(sw, 1))].Exists and (Pos(LeftStr(val, 1), UpCase(_ParamList[_EncodeParamID(LeftStr(sw, 1))].Value)) > 0));
 end;
+
+function TPsionSDKAppParams.SwitchVal(sw: String) : String;
+begin
+    Result := _ParamList[_EncodeParamID(LeftStr(sw, 1))].Value;
+end;
+
 
 procedure TPsionSDKAppParams.Grab();
 var

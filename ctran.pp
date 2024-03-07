@@ -2,7 +2,7 @@
 program ctran;
 
 uses
-    sysutils, PsionOOLexer, PsionOOCatDiagnostics, PsionSDKApp, Generics.Collections;
+    sysutils, classes, PsionOOLexer, PsionOOCatDiagnostics, PsionSDKApp, Generics.Collections;
 
 type
     TPsionOOMethodList = Array of String;
@@ -15,10 +15,12 @@ type
 var
     strFilename : String;
     CatLexer : TPsionOOLexer;
-    ExtLexer : TPsionOOLexer;
-    // boolExternal : Boolean;
-    // boolGenG : Boolean;
+    // ExtLexer : TPsionOOLexer;
     params : TPsionSDKAppParams;
+    PathList : TStringList;
+    s : String;
+    ExtFileList : Array of String;
+    // DependencyList : specialize TDictionary<string, TPsionOOCatClass>;
 
 procedure HelpText();
 var
@@ -100,6 +102,51 @@ begin
     WriteLn;
 end;
 
+function CheckPath(s: String) : TStringList;
+var
+    protopaths : TStringArray;
+    pathitem : String;
+    pathitemexpand : String;
+begin
+    Result := TStringList.Create();
+    protopaths := s.Split(';');
+
+    for pathitem in protopaths do
+    begin
+        pathitemexpand := ExpandFileName(pathitem);
+        if not DirectoryExists(pathitemexpand) then begin
+            WriteLn('Path doesn''t exist. (', pathitemexpand, ' from ', pathitem, ')');
+            halt;
+        end;
+
+        if RightStr(pathitemexpand, 1) <> DirectorySeparator then pathitemexpand += DirectorySeparator;
+        Result.Add(pathitemexpand);
+    end;
+end;
+
+function CheckExternalFile(s : String; paths : TStringList) : String;
+var
+    ext : String;
+    path : String;
+    possiblefile : String;
+    extopts : Array of String;
+begin
+    extopts := ['', '.ext', '.EXT'];
+    for path in paths do begin
+        for ext in extopts do begin
+            possiblefile := path + s + ext;
+            if FileExists(possiblefile) then exit(possiblefile);
+
+            possiblefile := path + LowerCase(s) + ext;
+            if FileExists(possiblefile) then exit(possiblefile);
+
+            possiblefile := path + UpCase(s) + ext;
+            if FileExists(possiblefile) then exit(possiblefile);
+        end;
+    end;
+    Result := '';
+end;
+
 
 begin
     params := TPsionSDKAppParams.Create;
@@ -127,7 +174,7 @@ begin
         CatLexer := TPsionOOLexer.Create;
         CatLexer.LoadFile(strFilename);
 
-        CatLExer.Verbose := params.InSwitch('V', 'L');
+        CatLexer.Verbose := params.InSwitch('V', 'L');
         CatLexer.Lex();
 
         if params.InSwitch('V', 'T') then PrintArray(CatLexer);
@@ -142,10 +189,19 @@ begin
             WriteLn;
             MakeEXT(CatLexer);
         end;
-        
-        // TODO: Get the path for external files (from `-e`)
 
-        // TODO: Get the list of external files from the category class
+        // TODO: Get the path for external files (from `-e`) (extra checks?)
+        if params.SwitchExists('E') then PathList := CheckPath(params.SwitchVal('E'));
+
+        // TODO: Get the list of external files from the category class (extra checks?)
+        if Length(CatLexer.ExternalList) > 0 then begin
+            SetLength(ExtFileList, Length(CatLexer.ExternalList));
+            for s in CatLexer.ExternalList do begin
+                ExtFileList := concat(ExtFileList, [CheckExternalFile(s, PathList)]);
+                Write(s, ': ');
+                WriteLn(ExtFileList[length(ExtFileList) - 1]);
+            end;
+        end;
 
         // TODO: Build a dictionary of all the external classes
         // TODO: Check the parent field for a valid parent class - fail immediately if broken

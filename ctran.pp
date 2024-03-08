@@ -8,19 +8,21 @@ type
     TPsionOOMethodList = Array of String;
 
     TPsionOOCatClass = record
-        parent : String;
-        methods : TPsionOOMethodList;
+        Parent : String;
+        Methods : array of TPsionOOMethodEntry;
     end;
 
+    TDependencyList = specialize TDictionary<string, TPsionOOCatClass>;
 var
     strFilename : String;
     CatLexer : TPsionOOLexer;
-    // ExtLexer : TPsionOOLexer;
+    ExtLexer : TPsionOOLexer;
     params : TPsionSDKAppParams;
     PathList : TStringList;
     s : String;
     ExtFileList : Array of String;
-    // DependencyList : specialize TDictionary<string, TPsionOOCatClass>;
+    DependencyList : TDependencyList;
+    MethodList : TStringList;
 
 procedure HelpText();
 var
@@ -149,6 +151,63 @@ begin
     Result := '';
 end;
 
+procedure LoadDependencies(filename : String);
+var
+    par : TPsionOOLexer;
+    ext_class : TPsionOOCatClass;
+    par_class : TPsionOOClass;
+    method : TPsionOOMethodEntry;
+begin
+    try
+        begin
+            par := TPsionOOLexer.Create;
+            par.LoadFile(filename);
+
+            par.Verbose := params.InSwitch('V', 'L');
+            par.Lex();
+
+            par.Verbose := params.InSwitch('V', 'P');
+            par.Parse();
+
+            for par_class in par.ClassList do
+            begin
+                if DependencyList.ContainsKey(par_class.Name) then begin
+                    WriteLn('Class ', par_class.Name, ' already defined');
+                    // TODO: Add source file
+                    // TODO: (if possible) add location in file
+                    halt;
+                end;
+
+                if (not DependencyList.ContainsKey(par_class.Inherits)) and (par_class.Inherits <> '') then begin
+                    WriteLn('Error ', filename, ': Superclass ', par_class.Inherits, ' of ', par_class.Name, ' does not exist');
+                    // TODO: Add source file of superclass
+                    // TODO: (if possible) add location in file
+                    halt;
+                end;
+
+                for method in par_class.Methods do
+                begin
+                    if MethodList.IndexOf(LowerCase(method.Name)) > -1 then begin
+                        WriteLn('Error ', filename, ': Method ', method.Name, ' already exists in category');
+                        halt;
+                    end;
+                    // WriteLn('Adding method ', method.Name, ' to big list o'' methods.');
+                    MethodList.Add(LowerCase(method.Name));
+                end;
+
+                // WriteLn(filename, ' : ', par_class.Name, ' ', par_class.Inherits);
+                ext_class.Parent := par_class.Inherits;
+                ext_class.Methods := par_class.Methods;
+                DependencyList.Add(par_class.Name, ext_class);
+            end;
+        end
+    finally
+        begin
+            FreeAndNil(par);
+        end;
+    end;
+end;
+
 
 begin
     params := TPsionSDKAppParams.Create;
@@ -192,6 +251,9 @@ begin
             MakeEXT(CatLexer);
         end;
 
+        DependencyList := TDependencyList.Create;
+        MethodList := TStringList.Create;
+
         // TODO: Get the path for external files (from `-e`) (extra checks?)
         if params.SwitchExists('E') then PathList := CheckPath(params.SwitchVal('E'));
 
@@ -202,8 +264,16 @@ begin
                 ExtFileList := concat(ExtFileList, [CheckExternalFile(s, PathList)]);
                 Write(s, ': ');
                 WriteLn(ExtFileList[length(ExtFileList) - 1]);
+
+                LoadDependencies(ExtFileList[length(ExtFileList) - 1]);
             end;
         end;
+
+        // for s in DependencyList.Keys do begin
+        //     WriteLn(s);
+        // end;
+
+        // WriteLn(DependencyList.Count);
 
         // TODO: Build a dictionary of all the external classes
         // TODO: Check the parent field for a valid parent class - fail immediately if broken
@@ -214,6 +284,7 @@ begin
         // TODO: Check the parent class (and all classes above) for duplicate methods
     end
     finally begin
+        FreeAndNil(DependencyList);
         FreeAndNil(CatLexer);
     end;
 end;

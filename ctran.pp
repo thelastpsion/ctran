@@ -151,12 +151,52 @@ begin
     Result := '';
 end;
 
-procedure LoadDependencies(filename : String);
+procedure LoadDependencies(par : TPsionOOLexer; filename : String);
 var
-    par : TPsionOOLexer;
     ext_class : TPsionOOCatClass;
     par_class : TPsionOOClass;
     method : TPsionOOMethodEntry;
+begin
+    for par_class in par.ClassList do
+    begin
+        if DependencyList.ContainsKey(par_class.Name) then begin
+            WriteLn('Class ', par_class.Name, ' already defined');
+            // TODO: Add source file
+            // TODO: (if possible) add location in file
+            halt;
+        end;
+
+        if (not DependencyList.ContainsKey(par_class.Inherits)) and (par_class.Inherits <> '') then begin
+            WriteLn('Error ', filename, ': Superclass ', par_class.Inherits, ' of ', par_class.Name, ' does not exist');
+            // TODO: Add source file of superclass
+            // TODO: (if possible) add location in file
+            halt;
+        end;
+
+        for method in par_class.Methods do
+        begin
+            case method.MethodType of
+                methodDeclare, methodAdd: begin
+                    if MethodList.IndexOf(LowerCase(method.Name)) > -1 then begin
+                        WriteLn('Error ', filename, ': Method ', method.Name, ' already exists in category');
+                        halt;
+                    end;
+                    // WriteLn('Adding method ', method.Name, ' to big list o'' methods.');
+                    MethodList.Add(LowerCase(method.Name));
+                end;
+            end;
+        end;
+
+        // WriteLn(filename, ' : ', par_class.Name, ' ', par_class.Inherits);
+        ext_class.Parent := par_class.Inherits;
+        ext_class.Methods := par_class.Methods;
+        DependencyList.Add(par_class.Name, ext_class);
+    end;
+end;
+
+procedure LoadDependencies(filename : String);
+var
+    par : TPsionOOLexer;
 begin
     try
         begin
@@ -169,37 +209,7 @@ begin
             par.Verbose := params.InSwitch('V', 'P');
             par.Parse();
 
-            for par_class in par.ClassList do
-            begin
-                if DependencyList.ContainsKey(par_class.Name) then begin
-                    WriteLn('Class ', par_class.Name, ' already defined');
-                    // TODO: Add source file
-                    // TODO: (if possible) add location in file
-                    halt;
-                end;
-
-                if (not DependencyList.ContainsKey(par_class.Inherits)) and (par_class.Inherits <> '') then begin
-                    WriteLn('Error ', filename, ': Superclass ', par_class.Inherits, ' of ', par_class.Name, ' does not exist');
-                    // TODO: Add source file of superclass
-                    // TODO: (if possible) add location in file
-                    halt;
-                end;
-
-                for method in par_class.Methods do
-                begin
-                    if MethodList.IndexOf(LowerCase(method.Name)) > -1 then begin
-                        WriteLn('Error ', filename, ': Method ', method.Name, ' already exists in category');
-                        halt;
-                    end;
-                    // WriteLn('Adding method ', method.Name, ' to big list o'' methods.');
-                    MethodList.Add(LowerCase(method.Name));
-                end;
-
-                // WriteLn(filename, ' : ', par_class.Name, ' ', par_class.Inherits);
-                ext_class.Parent := par_class.Inherits;
-                ext_class.Methods := par_class.Methods;
-                DependencyList.Add(par_class.Name, ext_class);
-            end;
+            LoadDependencies(par, filename);
         end
     finally
         begin
@@ -269,6 +279,7 @@ begin
             end;
         end;
 
+        LoadDependencies(CatLexer, strFilename);
         // for s in DependencyList.Keys do begin
         //     WriteLn(s);
         // end;

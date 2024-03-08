@@ -159,14 +159,14 @@ var
 begin
     for par_class in par.ClassList do
     begin
-        if DependencyList.ContainsKey(par_class.Name) then begin
+        if DependencyList.ContainsKey(LowerCase(par_class.Name)) then begin
             WriteLn('Class ', par_class.Name, ' already defined');
             // TODO: Add source file
             // TODO: (if possible) add location in file
             halt;
         end;
 
-        if (not DependencyList.ContainsKey(par_class.Inherits)) and (par_class.Inherits <> '') then begin
+        if (not DependencyList.ContainsKey(LowerCase(par_class.Inherits))) and (par_class.Inherits <> '') then begin
             WriteLn('Error ', filename, ': Superclass ', par_class.Inherits, ' of ', par_class.Name, ' does not exist');
             // TODO: Add source file of superclass
             // TODO: (if possible) add location in file
@@ -188,9 +188,9 @@ begin
         end;
 
         // WriteLn(filename, ' : ', par_class.Name, ' ', par_class.Inherits);
-        ext_class.Parent := par_class.Inherits;
+        ext_class.Parent := LowerCase(par_class.Inherits);
         ext_class.Methods := par_class.Methods;
-        DependencyList.Add(par_class.Name, ext_class);
+        DependencyList.Add(LowerCase(par_class.Name), ext_class);
     end;
 end;
 

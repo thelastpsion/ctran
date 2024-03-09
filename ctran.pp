@@ -24,6 +24,7 @@ var
     DependencyList : TDependencyList;
     MethodList : TStringList;
     class_item : TPsionOOClass;
+    cur_metaclass : TStringList;
 
 procedure HelpText();
 var
@@ -219,18 +220,32 @@ begin
     end;
 end;
 
-procedure MakeMetaclass(class_item : TPsionOOClass);
+function MakeMetaclass(class_item : TPsionOOClass) : TStringList;
 var
-    methods : TStringList;
     cur_method : TPsionOOMethodEntry;
+    parent : String;
 begin
-
-    // DependencyList[LowerCase(class_item.Inherits)].Methods
-    for cur_method in class_item.Methods do
+    WriteLn(class_item.Name);
+    Result := TStringList.Create;
+    // Result.Clear;
+    parent := LowerCase(class_item.Inherits);
+    while parent <> '' do
     begin
-        if cur_method.MethodType = methodAdd then begin
-            methods.Add(cur_method.Name);
+        WriteLn('Parent being processed: ', parent);
+        for cur_method in DependencyList[parent].Methods do
+        begin
+            case cur_method.MethodType of
+                methodAdd, methodDeclare: begin
+                    if Result.IndexOf(cur_method.Name) > -1 then begin
+                        WriteLn('Error ', strFilename, ': Method ', cur_method.Name, ' already exists in class ', parent);
+                        halt;
+                    end;
+                    WriteLn('Adding method ', cur_method.Name);
+                    Result.Add(cur_method.Name);
+                end;
+            end;
         end;
+        parent := DependencyList[parent].Parent;
     end;
 end;
 
@@ -312,6 +327,7 @@ begin
         // TODO: Make a metaclass using a class's ancestors
         for class_item in CatLexer.ClassList do
         begin
+            cur_metaclass := MakeMetaclass(class_item);
             // if class_item.Inherits <> '' then begin
             //     // DependencyList[LowerCase(class_item.Inherits)].Methods
             // end;

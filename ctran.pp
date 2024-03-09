@@ -23,6 +23,7 @@ var
     ExtFileList : Array of String;
     DependencyList : TDependencyList;
     MethodList : TStringList;
+    class_item : TPsionOOClass;
 
 procedure HelpText();
 var
@@ -218,6 +219,21 @@ begin
     end;
 end;
 
+procedure MakeMetaclass(class_item : TPsionOOClass);
+var
+    methods : TStringList;
+    cur_method : TPsionOOMethodEntry;
+begin
+
+    // DependencyList[LowerCase(class_item.Inherits)].Methods
+    for cur_method in class_item.Methods do
+    begin
+        if cur_method.MethodType = methodAdd then begin
+            methods.Add(cur_method.Name);
+        end;
+    end;
+end;
+
 
 begin
     params := TPsionSDKAppParams.Create;
@@ -283,16 +299,24 @@ begin
         // for s in DependencyList.Keys do begin
         //     WriteLn(s);
         // end;
-
         // WriteLn(DependencyList.Count);
 
-        // TODO: Build a dictionary of all the external classes
-        // TODO: Check the parent field for a valid parent class - fail immediately if broken
         // TODO: Check the parent class (and all classes above) for duplicate methods
 
         // TODO: Build a dictionary of all the category file classes
         // TODO: Check the parent field for a valid parent class (in both dictionaries) - fail immediately if broken
         // TODO: Check the parent class (and all classes above) for duplicate methods
+
+        MethodList.Clear;
+
+        // TODO: Make a metaclass using a class's ancestors
+        for class_item in CatLexer.ClassList do
+        begin
+            // if class_item.Inherits <> '' then begin
+            //     // DependencyList[LowerCase(class_item.Inherits)].Methods
+            // end;
+        end;
+
     end
     finally begin
         FreeAndNil(DependencyList);

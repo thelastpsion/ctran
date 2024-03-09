@@ -25,6 +25,7 @@ var
     MethodList : TStringList;
     class_item : TPsionOOClass;
     cur_metaclass : TStringList;
+    method_item : TPsionOOMethodEntry;
 
 procedure HelpText();
 var
@@ -225,6 +226,7 @@ var
     cur_method : TPsionOOMethodEntry;
     parent : String;
 begin
+    // TODO: Check parent classes for circular reference (parent TStringList?)
     WriteLn(class_item.Name);
     Result := TStringList.Create;
     // Result.Clear;
@@ -235,7 +237,7 @@ begin
         for cur_method in DependencyList[parent].Methods do
         begin
             case cur_method.MethodType of
-                methodAdd, methodDeclare: begin
+                methodAdd, methodDefer, methodDeclare: begin
                     if Result.IndexOf(cur_method.Name) > -1 then begin
                         WriteLn('Error ', strFilename, ': Method ', cur_method.Name, ' already exists in class ', parent);
                         halt;
@@ -328,6 +330,32 @@ begin
         for class_item in CatLexer.ClassList do
         begin
             cur_metaclass := MakeMetaclass(class_item);
+
+            for s in cur_metaclass do begin
+                WriteLn(s);
+            end;
+
+            for method_item in class_item.Methods do
+            begin
+                case method_item.MethodType of
+                    methodReplace: begin
+                        if cur_metaclass.IndexOf(method_item.Name) = -1 then begin
+                            WriteLn('Error: Can''t replace method ', method_item.Name, ' as it doesn''t already exist');
+                            halt;
+                        end;
+                    end;
+                    methodDefer, methodAdd: begin
+                        if cur_metaclass.IndexOf(method_item.Name) > -1 then begin
+                            WriteLn('Error: Method ', method_item.Name, ' already exists');
+                            halt;
+                        end;
+                    end;
+                    else begin
+                        WriteLn('Unknown methodtype when trying to check if a method exists in a metaclass.');
+                        halt;
+                    end;
+                end;
+            end;
             // if class_item.Inherits <> '' then begin
             //     // DependencyList[LowerCase(class_item.Inherits)].Methods
             // end;

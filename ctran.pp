@@ -26,6 +26,7 @@ var
     class_item : TPsionOOClass;
     cur_metaclass : TStringList;
     method_item : TPsionOOMethodEntry;
+    extfile : String;
 
 procedure HelpText();
 var
@@ -201,9 +202,15 @@ procedure LoadDependencies(filename : String);
 var
     par : TPsionOOLexer;
 begin
+    if filename = '' then begin
+        WriteLn('LoadDependencies(): filename is empty');
+        halt;
+    end;
+
     try
         begin
             par := TPsionOOLexer.Create;
+            // WriteLn('Loading ', filename);
             par.LoadFile(filename);
 
             par.Verbose := params.InSwitch('V', 'L');
@@ -303,9 +310,14 @@ begin
         // TODO: Get the list of external files from the category class (extra checks?)
         if Length(CatLexer.ExternalList) > 0 then begin
             SetLength(ExtFileList, Length(CatLexer.ExternalList));
-            for s in CatLexer.ExternalList do begin
-                ExtFileList := concat(ExtFileList, [CheckExternalFile(s, PathList)]);
-                Write(s, ': ');
+            for extfile in CatLexer.ExternalList do begin
+                s := CheckExternalFile(extfile, PathList);
+                if s = '' then begin
+                    WriteLn('ERROR: External file "', extfile, '" not found in given path');
+                    halt;
+                end;
+                ExtFileList := concat(ExtFileList, [s]);
+                Write(extfile, ': ');
                 WriteLn(ExtFileList[length(ExtFileList) - 1]);
 
                 LoadDependencies(ExtFileList[length(ExtFileList) - 1]);

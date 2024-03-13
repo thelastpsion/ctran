@@ -67,10 +67,10 @@ begin
     for i := 0 to length(lex.ClassList) - 1 do
     begin
         Write('Name: ', lex.ClassList[i].Name);
-        if lex.ClassList[i].Inherits = '' then begin
+        if lex.ClassList[i].Parent = '' then begin
             Writeln(' (root class)');
         end else begin
-            Writeln(' (inherits from ', lex.classList[i].Inherits, ')');
+            Writeln(' (inherits from ', lex.classList[i].Parent, ')');
         end;
 
         for method_entry in lex.ClassList[i].Methods do
@@ -148,8 +148,8 @@ begin
             end;
             incClass: begin
                 Write('CLASS ', lex.ClassList[element.index].Name, ' ');
-                if lex.ClassList[element.index].Inherits <> '' then
-                    Write(lex.ClassList[element.index].Inherits);
+                if lex.ClassList[element.index].Parent <> '' then
+                    Write(lex.ClassList[element.index].Parent);
                 WriteLn;
                 WriteLn('{');
                 for method in lex.ClassList[element.index].Methods do

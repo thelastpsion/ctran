@@ -116,7 +116,7 @@ type
 
     TPsionOOClass = record
         Name : String;
-        Inherits : String;
+        Parent : String;
         Methods : array of TPsionOOMethodEntry;
         ClassProperty : TPsionOOProperty;
         ClassTypes : TPsionOOTypes;
@@ -904,9 +904,9 @@ begin
 
     Result.Name := tokline_class.Tokens[1].Literal;
     if length(tokline_class.Tokens) = 3 then begin
-        Result.Inherits := tokline_class.Tokens[2].Literal;
+        Result.Parent := tokline_class.Tokens[2].Literal;
     end else begin
-        Result.Inherits := '';
+        Result.Parent := '';
     end;
 
     Result.HasMethod := false;

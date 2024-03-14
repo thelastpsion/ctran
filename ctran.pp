@@ -285,8 +285,12 @@ var
     method_id : Integer;
     ts : TStringList;
     tfOut : TextFile;
+    filepath : String;
 begin
-    AssignFile(tfOut, params.SwitchVal('G') + '/' + par.ModuleName + '.G');
+    filepath := params.SwitchVal('G');
+    if (length(filepath) > 0) and (RightStr(filepath, 1) = DirectorySeparator) then filepath += DirectorySeparator;
+
+    AssignFile(tfOut, filepath + par.ModuleName + '.G');
 
     try
         SetTextLineEnding(tfOut, #13#10);

@@ -233,16 +233,13 @@ end;
 
 function GetAncestorsWithProperty(class_item : TPsionOOClass) : TStringList;
 var
-    // cur_method : TPsionOOMethodEntry;
     parent : String;
 begin
     // TODO: Check parent classes for circular reference (parent TStringList?)
-    // WriteLn(class_item.Name);
     Result := TStringList.Create;
     parent := LowerCase(class_item.Parent);
     while parent <> '' do
     begin
-        // WriteLn('Parent being processed: ', parent);
         if DependencyList[parent].HasProperty then Result.Add(parent);
         parent := DependencyList[parent].Parent;
     end;
@@ -256,7 +253,6 @@ begin
     // TODO: Check parent classes for circular reference (parent TStringList?)
     WriteLn(class_item.Name);
     Result := TStringList.Create;
-    // Result.Clear;
     parent := LowerCase(class_item.Parent);
     while parent <> '' do
     begin
@@ -395,7 +391,6 @@ begin
         on E: EInOutError do
             WriteLn('File handling error occurred. Details: ', E.ClassName, '/', E.Message);
     end;
-    // TODO: Write to an actual file
 end;
 
 

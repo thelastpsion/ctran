@@ -14,6 +14,7 @@ type
     end;
 
     TDependencyList = specialize TDictionary<string, TPsionOOCatClass>;
+
 var
     strFilename : String;
     CatLexer : TPsionOOLexer;
@@ -286,9 +287,10 @@ var
     ts : TStringList;
     tfOut : TextFile;
     filepath : String;
+    method_list : TStringList;
 begin
     filepath := params.SwitchVal('G');
-    if (length(filepath) > 0) and (RightStr(filepath, 1) = DirectorySeparator) then filepath += DirectorySeparator;
+    if (length(filepath) > 0) and (RightStr(filepath, 1) <> DirectorySeparator) then filepath += DirectorySeparator;
 
     AssignFile(tfOut, filepath + par.ModuleName + '.G');
 
@@ -335,19 +337,27 @@ begin
             WriteLn(tfOut, '#define C_', UpCase(par.ClassList[i].Name), ' ', i);
         end;
 
-        WriteLn(tfOut, '/* Method Numbers */');
-        method_id := 1;
+
+        method_list := TStringList.Create();
+
         for class_item in par.ClassList do
         begin
+            method_id := MakeMetaclass(class_item).Count;
             for method_item in class_item.Methods do
             begin
                 case method_item.MethodType of
                     methodAdd, methodDefer: begin
-                        WriteLn(tfOut, '#define O_', UpCase(method_item.Name), ' ', method_id);
+                        method_list.Add(UpCase(method_item.Name) + ' ' + IntToStr(method_id));
                         Inc(method_id);
                     end;
                 end;
             end;
+        end;
+        method_list.Sort();
+        WriteLn(tfOut, '/* Method Numbers */');
+        for s in method_list do
+        begin
+            WriteLn(tfOut, '#define O_', s);
         end;
 
         for class_item in par.ClassList do

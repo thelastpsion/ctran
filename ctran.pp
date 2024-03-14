@@ -96,7 +96,8 @@ begin
                     begin
                         case method.MethodType of
                             methodReplace: flgHasMethod := true;
-                            methodDefer, methodAdd: begin
+                            methodDefer:   WriteLn(tfOut, 'DECLARE ', method.Name);
+                            methodAdd: begin
                                 WriteLn(tfOut, 'DECLARE ', method.Name);
                                 flgHasMethod := true;
                             end;

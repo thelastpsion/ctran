@@ -461,15 +461,8 @@ begin
         // end;
         // WriteLn(DependencyList.Count);
 
-        // TODO: Check the parent class (and all classes above) for duplicate methods
-
-        // TODO: Build a dictionary of all the category file classes
-        // TODO: Check the parent field for a valid parent class (in both dictionaries) - fail immediately if broken
-        // TODO: Check the parent class (and all classes above) for duplicate methods
-
         MethodList.Clear;
 
-        // TODO: Make a metaclass using a class's ancestors
         for class_item in CatLexer.ClassList do
         begin
             cur_metaclass := MakeMetaclass(class_item);

@@ -16,9 +16,9 @@ In Object Pascal.
 * [x] Psion Category file parser/AST builder
 * [x] Command line parser (basic, but works well enough!)
 * [ ] Build class dependency tree (started)
-* [ ] Generate `.ext` files (started)
+* [ ] Generate `.ext` files (final testing)
 * [ ] Generate `.c` files
-* [ ] Generate `.g` files
+* [ ] Generate `.g` files (final testing)
 * [ ] Generate skeleton method files
 * [ ] Generate `.asm` files
 * [ ] Generate `.ing` files

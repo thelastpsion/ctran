@@ -296,13 +296,14 @@ begin
     end;
 end;
 
-function GetAllCategoryAncestors(par : TPsionOOLexer) : TStringList;
+function GetExternalAncestors(par : TPsionOOLexer) : TStringList;
 var
     class_item : TPsionOOClass;
     parent : String;
     x : Integer;
 begin
     // TODO: Check parent classes for circular reference (parent TStringList?)
+    // TODO: Sort entries as per original CTRAN (order that they appear in External files?)
     Result := TStringList.Create;
 
     for class_item in par.ClassList do
@@ -475,18 +476,27 @@ begin
 
         WriteLn(tfOut, '#include <', LowerCase(par.ModuleName), '.g>');
         WriteLn(tfOut, '/* External Superclass References */');
+
+        ts := GetExternalAncestors(par);
         WriteLn(tfOut, '#ifdef EPOC');
 
-        // TODO: Generate list of all ancestor classes
-        ts := GetAllCategoryAncestors(par);
-        for i := 0 to ts.Count - 1 do
+        for s in ts do
         begin
-            WriteLn(tfOut, '#define ERC_', UpCase(ts[i]), ' C_', UpCase(ts[i]));
+            WriteLn(tfOut, '#define ERC_', UpCase(s), ' C_', UpCase(s));
         end;
 
         WriteLn(tfOut, '#else');
 
+        for s in ts do
+        begin
+            WriteLn(tfOut, 'GLREF_D P_CLASS c_', s, ';');
+            WriteLn(tfOut, '#define ERC_', UpCase(s), ' &c_', s);
+        end;
+
         WriteLn(tfOut, '#endif');
+
+        // WriteLn(tfOut, '/* Method function forward references */');
+
         CloseFile(tfOut);
     except
         on E: EInOutError do

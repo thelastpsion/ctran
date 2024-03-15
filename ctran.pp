@@ -507,6 +507,81 @@ begin
             for s in ForwardRefs do WriteLn(tfOut, 'GLREF_C VOID ', s, '();');
         end;
 
+        for class_item in par.ClassList do
+        begin
+            WriteLn(tfOut);
+            WriteLn(tfOut);
+            WriteLn(tfOut, '/* Class ', class_item.Name, ' */');
+            WriteLn(tfOut, '/* ------------------------------------------------------ */');
+            for method in class_item.Methods do
+            begin
+                case method.MethodType of
+                    methodAdd, methodReplace: begin
+                        WriteLn(tfOut, 'GLREF_C VOID ', class_item.Name, '_', method.Name, '();');
+                    end;
+                end;
+            end;
+            WriteLn(tfOut, 'GLDEF_D struct');
+            WriteLn(tfOut, '{');
+            WriteLn(tfOut, 'P_CLASS c;');
+            WriteLn(tfOut, 'VOID (*v[??])();');
+            WriteLn(tfOut, '} c_', class_item.Name, ' =');
+            WriteLn(tfOut, '{');
+            WriteLn(tfOut, '{2,(P_CLASS *)ERC_', UpCase(class_item.Parent), ',sizeof(PR_', UpCase(class_item.Name), '),??,0x??,?,?),');
+
+            WriteLn(tfOut, '{');
+            // TODO: Step through this properly, removing the final comma
+            // TODO: Only print opening and closing braces when there are methods to include
+            for method in class_item.Methods do
+            begin
+                case method.MethodType of
+                    methodAdd, methodReplace: begin
+                        if method.ForwardRef = '' then begin
+                        WriteLn(tfOut, class_item.Name, '_', method.Name, ',');
+                        end else begin
+                            WriteLn(tfOut, method.ForwardRef, ',');
+                        end;
+                    end;
+                end;
+            end;
+            WriteLn(tfOut, '}');
+
+            WriteLn(tfOut, '};');
+
+        end;
+
+        WriteLn(tfOut, '/* Class Lookup Table */');
+        WriteLn(tfOut, '#ifdef EPOC');
+        WriteLn(tfOut, 'GLDEF_D P_CLASS *ClassTable[]=');
+        WriteLn(tfOut, '#else');
+        WriteLn(tfOut, 'GLDEF_D P_CLASS *ct_vector[]=');
+        WriteLn(tfOut, '#endif');
+        WriteLn(tfOut, '{');
+
+        for class_item in par.ClassList do
+        begin
+            WriteLn(tfOut, '(P_CLASS *)&c_', class_item.Name, ',');
+        end;
+
+        WriteLn(tfOut, '};');
+
+        WriteLn(tfOut, '/* External Category Name Table */');
+        WriteLn(tfOut, '#ifdef EPOC');
+        WriteLn(tfOut, 'GLDEF_D struct');
+        WriteLn(tfOut, '    {');
+        WriteLn(tfOut, '    UWORD number;');
+        WriteLn(tfOut, '    UBYTE names[', length(par.ExternalList), '][14];');
+        WriteLn(tfOut, '    } ExtCatTable =');
+        WriteLn(tfOut, '    {', length(par.ExternalList), ',');
+        WriteLn(tfOut, '    {');
+        for s in par.ExternalList do
+        begin
+            WriteLn(tfOut, '    *** ', s, '.DYL ***');
+        end;
+        WriteLn(tfOut, '    }');
+        WriteLn(tfOut, '    };');
+        WriteLn(tfOut, '#endif');
+
         CloseFile(tfOut);
     except
         on E: EInOutError do

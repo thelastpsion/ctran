@@ -75,7 +75,12 @@ begin
 
         for method_entry in lex.ClassList[i].Methods do
         begin
-            Writeln('  ', method_entry.MethodType, ' ', method_entry.Name);
+            Write('  ', method_entry.MethodType, ' ', method_entry.Name);
+            if method_entry.ForwardRef <> '' then
+            begin
+                Write(' ( = ', method_entry.ForwardRef, ')');
+            end;
+            WriteLn;
         end;
 
         Writeln('  Types (',  length(lex.ClassList[i].ClassTypes), '):');
@@ -161,7 +166,11 @@ begin
                         methodDeclare: Write('DECLARE ');
                         else           Write(method.MethodType, ' ');
                     end;
-                    WriteLn(method.Name);
+                    Write(method.Name);
+                    if method.ForwardRef <> '' then begin
+                        Write(' = ', method.ForwardRef);
+                    end;
+                    WriteLn;
                 end;
                 if lex.ClassList[element.index].HasMethod then WriteLn('HAS_METHOD');
                 if lex.ClassList[element.index].HasProperty then WriteLn('HAS_PROPERTY');

@@ -19,6 +19,7 @@ type
         // Symbols
         tknBraceLeft,
         tknBraceRight,
+        tknEquals,
 
         // Category type keywords
         tknImage,
@@ -103,6 +104,7 @@ type
     TPsionOOMethodEntry = record
         MethodType : TMethodType;
         Name : String;
+        ForwardRef : String;
     end;
 
     TPsionOOConstantEntry = record
@@ -386,6 +388,16 @@ begin
                 _curLinePos := pos + 1;
                 exit;
             end;
+        end else if _strCurLine[pos] = '=' then begin
+            if flgFoundText then begin
+                _curLinePos := pos;
+            end else begin
+                Result.Literal := '=';
+                Result.LineNum := _curLineNum;
+                Result.LinePos := pos;
+                _curLinePos := pos + 1;
+            end;
+            exit;
         end else begin
             Result.Literal += _strCurLine[pos];
             if not(flgFoundText) then begin
@@ -638,11 +650,21 @@ begin
                             if Verbose then Writeln('>>> ADD found!');
                             _AddToken(tknAdd, tok);
                             _GrabAndAddStringTokens(1);
+                            tok := _GrabNextToken();
+                            if tok.Literal = '=' then begin
+                                _AddToken(tknEquals, tok);
+                                _GrabAndAddStringTokens(1);
+                            end;
                         end;
                         'REPLACE': begin
                             if Verbose then Writeln('>>> REPLACE found!');
                             _AddToken(tknReplace, tok);
                             _GrabAndAddStringTokens(1);
+                            tok := _GrabNextToken();
+                            if tok.Literal = '=' then begin
+                                _AddToken(tknEquals, tok);
+                                _GrabAndAddStringTokens(1);
+                            end;
                         end;
                         'DEFER': begin
                             if Verbose then Writeln('>>> DEFER found!');
@@ -927,10 +949,14 @@ begin
                     WriteLn('ERROR: tknAdd not valid in External files');
                     _ErrShowLine(tokline.LineNum, tokline.Tokens[0].LinePos);
                 end;
-                _CheckLine(tokline, 1, 1, [tknString]);
-                // WriteLn('ADD ', tokline.Tokens[1].Literal);
+                _CheckLine(tokline, 3, 1, [tknString, tknEquals, tknString]);
                 curMethodEntry.MethodType := methodAdd;
                 curMethodEntry.Name := tokline.Tokens[1].Literal;
+                if length(tokline.Tokens) = 4 then begin
+                    curMethodEntry.ForwardRef := tokline.Tokens[3].Literal;
+                end else begin
+                    curMethodEntry.ForwardRef := '';
+                end;
                 Result.Methods := concat(Result.Methods, [curMethodEntry]);
             end;
 
@@ -939,10 +965,14 @@ begin
                     WriteLn('ERROR: tknAdd not valid in External files');
                     _ErrShowLine(tokline.LineNum, tokline.Tokens[0].LinePos);
                 end;
-                _CheckLine(tokline, 1, 1, [tknString]);
-                // WriteLn('REPLACE ', tokline.Tokens[1].Literal);
+                _CheckLine(tokline, 3, 1, [tknString, tknEquals, tknString]);
                 curMethodEntry.MethodType := methodReplace;
                 curMethodEntry.Name := tokline.Tokens[1].Literal;
+                if length(tokline.Tokens) = 4 then begin
+                    curMethodEntry.ForwardRef := tokline.Tokens[3].Literal;
+                end else begin
+                    curMethodEntry.ForwardRef := '';
+                end;
                 Result.Methods := concat(Result.Methods, [curMethodEntry]);
             end;
 
@@ -952,7 +982,6 @@ begin
                     _ErrShowLine(tokline.LineNum, tokline.Tokens[0].LinePos);
                 end;
                 _CheckLine(tokline, 1, 1, [tknString]);
-                // WriteLn('DEFER ', tokline.Tokens[1].Literal);
                 curMethodEntry.MethodType := methodDefer;
                 curMethodEntry.Name := tokline.Tokens[1].Literal;
                 Result.Methods := concat(Result.Methods, [curMethodEntry]);
@@ -964,7 +993,6 @@ begin
                     _ErrShowLine(tokline.LineNum, tokline.Tokens[0].LinePos);
                 end;
                 _CheckLine(tokline, 1, 1, [tknString]);
-                // WriteLn('DECLARE ', tokline.Tokens[1].Literal);
                 curMethodEntry.MethodType := methodDeclare;
                 curMethodEntry.Name := tokline.Tokens[1].Literal;
                 Result.Methods := concat(Result.Methods, [curMethodEntry]);

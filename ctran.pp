@@ -517,21 +517,24 @@ begin
             begin
                 case method.MethodType of
                     methodAdd, methodReplace: begin
-                        WriteLn(tfOut, 'GLREF_C VOID ', class_item.Name, '_', method.Name, '();');
+                        if method.ForwardRef = '' then begin
+                            WriteLn(tfOut, 'GLREF_C VOID ', class_item.Name, '_', method.Name, '();');
+                        end;
                     end;
                 end;
             end;
             WriteLn(tfOut, 'GLDEF_D struct');
             WriteLn(tfOut, '{');
             WriteLn(tfOut, 'P_CLASS c;');
-            WriteLn(tfOut, 'VOID (*v[??])();');
+            WriteLn(tfOut, 'VOID (*v[??])();'); // TODO: What's this number?
             WriteLn(tfOut, '} c_', class_item.Name, ' =');
             WriteLn(tfOut, '{');
-            WriteLn(tfOut, '{2,(P_CLASS *)ERC_', UpCase(class_item.Parent), ',sizeof(PR_', UpCase(class_item.Name), '),??,0x??,?,?),');
+            WriteLn(tfOut, '{2,(P_CLASS *)ERC_', UpCase(class_item.Parent), ',sizeof(PR_', UpCase(class_item.Name), '),??,0x??,?,?),'); // TODO: What are these numbers?
 
             WriteLn(tfOut, '{');
             // TODO: Step through this properly, removing the final comma
             // TODO: Only print opening and closing braces when there are methods to include
+            // TODO: What are the null entries that are in the original CTRAN?
             for method in class_item.Methods do
             begin
                 case method.MethodType of

@@ -461,7 +461,8 @@ var
     ts : TStringList;
     tfOut : TextFile;
     filepath : String;
-    method_list : TStringList;
+    method : TPsionOOMethodEntry;
+    ForwardRefs : TStringList;
 begin
     filepath := params.SwitchVal('C');
     if (length(filepath) > 0) and (RightStr(filepath, 1) <> DirectorySeparator) then filepath += DirectorySeparator;
@@ -495,7 +496,16 @@ begin
 
         WriteLn(tfOut, '#endif');
 
-        // WriteLn(tfOut, '/* Method function forward references */');
+        ForwardRefs := TStringList.Create();
+        for class_item in par.ClassList do
+            for method in class_item.Methods do
+                if (method.ForwardRef <> '') and (ForwardRefs.IndexOf(method.ForwardRef) = -1) then
+                    ForwardRefs.Add(method.ForwardRef);
+
+        if ForwardRefs.Count > 0 then begin
+            WriteLn(tfOut, '/* Method function forward references */');
+            for s in ForwardRefs do WriteLn(tfOut, 'GLREF_C VOID ', s, '();');
+        end;
 
         CloseFile(tfOut);
     except

@@ -311,7 +311,7 @@ begin
         while parent <> '' do
         begin
             if (Result.IndexOf(parent) = -1) and (DependencyList[parent].Category <> par.ModuleName) then Result.Add(parent);
-            parent := DependencyList[parent].Parent;
+            break;
         end;
     end;
 end;

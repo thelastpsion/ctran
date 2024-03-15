@@ -9,6 +9,7 @@ type
 
     TPsionOOCatClass = record
         Parent : String;
+        Category : String;
         Methods : array of TPsionOOMethodEntry;
         HasProperty : Boolean;
     end;
@@ -178,7 +179,10 @@ var
     ext_class : TPsionOOCatClass;
     par_class : TPsionOOClass;
     method : TPsionOOMethodEntry;
+    category : String;
 begin
+    category := par.ModuleName;
+
     for par_class in par.ClassList do
     begin
         if DependencyList.ContainsKey(LowerCase(par_class.Name)) then begin
@@ -210,6 +214,7 @@ begin
         end;
 
         // WriteLn(filename, ' : ', par_class.Name, ' ', par_class.Parent);
+        ext_class.Category := category;
         ext_class.Parent := LowerCase(par_class.Parent);
         ext_class.Methods := par_class.Methods;
         ext_class.HasProperty := ((par_class.HasProperty) or (length(par_class.ClassProperty) > 0));
@@ -305,7 +310,7 @@ begin
         parent := LowerCase(class_item.Parent);
         while parent <> '' do
         begin
-            if Result.IndexOf(parent) = -1 then Result.Add(parent);
+            if (Result.IndexOf(parent) = -1) and (DependencyList[parent].Category <> par.ModuleName) then Result.Add(parent);
             parent := DependencyList[parent].Parent;
         end;
     end;

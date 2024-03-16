@@ -343,7 +343,7 @@ begin
         ancestor := LowerCase(class_item.Parent);
         while ancestor <> '' do
         begin
-            if (Result.IndexOf(parent) = -1) and (DependencyList[ancestor].Category <> par.ModuleName) then Result.Add(ancestor);
+            if (Result.IndexOf(ancestor) = -1) and (DependencyList[ancestor].Category <> par.ModuleName) then Result.Add(ancestor);
             break;
         end;
     end;

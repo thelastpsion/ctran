@@ -527,8 +527,12 @@ begin
             WriteLn(tfOut, '} c_', class_item.Name, ' =');
             WriteLn(tfOut, '{');
             // TODO: What are the numbers below?
-            // FIX: Use `&c_` instead of `ERC_` for parent classes in this category
-            WriteLn(tfOut, '{2,(P_CLASS *)ERC_', UpCase(class_item.Parent), ',sizeof(PR_', UpCase(class_item.Name), '),??,0x??,?,?},');
+            Write(tfOut, '{??,(P_CLASS *)');
+            if DependencyList[class_item.Parent].Category = par.ModuleName then
+                Write(tfOut, '&c_', class_item.Parent)
+            else
+                Write(tfOut, 'ERC_', UpCase(class_item.Parent));
+            WriteLn(tfOut, ',sizeof(PR_', UpCase(class_item.Name), '),??,0x6b,??,0},');
 
             // TODO: What are the null entries that are in the original CTRAN?
             flg := false;

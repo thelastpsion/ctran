@@ -304,7 +304,6 @@ var
     method : TPsionOOMethodEntry;
     ancestor : String;
     ancestor_list : TStringList;
-    i : Integer;
 begin
     WriteLn(class_item.Name);
     Result := TStringList.Create();
@@ -333,19 +332,18 @@ end;
 function GetExternalAncestors(par : TPsionOOLexer) : TStringList;
 var
     class_item : TPsionOOClass;
-    parent : String;
-    x : Integer;
+    ancestor : String;
 begin
-    // TODO: Check parent classes for circular reference (parent TStringList?)
-    // TODO: Sort entries as per original CTRAN (order that they appear in External files)
+    // TODO: Check parent classes for circular reference (ancestor TStringList?)
+    // TODO: Sort methods as per original CTRAN (the order that they appear in External files)
     Result := TStringList.Create;
 
     for class_item in par.ClassList do
     begin
-        parent := LowerCase(class_item.Parent);
-        while parent <> '' do
+        ancestor := LowerCase(class_item.Parent);
+        while ancestor <> '' do
         begin
-            if (Result.IndexOf(parent) = -1) and (DependencyList[parent].Category <> par.ModuleName) then Result.Add(parent);
+            if (Result.IndexOf(parent) = -1) and (DependencyList[ancestor].Category <> par.ModuleName) then Result.Add(ancestor);
             break;
         end;
     end;
@@ -557,10 +555,7 @@ var
     metaclass_method_id : Integer;
     ForwardRefs : TStringList;
     flg : Boolean;
-    // cur_metaclass : TStringList;
-    // start_method : Integer;
     total_methods : Integer;
-    // method_list: array of TPsionOOMethodEntry;
     c_methods : TMethodsForCFile;
 begin
     filepath := params.SwitchVal('C');
@@ -608,10 +603,6 @@ begin
 
         for class_item in par.ClassList do
         begin
-            // SetLength(methodReplace_list, 0);
-            // SetLength(methodAdd_list, 0);
-            // SetLength(method_list, 0);
-
             WriteLn(tfOut);
             WriteLn(tfOut);
             WriteLn(tfOut, '/* Class ', class_item.Name, ' */');
@@ -638,7 +629,6 @@ begin
             WriteLn(tfOut, '} c_', class_item.Name, ' =');
             WriteLn(tfOut, '{');
 
-            // FIX: What is the unknown number in the line below? I've seen values of 0, 1 and 2.
             Write(tfOut, '{');
 
             flg := false;
@@ -829,10 +819,6 @@ begin
         end;
 
         LoadDependencies(CatLexer, strFilename);
-        // for s in DependencyList.Keys do begin
-        //     WriteLn(s);
-        // end;
-        // WriteLn(DependencyList.Count);
 
         MethodList.Clear;
 
@@ -867,9 +853,6 @@ begin
                     end;
                 end;
             end;
-            // if class_item.Parent <> '' then begin
-            //     // DependencyList[LowerCase(class_item.Parent)].Methods
-            // end;
         end;
 
         if params.SwitchExists('X') then begin

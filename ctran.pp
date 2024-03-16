@@ -271,6 +271,33 @@ begin
     end;
 end;
 
+function GetAncestors(class_item : TPsionOOClass) : TStringList;
+var
+    ancestor : String;
+    i : Integer;
+begin
+    Result := TStringList.Create();
+    ancestor := LowerCase(class_item.Parent);
+
+    while ancestor <> '' do
+    begin
+        if Result.indexof(ancestor) > -1 then begin
+            writeln('error: circular class dependency (', ancestor, '). current list of classes is:');
+            writeln('  ', class_item.name);
+            for i := Result.Count - 1 downto 0 do
+            begin
+                if Result[i] = ancestor then write('> ') else write('  ');
+                writeln(Result[i]);
+            end;
+            writeln('> ', ancestor);
+            halt;
+        end;
+
+        Result.insert(0, ancestor);
+        ancestor := Dependencylist[ancestor].Parent;
+    end;
+end;
+
 function MakeMetaclass(class_item : TPsionOOClass) : TStringList;
 var
     method : TPsionOOMethodEntry;
@@ -281,25 +308,7 @@ begin
     WriteLn(class_item.Name);
     Result := TStringList.Create();
     ancestor := LowerCase(class_item.Parent);
-    ancestor_list := TStringList.Create();
-
-    while ancestor <> '' do
-    begin
-        if ancestor_list.IndexOf(ancestor) > -1 then begin
-            WriteLn('Error: Circular class dependency (', ancestor, '). Current list of classes is:');
-            WriteLn('  ', class_item.Name);
-            for i := ancestor_list.Count - 1 downto 0 do
-            begin
-                if ancestor_list[i] = ancestor then Write('> ') else Write('  ');
-                WriteLn(ancestor_list[i]);
-            end;
-            WriteLn('> ', ancestor);
-            halt;
-        end;
-
-        ancestor_list.Insert(0, ancestor);
-        ancestor := dependencylist[ancestor].Parent;
-    end;
+    ancestor_list := GetAncestors(class_item);
 
     for ancestor in ancestor_list do
     begin
@@ -327,7 +336,7 @@ var
     x : Integer;
 begin
     // TODO: Check parent classes for circular reference (parent TStringList?)
-    // TODO: Sort entries as per original CTRAN (order that they appear in External files?)
+    // TODO: Sort entries as per original CTRAN (order that they appear in External files)
     Result := TStringList.Create;
 
     for class_item in par.ClassList do
@@ -537,7 +546,7 @@ end;
 
 procedure MakeC(par : TPsionOOLexer);
 var
-    // i : Integer;
+    i : Integer;
     class_item : TPsionOOClass;
     s : String;
     ts : TStringList;
@@ -628,7 +637,7 @@ begin
             WriteLn(tfOut, '} c_', class_item.Name, ' =');
             WriteLn(tfOut, '{');
 
-            // TODO: What are the numbers below?
+            // FIX: What is the unknown number in the line below? I've seen values of 0, 1 and 2.
             Write(tfOut, '{??,(P_CLASS *)');
             if DependencyList[class_item.Parent].Category = par.ModuleName then
             begin
@@ -639,7 +648,7 @@ begin
 
             Write(tfOut, ',sizeof(PR_', UpCase(class_item.Name), '),');
             if length(c_methods.Methods) = 0 then Write(tfOut, '0') else Write(tfOut, c_methods.StartIndex);
-            WriteLn(tfOut, ',0x6b,', length(c_methods.Methods), ',??},');
+            WriteLn(tfOut, ',0x6b,', length(c_methods.Methods), ',', class_item.PropertyAutodestroyCount, '},');
 
             flg := false;
             for method in c_methods.Methods do
@@ -691,23 +700,41 @@ begin
 
         WriteLn(tfOut, '};');
 
-        WriteLn(tfOut, '/* External Category Name Table */');
-        WriteLn(tfOut, '#ifdef EPOC');
-        WriteLn(tfOut, 'GLDEF_D struct');
-        WriteLn(tfOut, '    {');
-        WriteLn(tfOut, '    UWORD number;');
-        WriteLn(tfOut, '    UBYTE names[', length(par.ExternalList), '][14];');
-        WriteLn(tfOut, '    } ExtCatTable =');
-        WriteLn(tfOut, '    {', length(par.ExternalList), ',');
-        WriteLn(tfOut, '    {');
+        if length(par.ExternalList) > 0 then begin
+            WriteLn(tfOut, '/* External Category Name Table */');
+            WriteLn(tfOut, '#ifdef EPOC');
+            WriteLn(tfOut, 'GLDEF_D struct');
+            WriteLn(tfOut, '    {');
+            WriteLn(tfOut, '    UWORD number;');
+            WriteLn(tfOut, '    UBYTE names[', length(par.ExternalList), '][14];');
+            WriteLn(tfOut, '    } ExtCatTable =');
+            WriteLn(tfOut, '    {', length(par.ExternalList), ',');
+            WriteLn(tfOut, '    {');
+
+        flg := false;
         for s in par.ExternalList do
-        begin
-            // TODO: Split out strings into individual letters, surrounded by quotes
-            WriteLn(tfOut, '    *** ', s, '.DYL ***');
+            begin
+                if flg then begin
+                    WriteLn(tfOut, ',');
+                end else begin
+                    flg := true;
+                end;
+                Write(tfOut, '    {');
+                    for i := 1 to length(s) do
+                    begin
+                        Write(tfOut, '''', LowerCase(copy(s, i, 1)), ''',');
+                    end;
+                    Write(tfOut, '''.'',''D'',''Y'',''L''');
+                    for i := length(s) + 4 to 13 do begin
+                        Write(tfOut, ',0');
+                    end;
+                    Write(tfOut, '}');
+                end;
+            WriteLn(tfOut);
+            WriteLn(tfOut, '    }');
+            WriteLn(tfOut, '    };');
+            WriteLn(tfOut, '#endif');
         end;
-        WriteLn(tfOut, '    }');
-        WriteLn(tfOut, '    };');
-        WriteLn(tfOut, '#endif');
 
         CloseFile(tfOut);
     except

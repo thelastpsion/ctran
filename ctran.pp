@@ -13,6 +13,10 @@ type
         Methods : array of TPsionOOMethodEntry;
         HasProperty : Boolean;
     end;
+    TMethodsForCFile = record
+        Methods : array of TPsionOOMethodEntry;
+        StartIndex : Integer;
+    end;
 
     TDependencyList = specialize TDictionary<string, TPsionOOCatClass>;
 
@@ -469,6 +473,55 @@ begin
     end;
 end;
 
+function MakeMethodsForCFile(class_item : TPsionOOClass) : TMethodsForCFile;
+var
+    method : TPsionOOMethodEntry;
+    methodAdd_list : array of TPsionOOMethodEntry;
+    methodReplace_list : array of TPsionOOMethodEntry;
+    metaclass : TStringList;
+    metaclass_method_id : Integer;
+    flg : Boolean;
+    i : Integer;
+begin
+    // FIX: Multiple broken things here
+    SetLength(Result.Methods, 0);
+    for method in class_item.Methods do
+    begin
+        case method.MethodType of
+            methodReplace:  methodReplace_list := concat(methodReplace_list, [method]);
+            methodAdd:      methodAdd_list := concat(methodAdd_list, [method]);
+        end;
+    end;
+
+    flg := false;
+    metaclass := MakeMetaclass(class_item);
+
+    Result.StartIndex := metaclass.Count;
+    if length(methodReplace_list) > 0 then begin
+        for metaclass_method_id := 0 to metaclass.Count - 1 do
+        begin
+            s := metaclass[metaclass_method_id];
+            for i := 0 to length(methodReplace_list) - 1 do
+            begin
+                if s = methodReplace_list[i].Name then begin
+                    WriteLn('*** ', class_item.Name, ': Earliest replaced method is ', s);
+                    Result.Methods := concat(Result.Methods, [methodReplace_list[i]]);
+                    if not flg then begin
+                        Result.StartIndex := metaclass_method_id;
+                        flg := true;
+                    end;
+                end else if flg then begin
+                    method.Name := '';
+                    method.MethodType := methodReplace;
+                    method.ForwardRef := '';
+                    Result.Methods := concat(Result.Methods, [method]);
+                end;
+            end;
+        end;
+    end;
+    Result.Methods := concat(Result.Methods, methodAdd_list);
+end;
+
 procedure MakeC(par : TPsionOOLexer);
 var
     i : Integer;
@@ -481,12 +534,11 @@ var
     metaclass_method_id : Integer;
     ForwardRefs : TStringList;
     flg : Boolean;
-    cur_metaclass : TStringList;
-    start_method : Integer;
-    methodAdd_list : array of TPsionOOMethodEntry;
-    methodReplace_list : array of TPsionOOMethodEntry;
+    // cur_metaclass : TStringList;
+    // start_method : Integer;
     total_methods : Integer;
-    method_list: array of TPsionOOMethodEntry;
+    // method_list: array of TPsionOOMethodEntry;
+    c_methods : TMethodsForCFile;
 begin
     filepath := params.SwitchVal('C');
     if (length(filepath) > 0) and (RightStr(filepath, 1) <> DirectorySeparator) then filepath += DirectorySeparator;
@@ -533,57 +585,24 @@ begin
 
         for class_item in par.ClassList do
         begin
-            SetLength(methodReplace_list, 0);
-            SetLength(methodAdd_list, 0);
-            SetLength(method_list, 0);
+            // SetLength(methodReplace_list, 0);
+            // SetLength(methodAdd_list, 0);
+            // SetLength(method_list, 0);
 
             WriteLn(tfOut);
             WriteLn(tfOut);
             WriteLn(tfOut, '/* Class ', class_item.Name, ' */');
             WriteLn(tfOut, '/* ------------------------------------------------------ */');
-            for method in class_item.Methods do
-            begin
-                case method.MethodType of
-                    methodReplace:  methodReplace_list := concat(methodReplace_list, [method]);
-                    methodAdd:      methodAdd_list := concat(methodAdd_list, [method]);
-                end;
-            end;
 
-            flg := false;
-            cur_metaclass := MakeMetaclass(class_item);
+            c_methods := MakeMethodsForCFile(class_item);
 
-            start_method := cur_metaclass.Count;
-            if length(methodReplace_list) > 0 then begin
-                for metaclass_method_id := 0 to cur_metaclass.Count - 1 do
-                begin
-                    s := cur_metaclass[metaclass_method_id];
-                    for i := 0 to length(methodReplace_list) - 1 do
-                    begin
-                        if s = methodReplace_list[i].Name then begin
-                            WriteLn('*** ', class_item.Name, ': Earliest replaced method is ', s);
-                            method_list := concat(method_list, [methodReplace_list[i]]);
-                            if not flg then begin
-                                start_method := metaclass_method_id;
-                                flg := true;
-                            end;
-                        end else if flg then begin
-                            method.Name := '';
-                            method.MethodType := methodReplace;
-                            method.ForwardRef := '';
-                            method_list := concat(method_list, [method]);
-                        end;
-                    end;
-                end;
-            end;
-            method_list := concat(method_list, methodAdd_list);
-
-            for method in method_list do begin
+            for method in c_methods.Methods do begin
                 if (method.Name <> '') and (method.ForwardRef = '') then begin
                     WriteLn(tfOut, 'GLREF_C VOID ', class_item.Name, '_', method.Name, '();');
                 end;
             end;
 
-            total_methods := length(method_list);
+            total_methods := length(c_methods.Methods);
 
             WriteLn(tfOut, 'GLDEF_D struct');
             WriteLn(tfOut, '{');
@@ -599,16 +618,18 @@ begin
             // TODO: What are the numbers below?
             Write(tfOut, '{??,(P_CLASS *)');
             if DependencyList[class_item.Parent].Category = par.ModuleName then
+            begin
                 Write(tfOut, '&c_', class_item.Parent)
-            else
+            end else begin
                 Write(tfOut, 'ERC_', UpCase(class_item.Parent));
+            end;
 
             Write(tfOut, ',sizeof(PR_', UpCase(class_item.Name), '),');
-            if length(method_list) = 0 then Write(tfOut, '0') else Write(tfOut, start_method);
-            WriteLn(tfOut, ',0x6b,', total_methods, ',??},');
+            if length(c_methods.Methods) = 0 then Write(tfOut, '0') else Write(tfOut, c_methods.StartIndex);
+            WriteLn(tfOut, ',0x6b,', length(c_methods.Methods), ',??},');
 
             flg := false;
-            for method in method_list do
+            for method in c_methods.Methods do
             begin
                 if flg then begin
                     WriteLn(tfOut, ',')
@@ -619,7 +640,6 @@ begin
                 if (method.Name = '') then begin
                     Write(tfOut, 'NULL');
                 end else if method.ForwardRef = '' then begin
-                if method.ForwardRef = '' then begin
                     Write(tfOut, class_item.Name, '_', method.Name);
                 end else begin
                     Write(tfOut, method.ForwardRef);

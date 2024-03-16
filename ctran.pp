@@ -451,18 +451,15 @@ end;
 
 procedure MakeC(par : TPsionOOLexer);
 var
-    inc_file : String;
-    inc_file_def : String;
-    i : Integer;
+    // i : Integer;
     class_item : TPsionOOClass;
-    constant_item : TPsionOOConstantEntry;
     s : String;
-    method_id : Integer;
     ts : TStringList;
     tfOut : TextFile;
     filepath : String;
     method : TPsionOOMethodEntry;
     ForwardRefs : TStringList;
+    flg : Boolean;
 begin
     filepath := params.SwitchVal('C');
     if (length(filepath) > 0) and (RightStr(filepath, 1) <> DirectorySeparator) then filepath += DirectorySeparator;
@@ -526,28 +523,39 @@ begin
             WriteLn(tfOut, 'GLDEF_D struct');
             WriteLn(tfOut, '{');
             WriteLn(tfOut, 'P_CLASS c;');
-            WriteLn(tfOut, 'VOID (*v[??])();'); // TODO: What's this number?
+            WriteLn(tfOut, 'VOID (*v[??])();'); // TODO: Count the number of declared methods, plus NULLs
             WriteLn(tfOut, '} c_', class_item.Name, ' =');
             WriteLn(tfOut, '{');
-            WriteLn(tfOut, '{2,(P_CLASS *)ERC_', UpCase(class_item.Parent), ',sizeof(PR_', UpCase(class_item.Name), '),??,0x??,?,?),'); // TODO: What are these numbers?
+            // TODO: What are the numbers below?
+            // FIX: Use `&c_` instead of `ERC_` for parent classes in this category
+            WriteLn(tfOut, '{2,(P_CLASS *)ERC_', UpCase(class_item.Parent), ',sizeof(PR_', UpCase(class_item.Name), '),??,0x??,?,?},');
 
-            WriteLn(tfOut, '{');
-            // TODO: Step through this properly, removing the final comma
-            // TODO: Only print opening and closing braces when there are methods to include
             // TODO: What are the null entries that are in the original CTRAN?
+            flg := false;
             for method in class_item.Methods do
             begin
                 case method.MethodType of
                     methodAdd, methodReplace: begin
-                        if method.ForwardRef = '' then begin
-                        WriteLn(tfOut, class_item.Name, '_', method.Name, ',');
+                        if flg then begin
+                            WriteLn(tfOut, ',')
                         end else begin
-                            WriteLn(tfOut, method.ForwardRef, ',');
+                            WriteLn(tfOut, '{');
+                            flg := true;
+                        end;
+                        if method.ForwardRef = '' then begin
+                        Write(tfOut, class_item.Name, '_', method.Name);
+                        end else begin
+                            Write(tfOut, method.ForwardRef);
                         end;
                     end;
                 end;
             end;
-            WriteLn(tfOut, '}');
+
+            if flg then begin
+                WriteLn(tfOut);
+                WriteLn(tfOut, '}');
+                flg := false;
+            end;
 
             WriteLn(tfOut, '};');
 
@@ -561,10 +569,17 @@ begin
         WriteLn(tfOut, '#endif');
         WriteLn(tfOut, '{');
 
+        flg := false;
         for class_item in par.ClassList do
         begin
-            WriteLn(tfOut, '(P_CLASS *)&c_', class_item.Name, ',');
+            if flg then begin
+                WriteLn(tfOut, ',');
+            end else begin
+                flg := true;
+            end;
+            Write(tfOut, '(P_CLASS *)&c_', class_item.Name);
         end;
+        if flg then WriteLn(tfOut);
 
         WriteLn(tfOut, '};');
 
@@ -579,6 +594,7 @@ begin
         WriteLn(tfOut, '    {');
         for s in par.ExternalList do
         begin
+            // TODO: Split out strings into individual letters, surrounded by quotes
             WriteLn(tfOut, '    *** ', s, '.DYL ***');
         end;
         WriteLn(tfOut, '    }');

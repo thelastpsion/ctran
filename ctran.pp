@@ -269,30 +269,50 @@ end;
 
 function MakeMetaclass(class_item : TPsionOOClass) : TStringList;
 var
-    cur_method : TPsionOOMethodEntry;
-    parent : String;
+    method : TPsionOOMethodEntry;
+    ancestor : String;
+    ancestor_list : TStringList;
+    i : Integer;
 begin
-    // TODO: Check parent classes for circular reference (parent TStringList?)
     WriteLn(class_item.Name);
-    Result := TStringList.Create;
-    parent := LowerCase(class_item.Parent);
-    while parent <> '' do
+    Result := TStringList.Create();
+    ancestor := LowerCase(class_item.Parent);
+    ancestor_list := TStringList.Create();
+
+    while ancestor <> '' do
     begin
-        WriteLn('Parent being processed: ', parent);
-        for cur_method in DependencyList[parent].Methods do
+        if ancestor_list.IndexOf(ancestor) > -1 then begin
+            WriteLn('Error: Circular class dependency (', ancestor, '). Current list of classes is:');
+            WriteLn('  ', class_item.Name);
+            for i := ancestor_list.Count - 1 downto 0 do
+            begin
+                if ancestor_list[i] = ancestor then Write('> ') else Write('  ');
+                WriteLn(ancestor_list[i]);
+            end;
+            WriteLn('> ', ancestor);
+            halt;
+        end;
+
+        ancestor_list.Insert(0, ancestor);
+        ancestor := dependencylist[ancestor].Parent;
+    end;
+
+    for ancestor in ancestor_list do
+    begin
+        // WriteLn('Ancestor being processed: ', ancestor);
+        for method in DependencyList[ancestor].Methods do
         begin
-            case cur_method.MethodType of
+            case method.MethodType of
                 methodAdd, methodDefer, methodDeclare: begin
-                    if Result.IndexOf(cur_method.Name) > -1 then begin
-                        WriteLn('Error ', strFilename, ': Method ', cur_method.Name, ' already exists in class ', parent);
+                    if Result.IndexOf(method.Name) > -1 then begin
+                        WriteLn('Error ', strFilename, ': Method ', method.Name, ' in class ', ancestor, 'already exists');
                         halt;
                     end;
-                    WriteLn('Adding method ', cur_method.Name);
-                    Result.Add(cur_method.Name);
+                    // WriteLn('Adding method ', method.Name);
+                    Result.Add(method.Name);
                 end;
             end;
         end;
-        parent := DependencyList[parent].Parent;
     end;
 end;
 
@@ -460,6 +480,10 @@ var
     method : TPsionOOMethodEntry;
     ForwardRefs : TStringList;
     flg : Boolean;
+    cur_metaclass : TStringList;
+    start_method : Integer;
+    methodAdd_list : array of TPsionOOMethodEntry;
+    methodReplace_list : array of TPsionOOMethodEntry;
 begin
     filepath := params.SwitchVal('C');
     if (length(filepath) > 0) and (RightStr(filepath, 1) <> DirectorySeparator) then filepath += DirectorySeparator;
@@ -506,6 +530,8 @@ begin
 
         for class_item in par.ClassList do
         begin
+            SetLength(methodReplace_list, 0);
+            SetLength(methodAdd_list, 0);
             WriteLn(tfOut);
             WriteLn(tfOut);
             WriteLn(tfOut, '/* Class ', class_item.Name, ' */');
@@ -513,16 +539,29 @@ begin
             for method in class_item.Methods do
             begin
                 case method.MethodType of
-                    methodAdd, methodReplace: begin
-                        if method.ForwardRef = '' then begin
-                            WriteLn(tfOut, 'GLREF_C VOID ', class_item.Name, '_', method.Name, '();');
-                        end;
-                    end;
+                    methodReplace:  methodReplace_list := concat(methodReplace_list, [method]);
+                    methodAdd:      methodAdd_list := concat(methodAdd_list, [method]);
                 end;
             end;
+
+            for method in methodReplace_list do begin
+                if method.ForwardRef = '' then begin
+                    WriteLn(tfOut, 'GLREF_C VOID ', class_item.Name, '_', method.Name, '();');
+                end;
+            end;
+            for method in methodAdd_list do begin
+                if method.ForwardRef = '' then begin
+                    WriteLn(tfOut, 'GLREF_C VOID ', class_item.Name, '_', method.Name, '();');
+                end;
+            end;
+
             WriteLn(tfOut, 'GLDEF_D struct');
             WriteLn(tfOut, '{');
             WriteLn(tfOut, 'P_CLASS c;');
+
+            cur_metaclass := MakeMetaclass(class_item);
+            start_method := cur_metaclass.Count;
+
             WriteLn(tfOut, 'VOID (*v[??])();'); // TODO: Count the number of declared methods, plus NULLs
             WriteLn(tfOut, '} c_', class_item.Name, ' =');
             WriteLn(tfOut, '{');
@@ -532,7 +571,8 @@ begin
                 Write(tfOut, '&c_', class_item.Parent)
             else
                 Write(tfOut, 'ERC_', UpCase(class_item.Parent));
-            WriteLn(tfOut, ',sizeof(PR_', UpCase(class_item.Name), '),??,0x6b,??,0},');
+
+            WriteLn(tfOut, ',sizeof(PR_', UpCase(class_item.Name), '),', start_method, ',0x6b,??,0},');
 
             // TODO: What are the null entries that are in the original CTRAN?
             flg := false;
@@ -685,6 +725,8 @@ begin
         begin
             cur_metaclass := MakeMetaclass(class_item);
 
+            WriteLn;
+            WriteLn('Ancestor metaclass for ', class_item.Name, ':');
             for s in cur_metaclass do begin
                 WriteLn(s);
             end;

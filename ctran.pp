@@ -7,15 +7,16 @@ uses
 type
     TPsionOOMethodList = Array of String;
 
+    TMethodsForCFile = record
+        Methods : array of TPsionOOMethodEntry;
+        StartIndex : Integer;
+    end;
+
     TPsionOOCatClass = record
         Parent : String;
         Category : String;
         Methods : array of TPsionOOMethodEntry;
         HasProperty : Boolean;
-    end;
-    TMethodsForCFile = record
-        Methods : array of TPsionOOMethodEntry;
-        StartIndex : Integer;
     end;
 
     TDependencyList = specialize TDictionary<string, TPsionOOCatClass>;
@@ -638,7 +639,30 @@ begin
             WriteLn(tfOut, '{');
 
             // FIX: What is the unknown number in the line below? I've seen values of 0, 1 and 2.
-            Write(tfOut, '{??,(P_CLASS *)');
+            Write(tfOut, '{');
+
+            flg := false;
+            s := UpCase(DependencyList[DependencyList[class_item.Name].Parent].Category);
+            if s = UpCase(par.ModuleName) then begin
+                Write(tfOut, '0');
+                flg := true;
+            end else begin
+                for i := 0 to length(par.ExternalList) - 1 do begin
+                    if s = UpCase(par.ExternalList[i]) then begin
+                        Write(tfOut, i + 1);
+                        flg := true;
+                        break;
+                    end;
+                end;
+            end;
+
+            if not flg then begin
+                WriteLn('MakeC: Couldn''t find class ', s, ' anywhere - bad logic here? (Should it be ', par.ModuleName, '?)');
+                halt;
+            end;
+
+            Write(tfOut, ',(P_CLASS *)');
+
             if DependencyList[class_item.Parent].Category = par.ModuleName then
             begin
                 Write(tfOut, '&c_', class_item.Parent)

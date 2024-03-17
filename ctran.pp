@@ -35,6 +35,7 @@ var
     cur_metaclass : TStringList;
     method_item : TPsionOOMethodEntry;
     extfile : String;
+    AllExtClasses : TStringList;
 
 procedure HelpText();
 var
@@ -231,6 +232,8 @@ end;
 procedure LoadDependencies(filename : String);
 var
     par : TPsionOOLexer;
+    i : String;
+    class_item : TPsionOOClass;
 begin
     if filename = '' then begin
         WriteLn('LoadDependencies(): filename is empty');
@@ -250,6 +253,10 @@ begin
             par.Parse();
 
             LoadDependencies(par, filename);
+            for class_item in par.ClassList do
+            begin
+                AllExtClasses.Add(class_item.Name);
+            end;
         end
     finally
         begin
@@ -333,19 +340,27 @@ function GetExternalAncestors(par : TPsionOOLexer) : TStringList;
 var
     class_item : TPsionOOClass;
     ancestor : String;
+    ancestor_list : TStringList;
+    s : String;
 begin
     // TODO: Check parent classes for circular reference (ancestor TStringList?)
     // TODO: Sort methods as per original CTRAN (the order that they appear in External files)
-    Result := TStringList.Create;
+    Result := TStringList.Create();
+    ancestor_list := TStringList.Create();
 
     for class_item in par.ClassList do
     begin
         ancestor := LowerCase(class_item.Parent);
         while ancestor <> '' do
         begin
-            if (Result.IndexOf(ancestor) = -1) and (DependencyList[ancestor].Category <> par.ModuleName) then Result.Add(ancestor);
+            if (ancestor_list.IndexOf(ancestor) = -1) and (DependencyList[ancestor].Category <> par.ModuleName) then ancestor_list.Add(ancestor);
             break;
         end;
+    end;
+
+    for s in AllExtClasses do
+    begin
+        if ancestor_list.IndexOf(s) > -1 then Result.Add(s);
     end;
 end;
 
@@ -801,6 +816,8 @@ begin
         // TODO: Get the path for external files (from `-e`) (extra checks?)
         if params.SwitchExists('E') then PathList := CheckPath(params.SwitchVal('E'));
 
+        AllExtClasses := TStringList.Create();
+
         // TODO: Get the list of external files from the category class (extra checks?)
         if Length(CatLexer.ExternalList) > 0 then begin
             SetLength(ExtFileList, Length(CatLexer.ExternalList));
@@ -854,6 +871,11 @@ begin
                 end;
             end;
         end;
+
+        // WriteLn('List of All Classes Across All External Files:');
+        // for s in AllExtClasses do begin
+        //     WriteLn('  ', s);
+        // end;
 
         if params.SwitchExists('X') then begin
             MakeEXT(CatLexer);

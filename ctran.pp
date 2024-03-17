@@ -187,13 +187,14 @@ var
     method : TPsionOOMethodEntry;
     category : String;
 begin
+    // TODO: Deal with "abstract" classes with only DEFERred methods (see SOLIPEG's TASK class as an example)
     category := par.ModuleName;
 
     for par_class in par.ClassList do
     begin
         if DependencyList.ContainsKey(LowerCase(par_class.Name)) then begin
-            WriteLn('Class ', par_class.Name, ' already defined');
-            // TODO: Add source file
+            WriteLn('Error ', filename, ': Class ', par_class.Name, ' already defined');
+            // TODO: Add source file of original class (i.e. 'defined in ...')
             // TODO: (if possible) add location in file
             halt;
         end;
@@ -232,7 +233,6 @@ end;
 procedure LoadDependencies(filename : String);
 var
     par : TPsionOOLexer;
-    i : String;
     class_item : TPsionOOClass;
 begin
     if filename = '' then begin
@@ -312,7 +312,8 @@ var
     ancestor : String;
     ancestor_list : TStringList;
 begin
-    WriteLn(class_item.Name);
+    // WriteLn('MakeMetaclass() running...');
+    // WriteLn(class_item.Name);
     Result := TStringList.Create();
     ancestor := LowerCase(class_item.Parent);
     ancestor_list := GetAncestors(class_item);
@@ -340,28 +341,27 @@ function GetExternalAncestors(par : TPsionOOLexer) : TStringList;
 var
     class_item : TPsionOOClass;
     ancestor : String;
-    ancestor_list : TStringList;
-    s : String;
+    // ancestor_list : TStringList;
+    // s : String;
 begin
     // TODO: Check parent classes for circular reference (ancestor TStringList?)
     // TODO: Sort methods as per original CTRAN (the order that they appear in External files)
     Result := TStringList.Create();
-    ancestor_list := TStringList.Create();
+    // ancestor_list := TStringList.Create();
 
     for class_item in par.ClassList do
     begin
         ancestor := LowerCase(class_item.Parent);
-        while ancestor <> '' do
-        begin
-            if (ancestor_list.IndexOf(ancestor) = -1) and (DependencyList[ancestor].Category <> par.ModuleName) then ancestor_list.Add(ancestor);
-            break;
+        if (ancestor <> '') and (Result.IndexOf(ancestor) = -1) and (DependencyList[ancestor].Category <> par.ModuleName) then begin
+            Result.Add(ancestor);
         end;
     end;
 
-    for s in AllExtClasses do
-    begin
-        if ancestor_list.IndexOf(s) > -1 then Result.Add(s);
-    end;
+    // for s in AllExtClasses do
+    // begin
+    //     if ancestor_list.IndexOf(s) > -1 then Result.Add(s);
+    // end;
+    // Result := ancestor_list;
 end;
 
 procedure MakeG(par : TPsionOOLexer);
@@ -588,6 +588,14 @@ begin
         WriteLn(tfOut, '/* External Superclass References */');
 
         ts := GetExternalAncestors(par);
+
+        // WriteLn;
+        // WriteLn('External Ancestors:');
+        // for s in ts do begin
+        //     WriteLn('  ', s);
+        // end;
+        // WriteLn;
+
         WriteLn(tfOut, '#ifdef EPOC');
 
         for s in ts do
@@ -711,7 +719,7 @@ begin
         WriteLn(tfOut, '#ifdef EPOC');
         WriteLn(tfOut, 'GLDEF_D P_CLASS *ClassTable[]=');
         WriteLn(tfOut, '#else');
-        WriteLn(tfOut, 'GLDEF_D P_CLASS *ct_vector[]=');
+        WriteLn(tfOut, 'GLDEF_D P_CLASS *ct_', LowerCase(par.ModuleName), '[]=');
         WriteLn(tfOut, '#endif');
         WriteLn(tfOut, '{');
 
@@ -843,11 +851,11 @@ begin
         begin
             cur_metaclass := MakeMetaclass(class_item);
 
-            WriteLn;
-            WriteLn('Ancestor metaclass for ', class_item.Name, ':');
-            for s in cur_metaclass do begin
-                WriteLn(s);
-            end;
+            // WriteLn;
+            // WriteLn('Ancestor metaclass for ', class_item.Name, ':');
+            // for s in cur_metaclass do begin
+            //     WriteLn(s);
+            // end;
 
             for method_item in class_item.Methods do
             begin

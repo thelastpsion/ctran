@@ -20,7 +20,7 @@ In Object Pascal.
 * [ ] Generate `.c` files (almost complete)
 * [ ] Generate `.g` files (final testing)
 * [ ] Handle sub-category (.CL) files
-* [ ] Generate files for the SDK
+* [x] Generate files for the SDK
 * [ ] Generate skeleton method files
 * [ ] Generate `.asm` files
 * [ ] Generate `.ing` files

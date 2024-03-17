@@ -474,26 +474,30 @@ begin
         end;
 
         WriteLn(tfOut, '/* Category Numbers */');
-        WriteLn(tfOut, '#ifndef EPOC');
-        WriteLn(tfOut, 'GLREF_D P_CLASS *ct_', LowerCase(par.ModuleName), '[];');
-        for i := 0 to length(par.ExternalList) - 1 do
-        begin
-            WriteLn(tfOut, 'GLREF_D P_CLASS *ct_', par.ExternalList[i], '[];');
+        if not params.SwitchExists('S') then begin
+            WriteLn(tfOut, '#ifndef EPOC');
+            WriteLn(tfOut, 'GLREF_D P_CLASS *ct_', LowerCase(par.ModuleName), '[];');
+            for i := 0 to length(par.ExternalList) - 1 do
+            begin
+                WriteLn(tfOut, 'GLREF_D P_CLASS *ct_', par.ExternalList[i], '[];');
+            end;
+            WriteLn(tfOut, '#endif /* EPOC */');
+            WriteLn(tfOut, '#ifdef EPOC');
         end;
-        WriteLn(tfOut, '#endif /* EPOC */');
-        WriteLn(tfOut, '#ifdef EPOC');
         WriteLn(tfOut, '#define CAT_', par.ModuleName, '_', par.ModuleName, ' 0');
         for i := 0 to length(par.ExternalList) - 1 do
         begin;
             WriteLn(tfOut, '#define CAT_', par.ModuleName, '_', UpCase(par.ExternalList[i]), ' ', i + 1);
         end;
-        WriteLn(tfOut, '#else');
-        WriteLn(tfOut, '#define CAT_', par.ModuleName, '_', par.ModuleName, ' (&ct_', LowerCase(par.ModuleName), '[0])');
-        for i := 0 to length(par.ExternalList) - 1 do
-        begin;
-            WriteLn(tfOut, '#define CAT_', par.ModuleName, '_', UpCase(par.ExternalList[i]), ' (&ct_', LowerCase(par.ExternalList[i]), '[0])');
+        if not params.SwitchExists('S') then begin
+            WriteLn(tfOut, '#else');
+            WriteLn(tfOut, '#define CAT_', par.ModuleName, '_', par.ModuleName, ' (&ct_', LowerCase(par.ModuleName), '[0])');
+            for i := 0 to length(par.ExternalList) - 1 do
+            begin;
+                WriteLn(tfOut, '#define CAT_', par.ModuleName, '_', UpCase(par.ExternalList[i]), ' (&ct_', LowerCase(par.ExternalList[i]), '[0])');
+            end;
+            WriteLn(tfOut, '#endif');
         end;
-        WriteLn(tfOut, '#endif');
 
         WriteLn(tfOut, '/* Class Numbers */');
         for i := 0 to length(par.ClassList) - 1 do
@@ -608,22 +612,24 @@ begin
         // end;
         // WriteLn;
 
-        WriteLn(tfOut, '#ifdef EPOC');
+        if not params.SwitchExists('S') then WriteLn(tfOut, '#ifdef EPOC');
 
         for s in ts do
         begin
             WriteLn(tfOut, '#define ERC_', UpCase(s), ' C_', UpCase(s));
         end;
 
-        WriteLn(tfOut, '#else');
+        if not params.SwitchExists('S') then begin
+            WriteLn(tfOut, '#else');
 
-        for s in ts do
-        begin
-            WriteLn(tfOut, 'GLREF_D P_CLASS c_', s, ';');
-            WriteLn(tfOut, '#define ERC_', UpCase(s), ' &c_', s);
+            for s in ts do
+            begin
+                WriteLn(tfOut, 'GLREF_D P_CLASS c_', s, ';');
+                WriteLn(tfOut, '#define ERC_', UpCase(s), ' &c_', s);
+            end;
+
+            WriteLn(tfOut, '#endif');
         end;
-
-        WriteLn(tfOut, '#endif');
 
         ForwardRefs := TStringList.Create();
         for class_item in par.ClassList do
@@ -728,11 +734,13 @@ begin
         end;
 
         WriteLn(tfOut, '/* Class Lookup Table */');
-        WriteLn(tfOut, '#ifdef EPOC');
+        if not params.SwitchExists('S') then WriteLn(tfOut, '#ifdef EPOC');
         WriteLn(tfOut, 'GLDEF_D P_CLASS *ClassTable[]=');
-        WriteLn(tfOut, '#else');
-        WriteLn(tfOut, 'GLDEF_D P_CLASS *ct_', LowerCase(par.ModuleName), '[]=');
-        WriteLn(tfOut, '#endif');
+        if not params.SwitchExists('S') then begin
+            WriteLn(tfOut, '#else');
+            WriteLn(tfOut, 'GLDEF_D P_CLASS *ct_', LowerCase(par.ModuleName), '[]=');
+            WriteLn(tfOut, '#endif');
+        end;
         WriteLn(tfOut, '{');
 
         flg := false;
@@ -751,7 +759,7 @@ begin
 
         if length(par.ExternalList) > 0 then begin
             WriteLn(tfOut, '/* External Category Name Table */');
-            WriteLn(tfOut, '#ifdef EPOC');
+            if not params.SwitchExists('S') then WriteLn(tfOut, '#ifdef EPOC');
             WriteLn(tfOut, 'GLDEF_D struct');
             WriteLn(tfOut, '    {');
             WriteLn(tfOut, '    UWORD number;');
@@ -782,7 +790,7 @@ begin
             WriteLn(tfOut);
             WriteLn(tfOut, '    }');
             WriteLn(tfOut, '    };');
-            WriteLn(tfOut, '#endif');
+            if not params.SwitchExists('S') then WriteLn(tfOut, '#endif');
         end;
 
         CloseFile(tfOut);

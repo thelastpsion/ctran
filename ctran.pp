@@ -352,8 +352,16 @@ begin
     for class_item in par.ClassList do
     begin
         ancestor := LowerCase(class_item.Parent);
-        if (ancestor <> '') and (Result.IndexOf(ancestor) = -1) and (DependencyList[ancestor].Category <> par.ModuleName) then begin
-            Result.Add(ancestor);
+        while ancestor <> '' do
+        begin
+            if DependencyList[ancestor].Category <> par.ModuleName then begin
+                if Result.IndexOf(ancestor) = -1 then begin
+                    Result.Add(ancestor);
+                end;
+                break; // If it's already in the list, we don't need to check any more classes
+            end else begin
+                ancestor := DependencyList[ancestor].Parent;
+            end;
         end;
     end;
 

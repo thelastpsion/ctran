@@ -24,7 +24,7 @@ In Object Pascal.
 * [ ] Generate skeleton method files
 * [ ] Generate `.asm` files
 * [ ] Generate `.ing` files
-* [ ] Generate `.lis` files
+* [ ] Generate `.lis` files (almost complete)
 
 == What is (or was) `CTRAN`?
 

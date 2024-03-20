@@ -172,7 +172,7 @@ end;
 procedure LoadDependencies(filename : String);
 var
     par : TPsionOOLexer;
-    class_item : TPsionOOClass;
+    // class_item : TPsionOOClass;
 begin
     if filename = '' then begin
         WriteLn('LoadDependencies(): filename is empty');
@@ -834,7 +834,7 @@ var
     s : String;
     ts : TStringList;
     flg : Boolean;
-    i : Integer;
+    // i : Integer;
     // sa : TStringArray;
 begin
     filepath := params.SwitchVal('L');
@@ -907,7 +907,7 @@ var
     i : Integer;
     ForwardRefs : TStringList;
     method : TPsionOOMethodEntry;
-    total_methods : Integer;
+    // total_methods : Integer;
     c_methods : TMethodsForCFile;
     method_id : Integer;
 begin
@@ -964,7 +964,7 @@ begin
             WriteLn(tfOut, ' _TEXT ends');
             WriteLn(tfOut, ' _TEXT segment byte public ''CODE''');
 
-            total_methods := length(c_methods.Methods);
+            // total_methods := length(c_methods.Methods);
 
             WriteLn(tfOut, 'GLDEF_C c_', class_item.Name);
             flg := false;

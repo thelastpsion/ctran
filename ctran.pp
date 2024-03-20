@@ -98,6 +98,10 @@ var
     extopts : Array of String;
 begin
     extopts := ['', '.ext', '.EXT'];
+    if paths.Count = 0 then begin
+        WriteLn('CheckExternalFile(): Path list is empty.');
+        halt;
+    end;
     for path in paths do begin
         for ext in extopts do begin
             possiblefile := path + s + ext;
@@ -1121,9 +1125,11 @@ begin
         MethodList := TStringList.Create;
 
         // TODO: Get the path for external files (from `-e`) (extra checks?)
-        if params.SwitchExists('E') then PathList := CheckPath(params.SwitchVal('E'));
-
-        // AllExtClasses := TStringList.Create();
+        if params.SwitchExists('E') then begin
+            PathList := CheckPath(params.SwitchVal('E'));
+        end else begin
+            PathList := CheckPath('.');
+        end;
 
         // TODO: Get the list of external files from the category class (extra checks?)
         if Length(CatLexer.ExternalList) > 0 then begin

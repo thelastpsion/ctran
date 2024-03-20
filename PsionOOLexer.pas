@@ -388,11 +388,11 @@ begin
                 _curLinePos := pos + 1;
                 exit;
             end;
-        end else if _strCurLine[pos] = '=' then begin
+        end else if (ansipos(_strCurLine[pos], '={}') > 0) then begin
             if flgFoundText then begin
                 _curLinePos := pos;
             end else begin
-                Result.Literal := '=';
+                Result.Literal := _strCurLine[pos];
                 Result.LineNum := _curLineNum;
                 Result.LinePos := pos;
                 _curLinePos := pos + 1;
@@ -438,7 +438,6 @@ begin
     end;
 
     tok := _GrabNextToken();
-    tok.Literal := tok.Literal[1];
 
     case tok.Literal of
         '{': begin
@@ -474,7 +473,6 @@ var
     tok: TToken;
 begin
     tok := _GrabNextToken();
-    tok.Literal := tok.Literal[1];
 
     if tok.Literal = '{' then begin
         if Verbose then Writeln('>>> Start of section found!');
@@ -636,8 +634,7 @@ begin
 
             stateClass: begin
                 tok := _GrabNextToken();
-                if tok.Literal[1] = '}' then begin
-                    tok.Literal := tok.Literal[1];
+                if tok.Literal = '}' then begin
                     _AddToken(tknBraceRight, tok);
                     if Verbose then Writeln('>>> End of CLASS section found!');
                     dec(_BraceLevel);
@@ -721,7 +718,6 @@ begin
 
             stateClassConstants: begin
                 tok := _GrabNextToken();
-                tok.Literal := tok.Literal[1];
 
                 case tok.Literal of
                     '}': begin

@@ -14,7 +14,7 @@ In Object Pascal.
 
 * [x] Psion Category file lexer
 * [x] Psion Category file parser/AST builder
-* [x] Command line parser (basic, but works well enough!)
+* [x] Command line parser [basic, but works well enough!]
 * [x] Build class dependency tree
 * [x] Generate `.ext` files
 * [x] Generate `.c` files
@@ -22,7 +22,7 @@ In Object Pascal.
 * [ ] Handle sub-category (.CL) files
 * [x] Generate files designed to only work with the SDK
 * [ ] Generate skeleton method files
-* [x] Generate `.asm` (TASM assembly) files
+* [x] Generate `.asm` (TASM assembly) files [started, `PROPERTY` and `TYPES` currently broken]
 * [ ] Generate `.ing` (TASM assembly header) files
 * [x] Generate `.lis` (class listing) files
 
@@ -40,7 +40,7 @@ It takes a `.cat` category file containing class definitions (methods, propertie
 
 In regular software development, only the first three are generated.
 
-The original `CTRAN.EXE` can also generate alternative versions of files for inclusion within the SDK, plus skeleton source files on which methods can be built.
+The original `CTRAN.EXE` can also generate alternative versions of files for use only with the SDK, plus skeleton source files on which methods can be built.
 
 == The problem
 
@@ -50,9 +50,16 @@ This means that you have to store every generated file inside the SDK folder.
 
 I did not like this.
 
-== What the new `CTRAN` can currently do
+== State of the project
 
-At the moment, `CTRAN` mostly acts as a category file validation tool. It extends the original `-v` (verbose) switch by adding the following options:
+=== What the new `CTRAN` can currently do
+
+`CTRAN` in its current form is mostly feature complete (see the list above).
+Most people only need the ability to generate `.C` and `.G` files, which it does.
+It can be (and has been) used as a drop-in replacement for the original Psion `CTRAN.EXE`.
+
+In addition, it can act as a Psion SIBO category file validation tool.
+It extends the original `-v` (verbose) switch by adding the following options:
 
 * `-vt` Show token list
 * `-vl` Show lexer process
@@ -60,7 +67,20 @@ At the moment, `CTRAN` mostly acts as a category file validation tool. It extend
 * `-va` Show abstract syntax tables
 * `-vr` Reconstruct the file using the abstract syntax tables
 
-You can also run `CTRAN` with `-x` to show the initial work on outputting external category reference (`.ext`) files.
+Finally, the `-e` switch can take multiple paths, separated by a semicolon.
+
+=== What it can't do
+
+The main missing feature is the ability to handle sub-category files.
+This is the current priority and should be ready in the next few weeks.
+
+There is also a small issue when processing classes that only have `DEFER`red methods.
+The original way of handling this is to completely skip these classes, which the new `CTRAN` doesn't do.
+This shouldn't impact existing code, but it will be fixed in the future.
+
+TASM file generation (specifically `.ING` files) needs some extra work, potentially requiring some major work on the parser.
+
+Finally, it can't generate files for use with Psion OVAL (see below).
 
 == Different versions of `CTRAN.EXE`
 
@@ -77,7 +97,7 @@ However, if 5.02 doesn't introduce any breaking changes, then the new `CTRAN` wi
 OVAL-related features won't be in v1.00, but might be added in a later release.
 As the new version of `CTRAN` is only designed to be used for making EPOC16 apps, the EPOC32 "feature" will not be added.
 
-== Why (Object) Pascal?
+== Why is this project written in (Object) Pascal?
 
 I want this to run on all modern operating systems, as well as DOS.
 I didn't want to write it in C or C++, so I went hunting for another language/compiler.
@@ -87,9 +107,12 @@ It targets pretty much everything, including Linux, Windows, macOS, Haiku, *BSD.
 
 Luckily, Object Pascal is just high-level enough, taking away some of the worries of memory management and how to handle dictionaries/trees, while letting me go low-level when I want to.
 
-Unfortunately, some of Free Pascal's units (e.g. `classes`, `generics.collections`) are too big to fit into 64KB code chunks.
+Unfortunately, some of Free Pascal's units (e.g. `classes`, `generics.collections`) are too big to fit into 64 KB code blocks.
 Because of this, the new `CTRAN` will target 32-bit DOS using a DPMI extender.
-As most people will be running the Psion SIBO C SDK in DOSBox, it shouldn't affect anyone.
+As most people will be running the Psion SIBO C SDK in DOSBox, it shouldn't affect anyone using `CTRAN` directly, or if it is run from a TopSpeed project (`.pr`) file.
+However, it has been known to clash with Borland Make, as its 16-bit DPMI extender prevents `CTRAN` from running.
+In such situations, it is recommended that you switch your project to using GNU Make from the DJGPP project.
+Alternatively, TopSpeed project files provide a good alternative without needing an external Make app.
 
 == The future
 

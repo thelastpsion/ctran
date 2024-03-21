@@ -21,6 +21,11 @@ type
 
     TDependencyList = specialize TDictionary<string, TPsionOOCatClass>;
 
+    TCommentType = (
+        commentC,
+        commentASM
+    );
+
 var
     strFilename : String;
     CatLexer : TPsionOOLexer;
@@ -276,6 +281,49 @@ begin
     end;
 end;
 
+function GetChildren(par : TPsionOOLexer ; parent : String) : TStringList;
+var
+    class_item : TPsionOOClass;
+begin
+    Result := TStringList.Create();
+    for class_item in par.ClassList do
+    begin
+        if class_item.Parent = parent then Result.Add(class_item.Name);
+    end;
+end;
+
+//
+// Functions shared between MakeG and MakeING
+//
+
+function BuildMethodNumbers(par : TPsionOOLexer) : TStringList;
+var
+    class_item : TPsionOOClass;
+    method_id : Integer;
+    method_item : TPsionOOMethodEntry;
+begin
+    Result := TStringList.Create();
+
+    for class_item in par.ClassList do
+    begin
+        method_id := MakeMetaclass(class_item).Count;
+        for method_item in class_item.Methods do
+        begin
+            case method_item.MethodType of
+                methodAdd, methodDefer: begin
+                    Result.Add(UpCase(method_item.Name) + ' ' + IntToStr(method_id));
+                    Inc(method_id);
+                end;
+            end;
+        end;
+    end;
+    Result.Sort();
+end;
+
+//
+// Functions shared between MakeC and MakeASM
+//
+
 // Returns a list of the first external ancestor of every class in the provided category file
 function GetExternalAncestors(par : TPsionOOLexer) : TStringList;
 var
@@ -312,24 +360,7 @@ begin
     // Result := ancestor_list;
 end;
 
-function GetChildren(par : TPsionOOLexer ; parent : String) : TStringList;
-var
-    class_item : TPsionOOClass;
-begin
-    Result := TStringList.Create();
-    for class_item in par.ClassList do
-    begin
-        if class_item.Parent = parent then Result.Add(class_item.Name);
-    end;
-end;
-
-
-
-//
-// Functions shared between MakeC and MakeASM
-//
-
-function MakeMethodsForCFile(class_item : TPsionOOClass) : TMethodsForCFile;
+function MakeMethodsForOutput(class_item : TPsionOOClass) : TMethodsForCFile;
 var
     method : TPsionOOMethodEntry;
     methodAdd_list : array of TPsionOOMethodEntry;
@@ -492,7 +523,7 @@ var
     class_item : TPsionOOClass;
     constant_item : TPsionOOConstantEntry;
     s : String;
-    method_id : Integer;
+    // method_id : Integer;
     ts : TStringList;
     tfOut : TextFile;
     filepath : String;
@@ -550,22 +581,7 @@ begin
             WriteLn(tfOut, format('#define C_%s %d', [UpCase(par.ClassList[i].Name), i]));
         end;
 
-        method_list := TStringList.Create();
-
-        for class_item in par.ClassList do
-        begin
-            method_id := MakeMetaclass(class_item).Count;
-            for method_item in class_item.Methods do
-            begin
-                case method_item.MethodType of
-                    methodAdd, methodDefer: begin
-                        method_list.Add(UpCase(method_item.Name) + ' ' + IntToStr(method_id));
-                        Inc(method_id);
-                    end;
-                end;
-            end;
-        end;
-        method_list.Sort();
+        method_list := BuildMethodNumbers(par);
         WriteLn(tfOut, '/* Method Numbers */');
         for s in method_list do
         begin
@@ -578,7 +594,7 @@ begin
                 WriteLn(tfOut, '/* Constants for ', class_item.Name, ' */');
                 for constant_item in class_item.ClassConstants do
                 begin
-                    WriteLn(tfOut, '#define ', constant_item.Name, ' ', constant_item.Value);
+                    WriteLn(tfOut, format('#define %s %s', [constant_item.Name, constant_item.Value]));
                 end;
             end;
 
@@ -605,10 +621,10 @@ begin
             ts := GetAncestorsWithProperty(class_item);
             for i := ts.Count - 1 downto 0 do
             begin
-                WriteLn(tfOut, 'PRS_', UpCase(ts[i]), ' ', ts[i], ';');
+                WriteLn(tfOut, format('PRS_%s %s;', [UpCase(ts[i]), ts[i]]));
             end;
             if length(class_item.ClassProperty) > 0 then begin
-                WriteLn(tfOut, 'PRS_', UpCase(class_item.Name), ' ', class_item.Name, ';');
+                WriteLn(tfOut, format('PRS_%s %s;', [UpCase(class_item.Name), class_item.Name]));
             end;
             WriteLn(tfOut, '} PR_', UpCase(class_item.Name), ';');
         end;
@@ -683,11 +699,10 @@ begin
             WriteLn(tfOut, '/* Class ', class_item.Name, ' */');
             WriteLn(tfOut, '/* ------------------------------------------------------ */');
 
-            c_methods := MakeMethodsForCFile(class_item);
-
+            c_methods := MakeMethodsForOutput(class_item);
             for method in c_methods.Methods do begin
                 if (method.Name <> '') and (method.ForwardRef = '') then begin
-                    WriteLn(tfOut, 'GLREF_C VOID ', class_item.Name, '_', method.Name, '();');
+                    WriteLn(tfOut, format('GLREF_C VOID %s_%s();', [class_item.Name, method.Name]));
                 end;
             end;
 
@@ -736,7 +751,7 @@ begin
 
             Write(tfOut, ',sizeof(PR_', UpCase(class_item.Name), '),');
             if length(c_methods.Methods) = 0 then Write(tfOut, '0') else Write(tfOut, c_methods.StartIndex);
-            WriteLn(tfOut, ',0x6b,', length(c_methods.Methods), ',', class_item.PropertyAutodestroyCount, '},');
+            WriteLn(tfOut, format(',0x6b,%d,%d},', [length(c_methods.Methods), class_item.PropertyAutodestroyCount]));
 
             flg := false;
             for method in c_methods.Methods do
@@ -873,8 +888,8 @@ begin
             WriteLn(tfOut, class_item.Name);
             ts := ReverseList(GetAncestors(class_item));
             if ts.Count > 0 then begin
-                flg := false;
                 Write(tfOut, '        Derived from ');
+                flg := false;
                 for s in ts do
                 begin
                     if flg then Write(tfOut, ',') else flg := true;
@@ -933,14 +948,12 @@ begin
         WriteLn(tfOut, '; External Superclass References');
 
         ts := GetExternalAncestors(par);
-
         for s in ts do
         begin
-            WriteLn(tfOut, 'ERC_', UpCase(s), ' equ C_', UpCase(s));
+            WriteLn(tfOut, format('ERC_%s equ C_%s', [UpCase(s), UpCase(s)]));
         end;
 
         ForwardRefs := GetMethodForwardRefs(par);
-
         if ForwardRefs.Count > 0 then begin
             WriteLn(tfOut, '; Method function forward references');
             WriteLn(tfOut, ' _TEXT segment byte public ''CODE''');
@@ -948,6 +961,7 @@ begin
             for s in ForwardRefs do WriteLn(tfOut, 'GLREF_C ', s);
             WriteLn(tfOut, ' _TEXT ends');
         end;
+        FreeAndNil(ForwardRefs);
 
         for class_item in par.ClassList do
         begin
@@ -956,19 +970,17 @@ begin
             WriteLn(tfOut, '; Class ', class_item.Name);
             WriteLn(tfOut, '; ------------------------------------------------------');
 
-            c_methods := MakeMethodsForCFile(class_item);
+            c_methods := MakeMethodsForOutput(class_item);
 
             WriteLn(tfOut, ' _TEXT segment byte public ''CODE''');
             WriteLn(tfOut, ' ASSUME CS:_TEXT');
             for method in c_methods.Methods do begin
                 if (method.Name <> '') and (method.ForwardRef = '') then begin
-                    WriteLn(tfOut, 'GLREF_C ', class_item.Name, '_', method.Name);
+                    WriteLn(tfOut, format('GLREF_C %s_%s', [class_item.Name, method.Name]));
                 end;
             end;
             WriteLn(tfOut, ' _TEXT ends');
             WriteLn(tfOut, ' _TEXT segment byte public ''CODE''');
-
-            // total_methods := length(c_methods.Methods);
 
             WriteLn(tfOut, 'GLDEF_C c_', class_item.Name);
             flg := false;
@@ -987,7 +999,7 @@ begin
             end;
 
             if not flg then begin
-                WriteLn('MakeC: Couldn''t find class ', s, ' anywhere - bad logic here? (Should it be ', par.ModuleName, '?)');
+                WriteLn('MakeASM: Couldn''t find class ', s, ' anywhere - bad logic here? (Should it be ', par.ModuleName, '?)');
                 halt;
             end;
 
@@ -1091,7 +1103,6 @@ var
     class_item : TPsionOOClass;
     constant_item : TPsionOOConstantEntry;
     s : String;
-    method_id : Integer;
     ts : TStringList;
     tfOut : TextFile;
     filepath : String;
@@ -1118,55 +1129,22 @@ begin
         end;
 
         // WriteLn(tfOut, '; Category Numbers');
-        // if not params.SwitchExists('S') then begin
-        //     WriteLn(tfOut, '#ifndef EPOC');
-        //     WriteLn(tfOut, 'GLREF_D P_CLASS *ct_', LowerCase(par.ModuleName), '[];');
-        //     for i := 0 to length(par.ExternalList) - 1 do
-        //     begin
-        //         WriteLn(tfOut, 'GLREF_D P_CLASS *ct_', par.ExternalList[i], '[];');
-        //     end;
-        //     WriteLn(tfOut, '#endif /* EPOC */');
-        //     WriteLn(tfOut, '#ifdef EPOC');
-        // end;
-        // WriteLn(tfOut, '#define CAT_', par.ModuleName, '_', par.ModuleName, ' 0');
-        // for i := 0 to length(par.ExternalList) - 1 do
-        // begin;
-        //     WriteLn(tfOut, '#define CAT_', par.ModuleName, '_', UpCase(par.ExternalList[i]), ' ', i + 1);
-        // end;
-        // if not params.SwitchExists('S') then begin
-        //     WriteLn(tfOut, '#else');
-        //     WriteLn(tfOut, '#define CAT_', par.ModuleName, '_', par.ModuleName, ' (&ct_', LowerCase(par.ModuleName), '[0])');
-        //     for i := 0 to length(par.ExternalList) - 1 do
-        //     begin;
-        //         WriteLn(tfOut, '#define CAT_', par.ModuleName, '_', UpCase(par.ExternalList[i]), ' (&ct_', LowerCase(par.ExternalList[i]), '[0])');
-        //     end;
-        //     WriteLn(tfOut, '#endif');
-        // end;
+        WriteLn(tfOut, format('CAT_%s_%s equ 0', [par.ModuleName, par.ModuleName]));
+        for i := 0 to length(par.ExternalList) - 1 do
+        begin;
+            WriteLn(tfOut, format('CAT_%s_%s equ %d', [par.ModuleName, UpCase(par.ExternalList[i]), i + 1]));
+        end;
 
-        // WriteLn(tfOut, '/* Class Numbers */');
+        // WriteLn(tfOut, '; Class Numbers');
         for i := 0 to length(par.ClassList) - 1 do
         begin
-            WriteLn(tfOut, 'C_', UpCase(par.ClassList[i].Name), ' equ ', i);
+            WriteLn(tfOut, format('C_%s equ %d', [UpCase(par.ClassList[i].Name), i]));
         end;
 
 
-        method_list := TStringList.Create();
-
-        for class_item in par.ClassList do
-        begin
-            method_id := MakeMetaclass(class_item).Count;
-            for method_item in class_item.Methods do
-            begin
-                case method_item.MethodType of
-                    methodAdd, methodDefer: begin
-                        method_list.Add(UpCase(method_item.Name) + ' equ ' + IntToStr(method_id));
-                        Inc(method_id);
-                    end;
-                end;
-            end;
-        end;
-        method_list.Sort();
-        // WriteLn(tfOut, '/* Method Numbers */');
+        // FIX: This is generating the wrong numbers, but MakeG() is correct!
+        method_list := BuildMethodNumbers(par);
+        // WriteLn(tfOut, '; Method Numbers');
         for s in method_list do
         begin
             WriteLn(tfOut, 'O_', s);
@@ -1180,7 +1158,7 @@ begin
                 WriteLn(tfOut, '; Constants for ', class_item.Name);
                 for constant_item in class_item.ClassConstants do
                 begin
-                    WriteLn(tfOut, constant_item.Name, ' equ (', constant_item.Value, ')');
+                    WriteLn(tfOut, format('%s equ (%s)', [constant_item.Name, constant_item.Value]));
                 end;
             end;
 
@@ -1216,7 +1194,7 @@ begin
         CloseFile(tfOut);
     except
         on E: EInOutError do
-            WriteLn('File handling error occurred. Details: ', E.ClassName, '/', E.Message);
+            WriteLn('MakeING: File handling error occurred. Details: ', E.ClassName, '/', E.Message);
     end;
 end;
 

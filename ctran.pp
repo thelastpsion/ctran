@@ -323,6 +323,12 @@ begin
     end;
 end;
 
+
+
+//
+// Functions shared between MakeC and MakeASM
+//
+
 function MakeMethodsForCFile(class_item : TPsionOOClass) : TMethodsForCFile;
 var
     method : TPsionOOMethodEntry;
@@ -383,6 +389,19 @@ begin
         SetLength(Result.Methods, length(Result.Methods) + count_possible_nulls);
         Result.Methods := concat(Result.Methods, methodAdd_list);
     end;
+end;
+
+function GetMethodForwardRefs(par : TPsionOOLexer) : TStringList;
+var
+    class_item : TPsionOOClass;
+    method : TPsionOOMethodEntry;
+begin
+    Result := TStringList.Create();
+
+    for class_item in par.ClassList do
+        for method in class_item.Methods do
+            if (method.ForwardRef <> '') and (Result.IndexOf(method.ForwardRef) = -1) then
+                Result.Add(method.ForwardRef);
 end;
 
 //
@@ -503,9 +522,9 @@ begin
         if not params.SwitchExists('S') then begin
             WriteLn(tfOut, '#ifndef EPOC');
             WriteLn(tfOut, 'GLREF_D P_CLASS *ct_', LowerCase(par.ModuleName), '[];');
-            for i := 0 to length(par.ExternalList) - 1 do
+            for s in par.ExternalList do
             begin
-                WriteLn(tfOut, 'GLREF_D P_CLASS *ct_', par.ExternalList[i], '[];');
+                WriteLn(tfOut, 'GLREF_D P_CLASS *ct_', s, '[];');
             end;
             WriteLn(tfOut, '#endif /* EPOC */');
             WriteLn(tfOut, '#ifdef EPOC');
@@ -513,14 +532,14 @@ begin
         WriteLn(tfOut, '#define CAT_', par.ModuleName, '_', par.ModuleName, ' 0');
         for i := 0 to length(par.ExternalList) - 1 do
         begin;
-            WriteLn(tfOut, '#define CAT_', par.ModuleName, '_', UpCase(par.ExternalList[i]), ' ', i + 1);
+            WriteLn(tfOut, format('#define CAT_%s_%s %d', [par.ModuleName, UpCase(par.ExternalList[i]),  i + 1]));
         end;
         if not params.SwitchExists('S') then begin
             WriteLn(tfOut, '#else');
-            WriteLn(tfOut, '#define CAT_', par.ModuleName, '_', par.ModuleName, ' (&ct_', LowerCase(par.ModuleName), '[0])');
-            for i := 0 to length(par.ExternalList) - 1 do
-            begin;
-                WriteLn(tfOut, '#define CAT_', par.ModuleName, '_', UpCase(par.ExternalList[i]), ' (&ct_', LowerCase(par.ExternalList[i]), '[0])');
+            WriteLn(tfOut, format('#define CAT_%s_%s (&ct_%s[0])', [par.ModuleName, par.ModuleName, LowerCase(par.ModuleName)]));
+            for s in par.ExternalList do
+            begin
+                WriteLn(tfOut, format('#define CAT_%s_%s (&ct_%s[0])', [par.ModuleName, UpCase(s), LowerCase(s)]));
             end;
             WriteLn(tfOut, '#endif');
         end;
@@ -528,9 +547,8 @@ begin
         WriteLn(tfOut, '/* Class Numbers */');
         for i := 0 to length(par.ClassList) - 1 do
         begin
-            WriteLn(tfOut, '#define C_', UpCase(par.ClassList[i].Name), ' ', i);
+            WriteLn(tfOut, format('#define C_%s %d', [UpCase(par.ClassList[i].Name), i]));
         end;
-
 
         method_list := TStringList.Create();
 
@@ -564,6 +582,7 @@ begin
                 end;
             end;
 
+            // TODO: Rework this for .ING files
             if length(class_item.ClassTypes) > 0 then begin
                 WriteLn(tfOut, '/* Types for ', class_item.Name, ' */');
                 for s in class_item.ClassTypes do
@@ -629,20 +648,12 @@ begin
         WriteLn(tfOut, '#include <', LowerCase(par.ModuleName), '.g>');
         WriteLn(tfOut, '/* External Superclass References */');
 
-        ts := GetExternalAncestors(par);
-
-        // WriteLn;
-        // WriteLn('External Ancestors:');
-        // for s in ts do begin
-        //     WriteLn('  ', s);
-        // end;
-        // WriteLn;
-
         if not params.SwitchExists('S') then WriteLn(tfOut, '#ifdef EPOC');
 
+        ts := GetExternalAncestors(par);
         for s in ts do
         begin
-            WriteLn(tfOut, '#define ERC_', UpCase(s), ' C_', UpCase(s));
+            WriteLn(tfOut, format('#define ERC_%s C_%s', [UpCase(s), UpCase(s)]));
         end;
 
         if not params.SwitchExists('S') then begin
@@ -651,22 +662,19 @@ begin
             for s in ts do
             begin
                 WriteLn(tfOut, 'GLREF_D P_CLASS c_', s, ';');
-                WriteLn(tfOut, '#define ERC_', UpCase(s), ' &c_', s);
+                WriteLn(tfOut, format('#define ERC_%s &c_%s', [UpCase(s), s]));
             end;
 
             WriteLn(tfOut, '#endif');
         end;
 
-        ForwardRefs := TStringList.Create();
-        for class_item in par.ClassList do
-            for method in class_item.Methods do
-                if (method.ForwardRef <> '') and (ForwardRefs.IndexOf(method.ForwardRef) = -1) then
-                    ForwardRefs.Add(method.ForwardRef);
-
+        // Method function forward references
+        ForwardRefs := GetMethodForwardRefs(par);
         if ForwardRefs.Count > 0 then begin
             WriteLn(tfOut, '/* Method function forward references */');
             for s in ForwardRefs do WriteLn(tfOut, 'GLREF_C VOID ', s, '();');
         end;
+        FreeAndNil(ForwardRefs);
 
         for class_item in par.ClassList do
         begin
@@ -683,16 +691,15 @@ begin
                 end;
             end;
 
-            total_methods := length(c_methods.Methods);
-
             WriteLn(tfOut, 'GLDEF_D struct');
             WriteLn(tfOut, '{');
             WriteLn(tfOut, 'P_CLASS c;');
 
-
+            total_methods := length(c_methods.Methods);
             if total_methods > 0 then begin
                 WriteLn(tfOut, 'VOID (*v[', total_methods, '])();');
             end;
+
             WriteLn(tfOut, '} c_', class_item.Name, ' =');
             WriteLn(tfOut, '{');
 
@@ -767,6 +774,7 @@ begin
             WriteLn(tfOut, 'GLDEF_D P_CLASS *ct_', LowerCase(par.ModuleName), '[]=');
             WriteLn(tfOut, '#endif');
         end;
+
         WriteLn(tfOut, '{');
 
         flg := false;
@@ -931,11 +939,7 @@ begin
             WriteLn(tfOut, 'ERC_', UpCase(s), ' equ C_', UpCase(s));
         end;
 
-        ForwardRefs := TStringList.Create();
-        for class_item in par.ClassList do
-            for method in class_item.Methods do
-                if (method.ForwardRef <> '') and (ForwardRefs.IndexOf(method.ForwardRef) = -1) then
-                    ForwardRefs.Add(method.ForwardRef);
+        ForwardRefs := GetMethodForwardRefs(par);
 
         if ForwardRefs.Count > 0 then begin
             WriteLn(tfOut, '; Method function forward references');

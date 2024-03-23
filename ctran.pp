@@ -38,11 +38,13 @@ var
     DependencyList : TDependencyList;
     MethodList : TStringList;
     class_item : TPsionOOClass;
+    InternalClassList : TStringList;
     cur_metaclass : TStringList;
     method_item : TPsionOOMethodEntry;
     extfile : String;
     // AllExtClasses : TStringList;
     parsers : TParserDictionary;
+    par : TPsionOOLexer; // temporary parser storage
 
 procedure HelpText();
 var
@@ -126,53 +128,73 @@ begin
     Result := '';
 end;
 
+// TODO: Store the filename in the parser object
 procedure LoadDependencies(par : TPsionOOLexer; filename : String);
 var
     ext_class : TPsionOOCatClass;
     par_class : TPsionOOClass;
     method : TPsionOOMethodEntry;
     category : String;
+    element : TPsionOOFileElement;
+    required : String;
 begin
     // TODO: Deal with "abstract" classes with only DEFERred methods (see SOLIPEG's TASK class as an example)
     category := par.ModuleName;
 
-    for par_class in par.ClassList do
+    for element in par.ElementList do
     begin
-        if DependencyList.ContainsKey(LowerCase(par_class.Name)) then begin
-            WriteLn('Error ', filename, ': Class ', par_class.Name, ' already defined');
-            // TODO: Add source file of original class (i.e. 'defined in ...')
-            // TODO: (if possible) add location in file
-            halt;
-        end;
-
-        if (not DependencyList.ContainsKey(LowerCase(par_class.Parent))) and (par_class.Parent <> '') then begin
-            WriteLn('Error ', filename, ': Superclass ', par_class.Parent, ' of ', par_class.Name, ' does not exist');
-            // TODO: Add source file of superclass
-            // TODO: (if possible) add location in file
-            halt;
-        end;
-
-        for method in par_class.Methods do
-        begin
-            case method.MethodType of
-                methodDeclare, methodAdd: begin
-                    if MethodList.IndexOf(LowerCase(method.Name)) > -1 then begin
-                        WriteLn('Error ', filename, ': Method ', method.Name, ' already exists in category');
-                        halt;
-                    end;
-                    // WriteLn('Adding method ', method.Name, ' to big list o'' methods.');
-                    MethodList.Add(LowerCase(method.Name));
+        case element.ElementType of
+            incClass: begin
+                par_class := par.ClassList[element.index];
+    
+                if DependencyList.ContainsKey(LowerCase(par_class.Name)) then begin
+                    WriteLn('Error ', filename, ': Class ', par_class.Name, ' already defined');
+                    // TODO: Add source file of original class (i.e. 'defined in ...')
+                    // TODO: (if possible) add location in file
+                    halt;
                 end;
+
+                if (not DependencyList.ContainsKey(LowerCase(par_class.Parent))) and (par_class.Parent <> '') then begin
+                    WriteLn('Error ', filename, ': Superclass ', par_class.Parent, ' of ', par_class.Name, ' does not exist');
+                    // TODO: Add source file of superclass
+                    // TODO: (if possible) add location in file
+                    halt;
+                end;
+
+                for method in par_class.Methods do
+                begin
+                    case method.MethodType of
+                        methodDeclare, methodAdd: begin
+                            if MethodList.IndexOf(LowerCase(method.Name)) > -1 then begin
+                                WriteLn('Error ', filename, ': Method ', method.Name, ' already exists in category');
+                                halt;
+                            end;
+                            // WriteLn('Adding method ', method.Name, ' to big list o'' methods.');
+                            MethodList.Add(LowerCase(method.Name));
+                        end;
+                    end;
+                end;
+
+                // WriteLn(filename, ' : ', par_class.Name, ' ', par_class.Parent);
+                ext_class.Category := category;
+                ext_class.Parent := LowerCase(par_class.Parent);
+                ext_class.Methods := par_class.Methods;
+                ext_class.HasProperty := ((par_class.HasProperty) or (length(par_class.ClassProperty) > 0));
+
+                DependencyList.Add(LowerCase(par_class.Name), ext_class);
+                if par.FileType <> ooExternal then InternalClassList.Add(par_class.Name);
+            end;
+            incRequire: begin
+                required := UpCase(par.RequireList[element.index]);
+                if not parsers.ContainsKey(required) then begin
+                    WriteLn('Can''t find ', required, ' in dictionary!');
+                    halt(-1);
+                end;
+
+                WriteLn('>>> Loading dependencies for ', required);
+                LoadDependencies(parsers[required], required);
             end;
         end;
-
-        // WriteLn(filename, ' : ', par_class.Name, ' ', par_class.Parent);
-        ext_class.Category := category;
-        ext_class.Parent := LowerCase(par_class.Parent);
-        ext_class.Methods := par_class.Methods;
-        ext_class.HasProperty := ((par_class.HasProperty) or (length(par_class.ClassProperty) > 0));
-
-        DependencyList.Add(LowerCase(par_class.Name), ext_class);
     end;
 end;
 
@@ -298,6 +320,7 @@ end;
 // Functions shared between MakeG and MakeING
 //
 
+// FIX: Change this to return an array of records so that it works with MakeING()
 function BuildMethodNumbers(par : TPsionOOLexer) : TStringList;
 var
     class_item : TPsionOOClass;
@@ -530,7 +553,11 @@ var
     tfOut : TextFile;
     filepath : String;
     method_list : TStringList;
+    flgNotSDK : Boolean;
 begin
+    flgNotSDK := ((not params.SwitchExists('S')) and (par.FileType = ooCategory));
+    WriteLn('>>> ', par.ModuleName, ' flgNotSDK = ', flgNotSDK);
+
     filepath := params.SwitchVal('G');
     if (length(filepath) > 0) and (RightStr(filepath, 1) <> DirectorySeparator) then filepath += DirectorySeparator;
 
@@ -551,84 +578,98 @@ begin
             WriteLn(tfOut, '#endif');
         end;
 
-        WriteLn(tfOut, '/* Category Numbers */');
-        if not params.SwitchExists('S') then begin
-            WriteLn(tfOut, '#ifndef EPOC');
-            WriteLn(tfOut, 'GLREF_D P_CLASS *ct_', LowerCase(par.ModuleName), '[];');
-            for s in par.ExternalList do
+        if par.FileType = ooCategory then
             begin
-                WriteLn(tfOut, 'GLREF_D P_CLASS *ct_', s, '[];');
+            WriteLn(tfOut, '/* Category Numbers */');
+            // if not params.SwitchExists('S') then begin
+            if flgNotSDK then begin
+                WriteLn(tfOut, '#ifndef EPOC');
+                WriteLn(tfOut, 'GLREF_D P_CLASS *ct_', LowerCase(par.ModuleName), '[];');
+                for s in par.ExternalList do
+                begin
+                    WriteLn(tfOut, 'GLREF_D P_CLASS *ct_', s, '[];');
+                end;
+                WriteLn(tfOut, '#endif /* EPOC */');
+                WriteLn(tfOut, '#ifdef EPOC');
             end;
-            WriteLn(tfOut, '#endif /* EPOC */');
-            WriteLn(tfOut, '#ifdef EPOC');
+            WriteLn(tfOut, '#define CAT_', par.ModuleName, '_', par.ModuleName, ' 0');
+            for i := 0 to length(par.ExternalList) - 1 do
+            begin;
+                WriteLn(tfOut, format('#define CAT_%s_%s %d', [par.ModuleName, UpCase(par.ExternalList[i]),  i + 1]));
+            end;
+            // if not params.SwitchExists('S') then begin
+            if flgNotSDK then begin
+                WriteLn(tfOut, '#else');
+                WriteLn(tfOut, format('#define CAT_%s_%s (&ct_%s[0])', [par.ModuleName, par.ModuleName, LowerCase(par.ModuleName)]));
+                for s in par.ExternalList do
+                begin
+                    WriteLn(tfOut, format('#define CAT_%s_%s (&ct_%s[0])', [par.ModuleName, UpCase(s), LowerCase(s)]));
+                end;
+                WriteLn(tfOut, '#endif');
+            end;
         end;
-        WriteLn(tfOut, '#define CAT_', par.ModuleName, '_', par.ModuleName, ' 0');
-        for i := 0 to length(par.ExternalList) - 1 do
-        begin;
-            WriteLn(tfOut, format('#define CAT_%s_%s %d', [par.ModuleName, UpCase(par.ExternalList[i]),  i + 1]));
-        end;
-        if not params.SwitchExists('S') then begin
-            WriteLn(tfOut, '#else');
-            WriteLn(tfOut, format('#define CAT_%s_%s (&ct_%s[0])', [par.ModuleName, par.ModuleName, LowerCase(par.ModuleName)]));
-            for s in par.ExternalList do
+
+        if length(par.ClassList) > 0 then begin 
+            WriteLn(tfOut, '/* Class Numbers */');
+            for class_item in par.ClassList do
             begin
-                WriteLn(tfOut, format('#define CAT_%s_%s (&ct_%s[0])', [par.ModuleName, UpCase(s), LowerCase(s)]));
-            end;
-            WriteLn(tfOut, '#endif');
-        end;
-
-        WriteLn(tfOut, '/* Class Numbers */');
-        for i := 0 to length(par.ClassList) - 1 do
-        begin
-            WriteLn(tfOut, format('#define C_%s %d', [UpCase(par.ClassList[i].Name), i]));
-        end;
-
-        method_list := BuildMethodNumbers(par);
-        WriteLn(tfOut, '/* Method Numbers */');
-        for s in method_list do
-        begin
-            WriteLn(tfOut, '#define O_', s);
-        end;
-
-        for class_item in par.ClassList do
-        begin
-            if length(class_item.ClassConstants) > 0 then begin
-                WriteLn(tfOut, '/* Constants for ', class_item.Name, ' */');
-                for constant_item in class_item.ClassConstants do
-                begin
-                    WriteLn(tfOut, format('#define %s %s', [constant_item.Name, constant_item.Value]));
+                if InternalClassList.IndexOf(class_item.Name) < 0 then begin
+                    WriteLn('MakeG: Can''t find class ', class_item.Name, ' in InternalClassList');
+                    halt(-1);
                 end;
+                WriteLn(tfOut, format('#define C_%s %d', [UpCase(class_item.Name), InternalClassList.IndexOf(class_item.Name)]));
             end;
 
-            // TODO: Rework this for .ING files
-            if length(class_item.ClassTypes) > 0 then begin
-                WriteLn(tfOut, '/* Types for ', class_item.Name, ' */');
-                for s in class_item.ClassTypes do
-                begin
-                    WriteLn(tfOut, s);
-                end;
-            end;
-
-            WriteLn(tfOut, '/* Property of ', class_item.Name, ' */');
-            if length(class_item.ClassProperty) > 0 then begin
-                WriteLn(tfOut, 'typedef struct {');
-                for s in class_item.ClassProperty do
-                begin
-                    WriteLn(tfOut, s);
-                end;
-                WriteLn(tfOut, '} PRS_', UpCase(class_item.Name), ';');
-            end;
-            WriteLn(tfOut, 'typedef struct pr_', class_item.Name);
-            WriteLn(tfOut, '{');
-            ts := GetAncestorsWithProperty(class_item);
-            for i := ts.Count - 1 downto 0 do
+            method_list := BuildMethodNumbers(par);
+            WriteLn(tfOut, '/* Method Numbers */');
+            for s in method_list do
             begin
-                WriteLn(tfOut, format('PRS_%s %s;', [UpCase(ts[i]), ts[i]]));
+                WriteLn(tfOut, '#define O_', s);
             end;
-            if length(class_item.ClassProperty) > 0 then begin
-                WriteLn(tfOut, format('PRS_%s %s;', [UpCase(class_item.Name), class_item.Name]));
+
+            for class_item in par.ClassList do
+            begin
+                WriteLn(tfOut);
+                WriteLn(tfOut);
+
+                if length(class_item.ClassConstants) > 0 then begin
+                    WriteLn(tfOut, '/* Constants for ', class_item.Name, ' */');
+                    for constant_item in class_item.ClassConstants do
+                    begin
+                        WriteLn(tfOut, format('#define %s %s', [constant_item.Name, constant_item.Value]));
+                    end;
+                end;
+
+                // TODO: Rework this for .ING files
+                if length(class_item.ClassTypes) > 0 then begin
+                    WriteLn(tfOut, '/* Types for ', class_item.Name, ' */');
+                    for s in class_item.ClassTypes do
+                    begin
+                        WriteLn(tfOut, s);
+                    end;
+                end;
+
+                WriteLn(tfOut, '/* Property of ', class_item.Name, ' */');
+                if length(class_item.ClassProperty) > 0 then begin
+                    WriteLn(tfOut, 'typedef struct {');
+                    for s in class_item.ClassProperty do
+                    begin
+                        WriteLn(tfOut, s);
+                    end;
+                    WriteLn(tfOut, '} PRS_', UpCase(class_item.Name), ';');
+                end;
+                WriteLn(tfOut, 'typedef struct pr_', class_item.Name);
+                WriteLn(tfOut, '{');
+                ts := GetAncestorsWithProperty(class_item);
+                for i := ts.Count - 1 downto 0 do
+                begin
+                    WriteLn(tfOut, format('PRS_%s %s;', [UpCase(ts[i]), ts[i]]));
+                end;
+                if length(class_item.ClassProperty) > 0 then begin
+                    WriteLn(tfOut, format('PRS_%s %s;', [UpCase(class_item.Name), class_item.Name]));
+                end;
+                WriteLn(tfOut, '} PR_', UpCase(class_item.Name), ';');
             end;
-            WriteLn(tfOut, '} PR_', UpCase(class_item.Name), ';');
         end;
 
         CloseFile(tfOut);
@@ -651,7 +692,12 @@ var
     flg : Boolean;
     total_methods : Integer;
     c_methods : TMethodsForCFile;
+    flgNotSDK : Boolean;
 begin
+    // flgNotSDK := ((not params.SwitchExists('S')) or (par.FileType <> ooCategory));
+    flgNotSDK := (not params.SwitchExists('S'));
+    WriteLn('>>> ', par.ModuleName, ' flgNotSDK = ', flgNotSDK);
+
     filepath := params.SwitchVal('C');
     if (length(filepath) > 0) and (RightStr(filepath, 1) <> DirectorySeparator) then filepath += DirectorySeparator;
 
@@ -666,7 +712,8 @@ begin
         WriteLn(tfOut, '#include <', LowerCase(par.ModuleName), '.g>');
         WriteLn(tfOut, '/* External Superclass References */');
 
-        if not params.SwitchExists('S') then WriteLn(tfOut, '#ifdef EPOC');
+        // if not params.SwitchExists('S') then WriteLn(tfOut, '#ifdef EPOC');
+        if flgNotSDK then WriteLn(tfOut, '#ifdef EPOC');
 
         ts := GetExternalAncestors(par);
         for s in ts do
@@ -674,7 +721,8 @@ begin
             WriteLn(tfOut, format('#define ERC_%s C_%s', [UpCase(s), UpCase(s)]));
         end;
 
-        if not params.SwitchExists('S') then begin
+        // if not params.SwitchExists('S') then begin
+        if flgNotSDK then begin
             WriteLn(tfOut, '#else');
 
             for s in ts do
@@ -784,9 +832,11 @@ begin
         end;
 
         WriteLn(tfOut, '/* Class Lookup Table */');
-        if not params.SwitchExists('S') then WriteLn(tfOut, '#ifdef EPOC');
+        // if not params.SwitchExists('S') then WriteLn(tfOut, '#ifdef EPOC');
+        if flgNotSDK then WriteLn(tfOut, '#ifdef EPOC');
         WriteLn(tfOut, 'GLDEF_D P_CLASS *ClassTable[]=');
-        if not params.SwitchExists('S') then begin
+        // if not params.SwitchExists('S') then begin
+        if flgNotSDK then begin
             WriteLn(tfOut, '#else');
             WriteLn(tfOut, 'GLDEF_D P_CLASS *ct_', LowerCase(par.ModuleName), '[]=');
             WriteLn(tfOut, '#endif');
@@ -810,7 +860,8 @@ begin
 
         if length(par.ExternalList) > 0 then begin
             WriteLn(tfOut, '/* External Category Name Table */');
-            if not params.SwitchExists('S') then WriteLn(tfOut, '#ifdef EPOC');
+            // if not params.SwitchExists('S') then WriteLn(tfOut, '#ifdef EPOC');
+            if flgNotSDK then WriteLn(tfOut, '#ifdef EPOC');
             WriteLn(tfOut, 'GLDEF_D struct');
             WriteLn(tfOut, '    {');
             WriteLn(tfOut, '    UWORD number;');
@@ -841,7 +892,8 @@ begin
             WriteLn(tfOut);
             WriteLn(tfOut, '    }');
             WriteLn(tfOut, '    };');
-            if not params.SwitchExists('S') then WriteLn(tfOut, '#endif');
+            // if not params.SwitchExists('S') then WriteLn(tfOut, '#endif');
+            if flgNotSDK then WriteLn(tfOut, '#endif');
         end;
 
         CloseFile(tfOut);
@@ -1137,62 +1189,71 @@ begin
             WriteLn(tfOut, format('CAT_%s_%s equ %d', [par.ModuleName, UpCase(par.ExternalList[i]), i + 1]));
         end;
 
-        // WriteLn(tfOut, '; Class Numbers');
-        for i := 0 to length(par.ClassList) - 1 do
-        begin
-            WriteLn(tfOut, format('C_%s equ %d', [UpCase(par.ClassList[i].Name), i]));
-        end;
-
-
-        // FIX: This is generating the wrong numbers, but MakeG() is correct!
-        method_list := BuildMethodNumbers(par);
-        // WriteLn(tfOut, '; Method Numbers');
-        for s in method_list do
-        begin
-            WriteLn(tfOut, 'O_', s);
-        end;
-
-        for class_item in par.ClassList do
-        begin
-            WriteLn(tfOut);
-            WriteLn(tfOut);
-            if length(class_item.ClassConstants) > 0 then begin
-                WriteLn(tfOut, '; Constants for ', class_item.Name);
-                for constant_item in class_item.ClassConstants do
-                begin
-                    WriteLn(tfOut, format('%s equ (%s)', [constant_item.Name, constant_item.Value]));
-                end;
-            end;
-
-            if length(class_item.ClassTypes) > 0 then begin
-                WriteLn(tfOut, '; Types for ', class_item.Name);
-                for s in class_item.ClassTypes do
-                begin
-                    WriteLn(tfOut, s);
-                end;
-            end;
-
-            WriteLn(tfOut, '; Property of ', class_item.Name);
-            if length(class_item.ClassProperty) > 0 then begin
-                WriteLn(tfOut, 'PRS_', UpCase(class_item.Name), ' struc');
-                for s in class_item.ClassProperty do
-                begin
-                    WriteLn(tfOut, s);
-                end;
-                WriteLn(tfOut, 'PRS_', UpCase(class_item.Name), ' ends');
-            end;
-            WriteLn(tfOut, 'PR_', UpCase(class_item.Name), ' struc');
-            ts := GetAncestorsWithProperty(class_item);
-            for i := ts.Count - 1 downto 0 do
+        if length(par.ClassList) > 0 then begin 
+            // WriteLn(tfOut, '; Class Numbers');
+            for class_item in par.ClassList do
             begin
-                WriteLn(tfOut, UpCase(class_item.Name[1]), copy(class_item.Name, 2), UpCase(ts[i][1]), copy(ts[i], 2), ' PRS_', UpCase(ts[i]), ' <>');
+                if InternalClassList.IndexOf(class_item.Name) < 0 then begin
+                    WriteLn('MakeASM: Can''t find class ', class_item.Name, ' in InternalClassList');
+                    halt(-1);
+                end;
+                WriteLn(tfOut, format('C_%s equ %d', [UpCase(class_item.Name), InternalClassList.IndexOf(class_item.Name)]));
             end;
-            if length(class_item.ClassProperty) > 0 then begin
-                WriteLn(tfOut, UpCase(class_item.Name[1]), copy(class_item.Name, 2), UpCase(class_item.Name[1]), copy(class_item.Name, 2), ' PRS_', UpCase(class_item.Name), ' <>');
-            end;
-            WriteLn(tfOut, 'PR_', UpCase(class_item.Name), ' ends');
-        end;
 
+            // for i := 0 to length(par.ClassList) - 1 do
+            // begin
+            //     WriteLn(tfOut, format('C_%s equ %d', [UpCase(par.ClassList[i].Name), i]));
+            // end;
+
+            // FIX: This is generating the wrong numbers, but MakeG() is correct!
+            method_list := BuildMethodNumbers(par);
+            WriteLn(tfOut, '; Method Numbers');
+            for s in method_list do
+            begin
+                WriteLn(tfOut, 'O_', s);
+            end;
+
+            for class_item in par.ClassList do
+            begin
+                WriteLn(tfOut);
+                WriteLn(tfOut);
+                if length(class_item.ClassConstants) > 0 then begin
+                    WriteLn(tfOut, '; Constants for ', class_item.Name);
+                    for constant_item in class_item.ClassConstants do
+                    begin
+                        WriteLn(tfOut, format('%s equ (%s)', [constant_item.Name, constant_item.Value]));
+                    end;
+                end;
+
+                if length(class_item.ClassTypes) > 0 then begin
+                    WriteLn(tfOut, '; Types for ', class_item.Name);
+                    for s in class_item.ClassTypes do
+                    begin
+                        WriteLn(tfOut, s);
+                    end;
+                end;
+
+                WriteLn(tfOut, '; Property of ', class_item.Name);
+                if length(class_item.ClassProperty) > 0 then begin
+                    WriteLn(tfOut, 'PRS_', UpCase(class_item.Name), ' struc');
+                    for s in class_item.ClassProperty do
+                    begin
+                        WriteLn(tfOut, s);
+                    end;
+                    WriteLn(tfOut, 'PRS_', UpCase(class_item.Name), ' ends');
+                end;
+                WriteLn(tfOut, 'PR_', UpCase(class_item.Name), ' struc');
+                ts := GetAncestorsWithProperty(class_item);
+                for i := ts.Count - 1 downto 0 do
+                begin
+                    WriteLn(tfOut, UpCase(class_item.Name[1]), copy(class_item.Name, 2), UpCase(ts[i][1]), copy(ts[i], 2), ' PRS_', UpCase(ts[i]), ' <>');
+                end;
+                if length(class_item.ClassProperty) > 0 then begin
+                    WriteLn(tfOut, UpCase(class_item.Name[1]), copy(class_item.Name, 2), UpCase(class_item.Name[1]), copy(class_item.Name, 2), ' PRS_', UpCase(class_item.Name), ' <>');
+                end;
+                WriteLn(tfOut, 'PR_', UpCase(class_item.Name), ' ends');
+            end;
+        end;
         CloseFile(tfOut);
     except
         on E: EInOutError do
@@ -1281,10 +1342,14 @@ begin
 
         s := WalkParsers(strFilename);
         CatParser := parsers[s];
+        // WriteLn('List of parser objects');
+        // for s in parsers.Keys do WriteLn(s);
 
-        MethodList := TStringList.Create;
+        InternalClassList := TStringList.Create();
+        MethodList := TStringList.Create();
 
-        // TODO: Get the list of external files from the category class (extra checks?)
+        // Get the list of external files from the category class
+        // TODO: extra checks?
         if Length(CatParser.ExternalList) > 0 then begin
             SetLength(ExtFileList, Length(CatParser.ExternalList));
             for extfile in CatParser.ExternalList do begin
@@ -1347,7 +1412,9 @@ begin
             MakeEXT(CatParser);
         end;
         if params.SwitchExists('G') then begin
-            MakeG(CatParser);
+            for par in parsers.Values do begin
+                MakeG(par);
+            end;
         end;
         if params.SwitchExists('L') then begin
             MakeLIS(CatParser);
@@ -1356,7 +1423,9 @@ begin
             MakeC(CatParser);
         end;
         if params.SwitchExists('I') then begin
-            MakeING(CatParser);
+            for par in parsers.Values do begin
+                MakeING(par);
+            end;
         end;
         if params.SwitchExists('A') then begin
             MakeASM(CatParser);
@@ -1365,8 +1434,8 @@ begin
     end
     finally begin
         FreeAndNil(DependencyList);
-        FreeAndNil(CatParser);
-        // FreeAndNil(parsers);
+        FreeAndNil(CatParser); // TODO: Check if needed
+        FreeAndNil(parsers);
     end;
 end;
 

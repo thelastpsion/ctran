@@ -1158,6 +1158,10 @@ begin
                 _IncludeList := concat(_IncludeList, [tokline.Tokens[1].Literal]);
             end;
             tknExternal: begin
+                if _FileType <> ooCategory then begin
+                    WriteLn('Error: EXTERNAL can only be used in category files (not external or sub-category files)');
+                    _ErrShowLine(tokline.LineNum, tokline.Tokens[1].LinePos);
+                end;
                 _CheckLine(tokline, 1, 1, [tknString]);
                 if Verbose then WriteLn('Found EXTERNAL with value ', tokline.Tokens[1].Literal);
                 curElement.index := length(_ExternalList);

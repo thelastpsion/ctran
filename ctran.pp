@@ -26,7 +26,7 @@ type
     //     commentASM
     // );
 
-    // TParserDictionary = specialize TObjectDictionary<String, TPsionOOLexer>;
+    TParserDictionary = specialize TObjectDictionary<String, TPsionOOLexer>;
 
 var
     strFilename : String;
@@ -42,7 +42,7 @@ var
     method_item : TPsionOOMethodEntry;
     extfile : String;
     // AllExtClasses : TStringList;
-    // parsers : TParserDictionary;
+    parsers : TParserDictionary;
 
 procedure HelpText();
 var
@@ -1201,9 +1201,44 @@ begin
 end;
 
 
-procedure parse(name: String; filename: String);
+function WalkParsers(filename: String) : String;
+var
+    par : TPsionOOLexer;
+    s : String;
 begin
+    WriteLn('>>> Parsing ', filename);
+    par := TPsionOOLexer.Create();
+    par.LoadFile(filename);
 
+    par.Verbose := params.InSwitch('V', 'L');
+    par.Lex();
+
+    if params.InSwitch('V', 'T') then PrintArray(par);
+
+    par.Verbose := params.InSwitch('V', 'P');
+    par.Parse();
+
+    if params.InSwitch('V', 'A') then ShowTree(par);
+    if params.InSwitch('V', 'R') then Reconstruct(par);
+
+    parsers.Add(par.ModuleName, par);
+
+    WriteLn;
+
+    if length(par.RequireList) > 0 then begin
+        WriteLn(par.ModuleName, ' asks for REQUIREd sub-category files:');
+        for s in par.RequireList do
+        begin
+            WriteLn('  ', s);
+        end;
+        for s in par.RequireList do
+        begin
+            WalkParsers(s + '.cl');
+        end;
+        WriteLn();
+    end;
+
+    Result := par.ModuleName;
 end;
 
 //
@@ -1241,39 +1276,11 @@ begin
 
     Try
     begin
-        // parsers := TParserDictionary.Create();
+        parsers := TParserDictionary.Create();
         DependencyList := TDependencyList.Create;
 
-        // NOTE: Possible start of parser-caller
-
-        CatParser := TPsionOOLexer.Create();
-        CatParser.LoadFile(strFilename);
-
-        CatParser.Verbose := params.InSwitch('V', 'L');
-        CatParser.Lex();
-
-        if params.InSwitch('V', 'T') then PrintArray(CatParser);
-
-        CatParser.Verbose := params.InSwitch('V', 'P');
-        CatParser.Parse();
-
-        if params.InSwitch('V', 'A') then ShowTree(CatParser);
-        if params.InSwitch('V', 'R') then Reconstruct(CatParser);
-
-        // parsers.Add('0', CatParser);
-
-        WriteLn;
-
-        if length(CatParser.RequireList) > 0 then begin
-            WriteLn(CatParser.ModuleName, ' asks for REQUIREd sub-category files:');
-            for s in CatParser.RequireList do
-            begin
-                WriteLn('  ', s);
-            end;
-            WriteLn();
-        end;
-
-        // NOTE: Possible break point for parser-caller
+        s := WalkParsers(strFilename);
+        CatParser := parsers[s];
 
         MethodList := TStringList.Create;
 

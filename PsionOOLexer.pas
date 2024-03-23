@@ -761,8 +761,14 @@ end;
 
 procedure TPsionOOLexer._CheckLine(tokline : TTokenisedLine; args : Integer; compulsary_args : Integer; toktypes : array of TTokenType);
 var
-    i : integer;
+    i : Integer;
+    tokline_argcount : Integer;
 begin
+    tokline_argcount := length(tokline.Tokens) - 1;
+
+    // Make sure that, if the last token is tknEOF, it isn't classed as an argument
+    if tokline.Tokens[tokline_argcount].TType = tknEOF then dec(tokline_argcount);
+
     if args < compulsary_args then begin
         WriteLn('_CheckLine: args is less than compulsary_args');
         halt;
@@ -772,17 +778,17 @@ begin
         halt;
     end;
 
-    if length(tokline.Tokens) - 1 < compulsary_args then begin
-        Writeln('ERROR: Current line has too few arguments');
-        _ErrShowLine(tokline.LineNum, tokline.Tokens[length(tokline.Tokens)].LinePos);
+    if tokline_argcount < compulsary_args then begin
+        Writeln('ERROR: Current line has too few (', tokline_argcount, ') arguments');
+        _ErrShowLine(tokline.LineNum, tokline.Tokens[tokline_argcount].LinePos); // TODO: is this right?
     end;
 
-    if length(tokline.Tokens) - 1 > args then begin
-        Writeln('ERROR: Current line has too many arguments');
-        _ErrShowLine(tokline.LineNum, tokline.Tokens[args].LinePos);
+    if tokline_argcount - 1 > args then begin
+        Writeln('ERROR: Current line has too many (', tokline_argcount, ') arguments');
+        _ErrShowLine(tokline.LineNum, tokline.Tokens[args + 1].LinePos);
     end;
 
-    for i := 1 to length(tokline.Tokens) - 1 do
+    for i := 1 to tokline_argcount - 1 do
     begin
         if (tokline.Tokens[i].TType <> toktypes[i-1]) then begin
             WriteLn('ERROR: Incorrect token type (', tokline.LineNum, ') Expected ', toktypes[i-1], ' but got ', tokline.Tokens[i].TType);

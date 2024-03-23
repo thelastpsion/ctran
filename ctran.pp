@@ -576,11 +576,14 @@ end;
 
 procedure MakeEXT(par: TPsionOOLexer);
 var
-    element : TPsionOOFileElement;
+    // element : TPsionOOFileElement;
     method: TPsionOOMethodEntry;
     flgHasMethod: boolean;
     tfOut : TextFile;
     filepath : String;
+    class_item : TPsionOOClass;
+    class_name : String;
+    flg : Boolean;
 begin
     filepath := params.SwitchVal('X');
     if (length(filepath) > 0) and (RightStr(filepath, 1) <> DirectorySeparator) then filepath += DirectorySeparator;
@@ -600,49 +603,59 @@ begin
         end;
         WriteLn(tfOut, ' ', LowerCase(par.ModuleName));
 
-        for element in par.ElementList do
+        for class_name in InternalClassList do
         begin
-            case element.ElementType of
-                incExternal, incInclude: begin end;
-
-                incRequire: begin
-                    WriteLn(tfOut, 'REQUIRE ', par.RequireList[element.index]);
-                end;
-
-                incClass: begin
-                    flgHasMethod := false;
-                    Write(tfOut, 'CLASS ', par.ClassList[element.index].Name, ' ');
-                    if par.ClassList[element.index].Parent <> '' then
-                        Write(tfOut, par.ClassList[element.index].Parent);
-                    WriteLn(tfOut);
-                    WriteLn(tfOut, '{');
-                    for method in par.ClassList[element.index].Methods do
-                    begin
-                        case method.MethodType of
-                            methodReplace: flgHasMethod := true;
-                            methodDefer:   WriteLn(tfOut, 'DECLARE ', method.Name);
-                            methodAdd: begin
-                                WriteLn(tfOut, 'DECLARE ', method.Name);
-                                flgHasMethod := true;
-                            end;
-                            methodDeclare: begin
-                                WriteLn('MakeEXT: Can''t have a DECLARE in a Category file... What''s happened?');
-                                exit;
-                            end;
-                            else begin
-                                WriteLn('MakeEXT: Unknown token in a Category file... What''s happened?');
-                                exit;
-                            end;
-                        end;
-                    end;
-                    if flgHasMethod then WriteLn(tfOut, 'HAS_METHOD');
-                    if length(par.ClassList[element.index].ClassProperty) > 0 then begin
-                        WriteLn(tfOut, 'HAS_PROPERTY');
-                    end;
-                    WriteLn(tfOut, '}');
+            // TODO: Put this in its own function (to be used by MakeASM, MakeC and MakeEXT)
+            if not DependencyList.ContainsKey(class_name) then begin
+                WriteLn('MakeEXT: Can''t find ', class_name, ' in DependencyList');
+                halt(-1);
+            end;
+            flg := false;
+            for class_item in parsers[DependencyList[class_name].Category].ClassList do
+            begin
+                if class_item.Name = class_name then begin
+                    flg := true;
+                    break;
                 end;
             end;
+            if not flg then begin
+                WriteLn('MakeEXT: Can''t find ', class_name, ' in parser ', DependencyList[class_name].Category);
+                halt(-1);
+            end;
+
+
+            flgHasMethod := false;
+            Write(tfOut, 'CLASS ', class_item.Name, ' ');
+            if class_item.Parent <> '' then
+                Write(tfOut, class_item.Parent);
+            WriteLn(tfOut);
+            WriteLn(tfOut, '{');
+            for method in class_item.Methods do
+            begin
+                case method.MethodType of
+                    methodReplace: flgHasMethod := true;
+                    methodDefer:   WriteLn(tfOut, 'DECLARE ', method.Name);
+                    methodAdd: begin
+                        WriteLn(tfOut, 'DECLARE ', method.Name);
+                        flgHasMethod := true;
+                    end;
+                    methodDeclare: begin
+                        WriteLn('MakeEXT: Can''t have a DECLARE in a Category file... What''s happened?');
+                        exit;
+                    end;
+                    else begin
+                        WriteLn('MakeEXT: Unknown token in a Category file... What''s happened?');
+                        exit;
+                    end;
+                end;
+            end;
+            if flgHasMethod then WriteLn(tfOut, 'HAS_METHOD');
+            if length(class_item.ClassProperty) > 0 then begin
+                WriteLn(tfOut, 'HAS_PROPERTY');
+            end;
+            WriteLn(tfOut, '}');
         end;
+
         CloseFile(tfOut);
     except
         on E: EInOutError do

@@ -943,6 +943,7 @@ var
     s : String;
     ts : TStringList;
     flg : Boolean;
+    module_name : String;
     // i : Integer;
     // sa : TStringArray;
 begin
@@ -966,35 +967,39 @@ begin
         end;
 
         WriteLn(tfOut, LowerCase(par.ModuleName));
-        WriteLn(tfOut);
-        WriteLn(tfOut, '********** ', LowerCase(par.ModuleName), ' **********');
 
-        for class_item in par.ClassList do
+        for module_name in InternalModuleList do
         begin
-            WriteLn(tfOut, class_item.Name);
-            ts := ReverseList(GetAncestors(class_item));
-            if ts.Count > 0 then begin
-                Write(tfOut, '        Derived from ');
-                flg := false;
-                for s in ts do
-                begin
-                    if flg then Write(tfOut, ',') else flg := true;
-                    Write(tfOut, s);
-                end;
-                WriteLn(tfOut);
-            end;
+            WriteLn(tfOut);
+            WriteLn(tfOut, '********** ', LowerCase(module_name), ' **********');
 
-            // TODO: Make the order of children match classic CTRAN's .LIS files
-            ts := GetChildren(par, class_item.Name);
-            if ts.Count > 0 then begin
-                flg := false;
-                Write(tfOut, '        Subclassed by ');
-                for s in ts do
-                begin
-                    if flg then Write(tfOut, ',') else flg := true;
-                    Write(tfOut, s);
+            for class_item in parsers[module_name].ClassList do
+            begin
+                WriteLn(tfOut, class_item.Name);
+                ts := ReverseList(GetAncestors(class_item));
+                if ts.Count > 0 then begin
+                    Write(tfOut, '        Derived from ');
+                    flg := false;
+                    for s in ts do
+                    begin
+                        if flg then Write(tfOut, ',') else flg := true;
+                        Write(tfOut, s);
+                    end;
+                    WriteLn(tfOut);
                 end;
-                WriteLn(tfOut);
+
+                // TODO: Make the order of children match classic CTRAN's .LIS files
+                ts := GetChildren(par, class_item.Name);
+                if ts.Count > 0 then begin
+                    flg := false;
+                    Write(tfOut, '        Subclassed by ');
+                    for s in ts do
+                    begin
+                        if flg then Write(tfOut, ',') else flg := true;
+                        Write(tfOut, s);
+                    end;
+                    WriteLn(tfOut);
+                end;
             end;
         end;
 

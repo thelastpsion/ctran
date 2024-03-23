@@ -19,17 +19,18 @@ type
         HasProperty : Boolean;
     end;
 
-    TDependencyList = specialize TDictionary<string, TPsionOOCatClass>;
+    TDependencyList = specialize TDictionary<String, TPsionOOCatClass>;
 
-    TCommentType = (
-        commentC,
-        commentASM
-    );
+    // TCommentType = (
+    //     commentC,
+    //     commentASM
+    // );
+
+    // TParserDictionary = specialize TObjectDictionary<String, TPsionOOLexer>;
 
 var
     strFilename : String;
-    CatLexer : TPsionOOLexer;
-    // ExtLexer : TPsionOOLexer;
+    CatParser : TPsionOOLexer;
     params : TPsionSDKAppParams;
     PathList : TStringList;
     s : String;
@@ -41,6 +42,7 @@ var
     method_item : TPsionOOMethodEntry;
     extfile : String;
     // AllExtClasses : TStringList;
+    // parsers : TParserDictionary;
 
 procedure HelpText();
 var
@@ -1198,6 +1200,12 @@ begin
     end;
 end;
 
+
+procedure parse(name: String; filename: String);
+begin
+
+end;
+
 //
 // MAIN
 //
@@ -1223,37 +1231,56 @@ begin
 
     WriteLn('Filename: ', strFilename);
 
+    // Get the path for external files (from `-e`)
+    // TODO: extra checks?
+    if params.SwitchExists('E') then begin
+        PathList := CheckPath(params.SwitchVal('E'));
+    end else begin
+        PathList := CheckPath('.');
+    end;
+
     Try
     begin
-        CatLexer := TPsionOOLexer.Create;
-        CatLexer.LoadFile(strFilename);
-
-        CatLexer.Verbose := params.InSwitch('V', 'L');
-        CatLexer.Lex();
-
-        if params.InSwitch('V', 'T') then PrintArray(CatLexer);
-
-        CatLexer.Verbose := params.InSwitch('V', 'P');
-        CatLexer.Parse();
-
-        if params.InSwitch('V', 'A') then ShowTree(CatLexer);
-        if params.InSwitch('V', 'R') then Reconstruct(CatLexer);
-
-
+        // parsers := TParserDictionary.Create();
         DependencyList := TDependencyList.Create;
-        MethodList := TStringList.Create;
 
-        // TODO: Get the path for external files (from `-e`) (extra checks?)
-        if params.SwitchExists('E') then begin
-            PathList := CheckPath(params.SwitchVal('E'));
-        end else begin
-            PathList := CheckPath('.');
+        // NOTE: Possible start of parser-caller
+
+        CatParser := TPsionOOLexer.Create();
+        CatParser.LoadFile(strFilename);
+
+        CatParser.Verbose := params.InSwitch('V', 'L');
+        CatParser.Lex();
+
+        if params.InSwitch('V', 'T') then PrintArray(CatParser);
+
+        CatParser.Verbose := params.InSwitch('V', 'P');
+        CatParser.Parse();
+
+        if params.InSwitch('V', 'A') then ShowTree(CatParser);
+        if params.InSwitch('V', 'R') then Reconstruct(CatParser);
+
+        // parsers.Add('0', CatParser);
+
+        WriteLn;
+
+        if length(CatParser.RequireList) > 0 then begin
+            WriteLn(CatParser.ModuleName, ' asks for REQUIREd sub-category files:');
+            for s in CatParser.RequireList do
+            begin
+                WriteLn('  ', s);
+            end;
+            WriteLn();
         end;
 
+        // NOTE: Possible break point for parser-caller
+
+        MethodList := TStringList.Create;
+
         // TODO: Get the list of external files from the category class (extra checks?)
-        if Length(CatLexer.ExternalList) > 0 then begin
-            SetLength(ExtFileList, Length(CatLexer.ExternalList));
-            for extfile in CatLexer.ExternalList do begin
+        if Length(CatParser.ExternalList) > 0 then begin
+            SetLength(ExtFileList, Length(CatParser.ExternalList));
+            for extfile in CatParser.ExternalList do begin
                 s := CheckExternalFile(extfile, PathList);
                 if s = '' then begin
                     WriteLn('ERROR: External file "', extfile, '" not found in given path');
@@ -1267,11 +1294,11 @@ begin
             end;
         end;
 
-        LoadDependencies(CatLexer, strFilename);
+        LoadDependencies(CatParser, strFilename);
 
         MethodList.Clear;
 
-        for class_item in CatLexer.ClassList do
+        for class_item in CatParser.ClassList do
         begin
             cur_metaclass := MakeMetaclass(class_item);
 
@@ -1310,28 +1337,29 @@ begin
         // end;
 
         if params.SwitchExists('X') then begin
-            MakeEXT(CatLexer);
+            MakeEXT(CatParser);
         end;
         if params.SwitchExists('G') then begin
-            MakeG(CatLexer);
+            MakeG(CatParser);
         end;
         if params.SwitchExists('L') then begin
-            MakeLIS(CatLexer);
+            MakeLIS(CatParser);
         end;
         if params.SwitchExists('C') then begin
-            MakeC(CatLexer);
+            MakeC(CatParser);
         end;
         if params.SwitchExists('I') then begin
-            MakeING(CatLexer);
+            MakeING(CatParser);
         end;
         if params.SwitchExists('A') then begin
-            MakeASM(CatLexer);
+            MakeASM(CatParser);
         end;
 
     end
     finally begin
         FreeAndNil(DependencyList);
-        FreeAndNil(CatLexer);
+        FreeAndNil(CatParser);
+        // FreeAndNil(parsers);
     end;
 end;
 

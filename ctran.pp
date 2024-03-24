@@ -68,29 +68,15 @@ begin
     WriteLn(s);
 end;
 
-function JoinStringList(sl : TStringList ; separator : String) : String;
-var
-    flg : Boolean;
-    s : String;
-begin
-    Result := '';
-    flg := false;
-
-    for s in sl do
-    begin
-        if flg then Result += separator else flg := true;
-        Result += s;
-    end;
-end;
-
 function FormatStringList(sl : TStringList ; format_main : String ; format_final : String = '') : TStringList;
 var
     i : Integer;
 begin
     Result := TStringList.Create();
 
-    // TODO: Check that format_main has exactly one `%s`
-    // TODO: If format_final isn't empty, check that i has exactly one '%s'
+    // TODO: Check that format_main has at least one `%s`
+    // TODO: If format_final isn't empty, check that it has at least one '%s'
+    // TODO: For both format_main and format_final, if there is more than one %s, repeat sl[i] in the array
 
     for i := 0 to sl.Count - 2 do
     begin
@@ -979,13 +965,13 @@ begin
                 WriteLn(tfOut, class_item.Name);
                 sl := ReverseList(GetAncestors(class_item));
                 if sl.Count > 0 then begin
-                    WriteLn(tfOut, '        Derived from ', JoinStringList(sl, ','));
+                    WriteLn(tfOut, '        Derived from ', sl.CommaText);
                 end;
 
                 // TODO: Make the order of children match classic CTRAN's .LIS files
                 sl := GetChildren(par, class_item.Name);
                 if sl.Count > 0 then begin
-                    WriteLn(tfOut, '        Subclassed by ', JoinStringList(sl, ','));
+                    WriteLn(tfOut, '        Subclassed by ', sl.CommaText);
                 end;
             end;
         end;

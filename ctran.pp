@@ -110,14 +110,14 @@ begin
     end;
 end;
 
-function ReverseList(ts : TStringList) : TStringList;
+function ReverseList(sl : TStringList) : TStringList;
 var
     i : Integer;
 begin
     Result := TStringList.Create();
-    for i := ts.Count - 1 downto 0 do
+    for i := sl.Count - 1 downto 0 do
     begin
-        Result.Add(ts[i]);
+        Result.Add(sl[i]);
     end;
 end;
 
@@ -209,7 +209,7 @@ begin
             incRequire: begin
                 required := UpCase(par.RequireList[element.index]);
                 if not parsers.ContainsKey(required) then begin
-                    WriteLn('Can''t find ', required, ' in dictionary!');
+                    WriteLn('LoadDependencies: Can''t find ', required, ' in dictionary!');
                     halt(-1);
                 end;
 
@@ -226,8 +226,8 @@ var
     // class_item : TPsionOOClass;
 begin
     if filename = '' then begin
-        WriteLn('LoadDependencies(): filename is empty');
-        halt;
+        WriteLn('LoadDependencies: filename is empty');
+        halt(-1);
     end;
 
     try
@@ -277,6 +277,7 @@ begin
     Result := TStringList.Create();
     ancestor := LowerCase(class_item.Parent);
 
+    // TODO: Could this be tidied using ReverseList() and a separate TStringList?
     while ancestor <> '' do
     begin
         if Result.indexof(ancestor) > -1 then begin
@@ -342,13 +343,13 @@ end;
 // Functions shared between MakeG and MakeING
 //
 
-// FIX: Change this to return an array of records so that it works with MakeING()
 function BuildMethodNumbers(par : TPsionOOLexer) : TStringList;
 var
     class_item : TPsionOOClass;
     method_id : Integer;
     method_item : TPsionOOMethodEntry;
 begin
+    // FIX: Change this to return an array of records or Name-Value TStringList so that it works with MakeING()
     Result := TStringList.Create();
 
     for class_item in par.ClassList do
@@ -583,7 +584,7 @@ var
     constant_item : TPsionOOConstantEntry;
     s : String;
     // method_id : Integer;
-    ts : TStringList;
+    sl : TStringList;
     tfOut : TextFile;
     filepath : String;
     method_list : TStringList;
@@ -694,11 +695,12 @@ begin
                 end;
                 WriteLn(tfOut, 'typedef struct pr_', class_item.Name);
                 WriteLn(tfOut, '{');
-                ts := GetAncestorsWithProperty(class_item);
-                for i := ts.Count - 1 downto 0 do
+                sl := ReverseList(GetAncestorsWithProperty(class_item));
+                for s in sl do
                 begin
-                    WriteLn(tfOut, format('PRS_%s %s;', [UpCase(ts[i]), ts[i]]));
+                    WriteLn(tfOut, format('PRS_%s %s;', [UpCase(s), s]));
                 end;
+                FreeAndNil(sl);
                 if length(class_item.ClassProperty) > 0 then begin
                     WriteLn(tfOut, format('PRS_%s %s;', [UpCase(class_item.Name), class_item.Name]));
                 end;
@@ -769,7 +771,7 @@ begin
 
             WriteLn(tfOut, '#endif');
         end;
-        sl.Free();
+        FreeAndNil(sl);
 
         // Method function forward references
         ForwardRefs := GetMethodForwardRefs(par);
@@ -878,7 +880,7 @@ begin
 
         sl := FormatStringList(InternalClassList, '(P_CLASS *)&c_%s,', '(P_CLASS *)&c_%s');
         for s in sl do WriteLn(tfOut, s);
-        sl.Free();
+        FreeAndNil(sl);
 
         WriteLn(tfOut, '};');
 
@@ -1022,7 +1024,7 @@ begin
         begin
             WriteLn(tfOut, format('ERC_%s equ C_%s', [UpCase(s), UpCase(s)]));
         end;
-        sl.Free();
+        FreeAndNil(sl);
 
         ForwardRefs := GetMethodForwardRefs(par);
         if ForwardRefs.Count > 0 then begin
@@ -1138,7 +1140,7 @@ begin
         // end;
         sl := FormatStringList(InternalClassList, ' dw   c_%s');
         for s in sl do WriteLn(tfOut, s);
-        sl.Free();
+        FreeAndNil(sl);
 
         WriteLn(tfOut, ' EEND');
         WriteLn(tfOut, ' _TEXT ends');
@@ -1181,7 +1183,7 @@ var
     class_item : TPsionOOClass;
     constant_item : TPsionOOConstantEntry;
     s : String;
-    ts : TStringList;
+    sl : TStringList;
     tfOut : TextFile;
     filepath : String;
     method_list : TStringList;
@@ -1267,11 +1269,14 @@ begin
                     WriteLn(tfOut, 'PRS_', UpCase(class_item.Name), ' ends');
                 end;
                 WriteLn(tfOut, 'PR_', UpCase(class_item.Name), ' struc');
-                ts := GetAncestorsWithProperty(class_item);
-                for i := ts.Count - 1 downto 0 do
+
+                sl := ReverseList(GetAncestorsWithProperty(class_item));
+                for s in sl do
                 begin
-                    WriteLn(tfOut, UpCase(class_item.Name[1]), copy(class_item.Name, 2), UpCase(ts[i][1]), copy(ts[i], 2), ' PRS_', UpCase(ts[i]), ' <>');
+                    WriteLn(tfOut, UpCase(class_item.Name[1]), copy(class_item.Name, 2), UpCase(s[1]), copy(s, 2), ' PRS_', UpCase(s), ' <>');
                 end;
+                FreeAndNil(sl);
+
                 if length(class_item.ClassProperty) > 0 then begin
                     WriteLn(tfOut, UpCase(class_item.Name[1]), copy(class_item.Name, 2), UpCase(class_item.Name[1]), copy(class_item.Name, 2), ' PRS_', UpCase(class_item.Name), ' <>');
                 end;

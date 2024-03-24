@@ -147,6 +147,7 @@ type
             // Fields: File Information
             _slCategoryFile : TStringList;
             _FileType : TFileType;
+            _FileLocation : String;
             _ModuleName : String;
 
             // Fields: Lexing
@@ -212,6 +213,7 @@ type
             procedure Parse();
 
             property FileType : TFileType read _FileType;
+            property FileLocation : String read _FileLocation;
             property ModuleName : String read _ModuleName;
             property CategoryType : TCategoryType read _CategoryType;
             property Tokens : TTokenArray read _TokenArray;
@@ -531,6 +533,7 @@ begin
     _slCategoryFile.LoadFromFile(strFilename);
     _DetectFileType(strFilename);
     _DetectModuleName(strFilename);
+    _FileLocation := ExpandFileName(strFilename);
 end;
 
 // TODO: Check for braces inside lines?

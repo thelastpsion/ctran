@@ -83,6 +83,25 @@ begin
     end;
 end;
 
+function FormatStringList(sl : TStringList ; format_main : String ; format_final : String = '') : TStringList;
+var
+    i : Integer;
+begin
+    Result := TStringList.Create();
+
+    // TODO: Check that format_main has exactly one `%s`
+    // TODO: If format_final isn't empty, check that i has exactly one '%s'
+
+    for i := 0 to sl.Count - 2 do
+    begin
+        Result.Add(format(format_main, [sl[i]]));
+    end;
+    if format_final = '' then
+        Result.Add(format(format_main, [sl[sl.Count - 1]]))
+    else
+        Result.Add(format(format_final, [sl[sl.Count - 1]]));
+end;
+
 function CheckPath(s: String) : TStringList;
 var
     protopaths : TStringArray;
@@ -155,7 +174,7 @@ var
     element : TPsionOOFileElement;
     required : String;
 begin
-    // TODO: Deal with "abstract" classes with only DEFERred methods (see SOLIPEG's TASK class as an example)
+    // TODO: Deal with "shadow" classes that only contain DEFERred methods (see SOLIPEG's TASK class as an example)
     category := par.ModuleName;
 
     for element in par.ElementList do
@@ -474,115 +493,24 @@ begin
                 Result.Add(method.ForwardRef);
 end;
 
-// Step through parsers to find internal classes and get all relevant information
-procedure MakeCodeFileClasses(par : TPsionOOLexer ; var tfOut : TextFile);
+function GetClassFromParsers(class_name : String) : TPsionOOClass;
 var
-    s : String;
-    flg : Boolean;
     class_item : TPsionOOClass;
-    element : TPsionOOFileElement;
-    c_methods : TMethodsForCFile;
-    method : TPsionOOMethodEntry;
-    total_methods : Integer;
-    required : String;
 begin
-    for element in par.ElementList do
+    if not DependencyList.ContainsKey(class_name) then begin
+        WriteLn('GetClassFromParsers: Can''t find ', class_name, ' in DependencyList');
+        halt(-1);
+    end;
+
+    for class_item in parsers[DependencyList[class_name].Category].ClassList do
     begin
-        case element.ElementType of
-            incClass: begin
-                class_item := par.ClassList[element.index];
-
-                WriteLn(tfOut);
-                WriteLn(tfOut);
-                WriteLn(tfOut, '/* Class ', class_item.Name, ' */');
-                WriteLn(tfOut, '/* ------------------------------------------------------ */');
-
-                c_methods := MakeMethodsForOutput(class_item);
-                for method in c_methods.Methods do begin
-                    if (method.Name <> '') and (method.ForwardRef = '') then begin
-                        WriteLn(tfOut, format('GLREF_C VOID %s_%s();', [class_item.Name, method.Name]));
-                    end;
-                end;
-
-                WriteLn(tfOut, 'GLDEF_D struct');
-                WriteLn(tfOut, '{');
-                WriteLn(tfOut, 'P_CLASS c;');
-
-                total_methods := length(c_methods.Methods);
-                if total_methods > 0 then begin
-                    WriteLn(tfOut, 'VOID (*v[', total_methods, '])();');
-                end;
-
-                WriteLn(tfOut, '} c_', class_item.Name, ' =');
-                WriteLn(tfOut, '{');
-
-                Write(tfOut, '{');
-
-                s := UpCase(DependencyList[DependencyList[class_item.Name].Parent].Category);
-                // WriteLn('Finding ', s, ' for ', par.ModuleName);
-                if InternalModuleList.IndexOf(s) > -1 then begin
-                    // WriteLn('Internal');
-                    Write(tfOut, '0');
-                end else if ExternalModuleList.IndexOf(s) > -1 then begin
-                    // WriteLn('External: ', ExternalModuleList.IndexOf(s) + 1, ' ', s);
-                    Write(tfOut, ExternalModuleList.IndexOf(s) + 1);
-                end else begin
-                    WriteLn('MakeCodeFileClasses: Couldn''t find class ', s, ' anywhere - bad logic here? (Should it be ', par.ModuleName, '?)');
-                    halt(-1);
-                end;
-
-                Write(tfOut, ',(P_CLASS *)');
-
-                if DependencyList[class_item.Parent].Category = par.ModuleName then
-                begin
-                    Write(tfOut, '&c_', class_item.Parent)
-                end else begin
-                    Write(tfOut, 'ERC_', UpCase(class_item.Parent));
-                end;
-
-                Write(tfOut, ',sizeof(PR_', UpCase(class_item.Name), '),');
-                if length(c_methods.Methods) = 0 then Write(tfOut, '0') else Write(tfOut, c_methods.StartIndex);
-                WriteLn(tfOut, format(',0x6b,%d,%d},', [length(c_methods.Methods), class_item.PropertyAutodestroyCount]));
-
-                flg := false;
-                for method in c_methods.Methods do
-                begin
-                    if flg then begin
-                        WriteLn(tfOut, ',')
-                    end else begin
-                        WriteLn(tfOut, '{');
-                        flg := true;
-                    end;
-                    if (method.Name = '') then begin
-                        Write(tfOut, 'NULL');
-                    end else if method.ForwardRef = '' then begin
-                        Write(tfOut, class_item.Name, '_', method.Name);
-                    end else begin
-                        Write(tfOut, method.ForwardRef);
-                    end;
-                end;
-
-                if flg then begin
-                    WriteLn(tfOut);
-                    WriteLn(tfOut, '}');
-                    flg := false;
-                end;
-
-                WriteLn(tfOut, '};');
-            end;
-            incRequire: begin
-                WriteLn('REQUIRE ', par.RequireList[element.index], ' found (do something here)');
-                required := UpCase(par.RequireList[element.index]);
-                if not parsers.ContainsKey(required) then begin
-                    WriteLn('Can''t find ', required, ' in dictionary!');
-                    halt(-1);
-                end;
-
-                WriteLn('>>> Getting Code File classes for ', required);
-                MakeCodeFileClasses(parsers[required], tfOut);
-            end;
+        if class_item.Name = class_name then begin
+            exit(class_item);
         end;
     end;
+
+    WriteLn('GetClassFromParsers: Can''t find ', class_name, ' in parser ', DependencyList[class_name].Category);
+    halt(-1);
 end;
 
 //
@@ -591,14 +519,13 @@ end;
 
 procedure MakeEXT(par: TPsionOOLexer);
 var
-    // element : TPsionOOFileElement;
+    // element : TPsionOOFileElement; // NOTE: Might need this again for OVAL support
     method: TPsionOOMethodEntry;
     flgHasMethod: boolean;
     tfOut : TextFile;
     filepath : String;
     class_item : TPsionOOClass;
     class_name : String;
-    flg : Boolean;
 begin
     filepath := params.SwitchVal('X');
     if (length(filepath) > 0) and (RightStr(filepath, 1) <> DirectorySeparator) then filepath += DirectorySeparator;
@@ -620,24 +547,7 @@ begin
 
         for class_name in InternalClassList do
         begin
-            // TODO: Put this in its own function (to be used by MakeASM, MakeC and MakeEXT)
-            if not DependencyList.ContainsKey(class_name) then begin
-                WriteLn('MakeEXT: Can''t find ', class_name, ' in DependencyList');
-                halt(-1);
-            end;
-            flg := false;
-            for class_item in parsers[DependencyList[class_name].Category].ClassList do
-            begin
-                if class_item.Name = class_name then begin
-                    flg := true;
-                    break;
-                end;
-            end;
-            if not flg then begin
-                WriteLn('MakeEXT: Can''t find ', class_name, ' in parser ', DependencyList[class_name].Category);
-                halt(-1);
-            end;
-
+            class_item := GetClassFromParsers(class_name);
 
             flgHasMethod := false;
             Write(tfOut, 'CLASS ', class_item.Name, ' ');
@@ -717,9 +627,8 @@ begin
         end;
 
         if par.FileType = ooCategory then
-            begin
+        begin
             WriteLn(tfOut, '/* Category Numbers */');
-            // if not params.SwitchExists('S') then begin
             if flgNotSDK then begin
                 WriteLn(tfOut, '#ifndef EPOC');
                 WriteLn(tfOut, 'GLREF_D P_CLASS *ct_', LowerCase(par.ModuleName), '[];');
@@ -735,7 +644,6 @@ begin
             begin;
                 WriteLn(tfOut, format('#define CAT_%s_%s %d', [par.ModuleName, UpCase(par.ExternalList[i]),  i + 1]));
             end;
-            // if not params.SwitchExists('S') then begin
             if flgNotSDK then begin
                 WriteLn(tfOut, '#else');
                 WriteLn(tfOut, format('#define CAT_%s_%s (&ct_%s[0])', [par.ModuleName, par.ModuleName, LowerCase(par.ModuleName)]));
@@ -822,18 +730,18 @@ end;
 procedure MakeC(par : TPsionOOLexer);
 var
     i : Integer;
-    class_item : TPsionOOClass;
     s : String;
-    ts : TStringList;
+    sl : TStringList;
     tfOut : TextFile;
+    class_name : String;
+    class_item : TPsionOOClass;
     filepath : String;
-    // method : TPsionOOMethodEntry;
+    method : TPsionOOMethodEntry;
     ForwardRefs : TStringList;
     flg : Boolean;
-    // total_methods : Integer;
-    // c_methods : TMethodsForCFile;
+    total_methods : Integer;
+    c_methods : TMethodsForCFile;
     flgNotSDK : Boolean;
-    // element : TPsionOOFileElement;
 begin
     // flgNotSDK := ((not params.SwitchExists('S')) or (par.FileType <> ooCategory));
     flgNotSDK := (not params.SwitchExists('S'));
@@ -850,8 +758,6 @@ begin
 
         WriteLn(tfOut, '/* Generated by Ctran from ', ExtractFilename(strFilename), ' */');
 
-        // WriteLn(tfOut, '#include <', LowerCase(par.ModuleName), '.g>');
-
         for s in InternalModuleList do
         begin
             WriteLn(tfOut, '#include <', LowerCase(s), '.g>');
@@ -859,20 +765,17 @@ begin
 
         WriteLn(tfOut, '/* External Superclass References */');
 
-        // if not params.SwitchExists('S') then WriteLn(tfOut, '#ifdef EPOC');
         if flgNotSDK then WriteLn(tfOut, '#ifdef EPOC');
 
-        ts := GetExternalAncestors(par); // TODO: Make this recursive
-        for s in ts do
+        sl := GetExternalAncestors(par);
+        for s in sl do
         begin
             WriteLn(tfOut, format('#define ERC_%s C_%s', [UpCase(s), UpCase(s)]));
         end;
-
-        // if not params.SwitchExists('S') then begin
         if flgNotSDK then begin
             WriteLn(tfOut, '#else');
 
-            for s in ts do
+            for s in sl do
             begin
                 WriteLn(tfOut, 'GLREF_D P_CLASS c_', s, ';');
                 WriteLn(tfOut, format('#define ERC_%s &c_%s', [UpCase(s), s]));
@@ -880,6 +783,7 @@ begin
 
             WriteLn(tfOut, '#endif');
         end;
+        sl.Free();
 
         // Method function forward references
         ForwardRefs := GetMethodForwardRefs(par);
@@ -889,13 +793,95 @@ begin
         end;
         FreeAndNil(ForwardRefs);
 
-        MakeCodeFileClasses(par, tfOut);
+        // Generate Classes and Methods
+        for class_name in InternalClassList do
+        begin
+            class_item := GetClassFromParsers(class_name);
+
+            WriteLn(tfOut);
+            WriteLn(tfOut);
+            WriteLn(tfOut, '/* Class ', class_item.Name, ' */');
+            WriteLn(tfOut, '/* ------------------------------------------------------ */');
+
+            c_methods := MakeMethodsForOutput(class_item);
+            for method in c_methods.Methods do begin
+                if (method.Name <> '') and (method.ForwardRef = '') then begin
+                    WriteLn(tfOut, format('GLREF_C VOID %s_%s();', [class_item.Name, method.Name]));
+                end;
+            end;
+
+            WriteLn(tfOut, 'GLDEF_D struct');
+            WriteLn(tfOut, '{');
+            WriteLn(tfOut, 'P_CLASS c;');
+
+            total_methods := length(c_methods.Methods);
+            if total_methods > 0 then begin
+                WriteLn(tfOut, 'VOID (*v[', total_methods, '])();');
+            end;
+
+            WriteLn(tfOut, '} c_', class_item.Name, ' =');
+            WriteLn(tfOut, '{');
+
+            // TODO: Can this be tidied up?
+            Write(tfOut, '{');
+
+            s := UpCase(DependencyList[DependencyList[class_item.Name].Parent].Category);
+            // WriteLn('Finding ', s, ' for ', par.ModuleName);
+            if InternalModuleList.IndexOf(s) > -1 then begin
+                // WriteLn('Internal');
+                Write(tfOut, '0');
+            end else if ExternalModuleList.IndexOf(s) > -1 then begin
+                // WriteLn('External: ', ExternalModuleList.IndexOf(s) + 1, ' ', s);
+                Write(tfOut, ExternalModuleList.IndexOf(s) + 1);
+            end else begin
+                WriteLn('MakeC: Couldn''t find class ', s, ' anywhere - bad logic here? (Should it be ', par.ModuleName, '?)');
+                halt(-1);
+            end;
+
+            Write(tfOut, ',(P_CLASS *)');
+
+            if DependencyList[class_item.Parent].Category = par.ModuleName then
+            begin
+                Write(tfOut, '&c_', class_item.Parent)
+            end else begin
+                Write(tfOut, 'ERC_', UpCase(class_item.Parent));
+            end;
+
+            Write(tfOut, ',sizeof(PR_', UpCase(class_item.Name), '),');
+            if length(c_methods.Methods) = 0 then Write(tfOut, '0') else Write(tfOut, c_methods.StartIndex);
+            WriteLn(tfOut, format(',0x6b,%d,%d},', [length(c_methods.Methods), class_item.PropertyAutodestroyCount]));
+            // NOTE: Down to here.
+
+            flg := false;
+            for method in c_methods.Methods do
+            begin
+                if flg then begin
+                    WriteLn(tfOut, ',')
+                end else begin
+                    WriteLn(tfOut, '{');
+                    flg := true;
+                end;
+                if (method.Name = '') then begin
+                    Write(tfOut, 'NULL');
+                end else if method.ForwardRef = '' then begin
+                    Write(tfOut, class_item.Name, '_', method.Name);
+                end else begin
+                    Write(tfOut, method.ForwardRef);
+                end;
+            end;
+
+            if flg then begin
+                WriteLn(tfOut);
+                WriteLn(tfOut, '}');
+                flg := false;
+            end;
+
+            WriteLn(tfOut, '};');
+        end;
 
         WriteLn(tfOut, '/* Class Lookup Table */');
-        // if not params.SwitchExists('S') then WriteLn(tfOut, '#ifdef EPOC');
         if flgNotSDK then WriteLn(tfOut, '#ifdef EPOC');
         WriteLn(tfOut, 'GLDEF_D P_CLASS *ClassTable[]=');
-        // if not params.SwitchExists('S') then begin
         if flgNotSDK then begin
             WriteLn(tfOut, '#else');
             WriteLn(tfOut, 'GLDEF_D P_CLASS *ct_', LowerCase(par.ModuleName), '[]=');
@@ -904,23 +890,14 @@ begin
 
         WriteLn(tfOut, '{');
 
-        flg := false;
-        for s in InternalClassList do
-        begin
-            if flg then begin
-                WriteLn(tfOut, ',');
-            end else begin
-                flg := true;
-            end;
-            Write(tfOut, '(P_CLASS *)&c_', s);
-        end;
-        if flg then WriteLn(tfOut);
+        sl := FormatStringList(InternalClassList, '(P_CLASS *)&c_%s,', '(P_CLASS *)&c_%s');
+        for s in sl do WriteLn(tfOut, s);
+        sl.Free();
 
         WriteLn(tfOut, '};');
 
         if length(par.ExternalList) > 0 then begin
             WriteLn(tfOut, '/* External Category Name Table */');
-            // if not params.SwitchExists('S') then WriteLn(tfOut, '#ifdef EPOC');
             if flgNotSDK then WriteLn(tfOut, '#ifdef EPOC');
             WriteLn(tfOut, 'GLDEF_D struct');
             WriteLn(tfOut, '    {');
@@ -1026,7 +1003,7 @@ var
     tfOut : TextFile;
     class_item : TPsionOOClass;
     s : String;
-    ts : TStringList;
+    sl : TStringList;
     flg : Boolean;
     i : Integer;
     ForwardRefs : TStringList;
@@ -1054,11 +1031,12 @@ begin
 
         WriteLn(tfOut, '; External Superclass References');
 
-        ts := GetExternalAncestors(par);
-        for s in ts do
+        sl := GetExternalAncestors(par);
+        for s in sl do
         begin
             WriteLn(tfOut, format('ERC_%s equ C_%s', [UpCase(s), UpCase(s)]));
         end;
+        sl.Free();
 
         ForwardRefs := GetMethodForwardRefs(par);
         if ForwardRefs.Count > 0 then begin
@@ -1072,22 +1050,7 @@ begin
 
         for class_name in InternalClassList do
         begin
-            if not DependencyList.ContainsKey(class_name) then begin
-                WriteLn('MakeASM: Can''t find ', class_name, ' in DependencyList');
-                halt(-1);
-            end;
-            flg := false;
-            for class_item in parsers[DependencyList[class_name].Category].ClassList do
-            begin
-                if class_item.Name = class_name then begin
-                    flg := true;
-                    break;
-                end;
-            end;
-            if not flg then begin
-                WriteLn('MakeASM: Can''t find ', class_name, ' in parser ', DependencyList[class_name].Category);
-                halt(-1);
-            end;
+            class_item := GetClassFromParsers(class_name);
 
             WriteLn(tfOut);
             WriteLn(tfOut);
@@ -1183,10 +1146,13 @@ begin
         WriteLn(tfOut, ' _TEXT segment byte public ''CODE''');
         WriteLn(tfOut, 'GLDEF_C ClassTable');
 
-        for s in InternalClassList do
-        begin
-            WriteLn(tfOut, ' dw   c_', s);
-        end;
+        // for s in InternalClassList do
+        // begin
+        //     WriteLn(tfOut, ' dw   c_', s);
+        // end;
+        sl := FormatStringList(InternalClassList, ' dw   c_%s');
+        for s in sl do WriteLn(tfOut, s);
+        sl.Free();
 
         WriteLn(tfOut, ' EEND');
         WriteLn(tfOut, ' _TEXT ends');

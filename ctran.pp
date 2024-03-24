@@ -355,7 +355,6 @@ var
     method_id : Integer;
     method_item : TPsionOOMethodEntry;
 begin
-    // FIX: Change this to return an array of records or Name-Value TStringList so that it works with MakeING()
     Result := TStringList.Create();
 
     for class_item in par.ClassList do
@@ -1242,7 +1241,7 @@ begin
             WriteLn(tfOut, '; Method Numbers');
             for s in method_list do
             begin
-                WriteLn(tfOut, 'O_', s);
+                WriteLn(tfOut, format('O_%s equ %s', [s.Split(' ')[0], s.Split(' ')[1]]));
             end;
 
             for class_item in par.ClassList do

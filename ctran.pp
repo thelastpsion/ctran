@@ -1220,11 +1220,13 @@ begin
             WriteLn(tfOut, 'ENDIF');
         end;
 
-        WriteLn(tfOut, '; Category Numbers');
-        if par.FileType = ooCategory then WriteLn(tfOut, format('CAT_%s_%s equ 0', [par.ModuleName, par.ModuleName]));
-        for i := 0 to length(par.ExternalList) - 1 do
-        begin;
-            WriteLn(tfOut, format('CAT_%s_%s equ %d', [par.ModuleName, UpCase(par.ExternalList[i]), i + 1]));
+        if ((par.FileType = ooCategory) and (length(par.ExternalList) > 1)) or (length(par.ExternalList) > 0) then begin
+            WriteLn(tfOut, '; Category Numbers');
+            if par.FileType = ooCategory then WriteLn(tfOut, format('CAT_%s_%s equ 0', [par.ModuleName, par.ModuleName]));
+            for i := 0 to length(par.ExternalList) - 1 do
+            begin;
+                WriteLn(tfOut, format('CAT_%s_%s equ %d', [par.ModuleName, UpCase(par.ExternalList[i]), i + 1]));
+            end;
         end;
 
         if length(par.ClassList) > 0 then begin 
@@ -1240,10 +1242,12 @@ begin
             end;
 
             method_list := BuildMethodNumbers(par);
-            WriteLn(tfOut, '; Method Numbers');
-            for s in method_list do
-            begin
-                WriteLn(tfOut, format('O_%s equ %s', [s.Split(' ')[0], s.Split(' ')[1]]));
+            if method_list.Count > 0 then begin
+                WriteLn(tfOut, '; Method Numbers');
+                for s in method_list do
+                begin
+                    WriteLn(tfOut, format('O_%s equ %s', [s.Split(' ')[0], s.Split(' ')[1]]));
+                end;
             end;
 
             for class_item in par.ClassList do

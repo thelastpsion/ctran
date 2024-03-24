@@ -28,6 +28,11 @@ type
 
     TParserDictionary = specialize TObjectDictionary<String, TPsionOOLexer>;
 
+    TStringListHelper = Class Helper for TStringList
+        Public
+            Function Reverse : TStringList;
+    end;
+
 var
     strFilename : String;
     CatParser : TPsionOOLexer;
@@ -110,16 +115,17 @@ begin
     end;
 end;
 
-function ReverseList(sl : TStringList) : TStringList;
+function TStringListHelper.Reverse() : TStringList;
 var
     i : Integer;
 begin
     Result := TStringList.Create();
-    for i := sl.Count - 1 downto 0 do
+    for i := Self.Count - 1 downto 0 do
     begin
-        Result.Add(sl[i]);
+        Result.Add(Self[i]);
     end;
 end;
+
 
 function CheckExternalFile(s : String; paths : TStringList) : String;
 var
@@ -277,7 +283,7 @@ begin
     Result := TStringList.Create();
     ancestor := LowerCase(class_item.Parent);
 
-    // TODO: Could this be tidied using ReverseList() and a separate TStringList?
+    // TODO: Could this be tidied using TStringList.Reverse() and a separate TStringList?
     while ancestor <> '' do
     begin
         if Result.indexof(ancestor) > -1 then begin
@@ -695,7 +701,7 @@ begin
                 end;
                 WriteLn(tfOut, 'typedef struct pr_', class_item.Name);
                 WriteLn(tfOut, '{');
-                sl := ReverseList(GetAncestorsWithProperty(class_item));
+                sl := GetAncestorsWithProperty(class_item).Reverse;
                 for s in sl do
                 begin
                     WriteLn(tfOut, format('PRS_%s %s;', [UpCase(s), s]));
@@ -965,7 +971,7 @@ begin
             for class_item in parsers[module_name].ClassList do
             begin
                 WriteLn(tfOut, class_item.Name);
-                sl := ReverseList(GetAncestors(class_item));
+                sl := GetAncestors(class_item).Reverse;
                 if sl.Count > 0 then begin
                     WriteLn(tfOut, '        Derived from ', sl.CommaText);
                 end;
@@ -1270,7 +1276,7 @@ begin
                 end;
                 WriteLn(tfOut, 'PR_', UpCase(class_item.Name), ' struc');
 
-                sl := ReverseList(GetAncestorsWithProperty(class_item));
+                sl := GetAncestorsWithProperty(class_item).Reverse;
                 for s in sl do
                 begin
                     WriteLn(tfOut, UpCase(class_item.Name[1]), copy(class_item.Name, 2), UpCase(s[1]), copy(s, 2), ' PRS_', UpCase(s), ' <>');

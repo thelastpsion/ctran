@@ -164,8 +164,7 @@ begin
     Result := '';
 end;
 
-// TODO: Store the filename in the parser object
-procedure LoadDependencies(par : TPsionOOLexer; filename : String);
+procedure LoadDependencies(par : TPsionOOLexer);
 var
     ext_class : TPsionOOCatClass;
     par_class : TPsionOOClass;
@@ -174,7 +173,7 @@ var
     element : TPsionOOFileElement;
     required : String;
 begin
-    // TODO: Deal with "shadow" classes that only contain DEFERred methods (see SOLIPEG's TASK class as an example)
+    // FIX: Deal with "shadow" classes that only contain DEFERred methods (see SOLIPEG's TASK class as an example)
     category := par.ModuleName;
 
     for element in par.ElementList do
@@ -182,17 +181,15 @@ begin
         case element.ElementType of
             incClass: begin
                 par_class := par.ClassList[element.index];
-    
+
                 if DependencyList.ContainsKey(LowerCase(par_class.Name)) then begin
-                    WriteLn('Error ', filename, ': Class ', par_class.Name, ' already defined');
-                    // TODO: Add source file of original class (i.e. 'defined in ...')
+                    WriteLn('Error ', ExtractFilename(par.FileLocation), ': Class ', par_class.Name, ' already defined in ', DependencyList[LowerCase(par_class.Name)].Category);
                     // TODO: (if possible) add location in file
                     halt;
                 end;
 
                 if (not DependencyList.ContainsKey(LowerCase(par_class.Parent))) and (par_class.Parent <> '') then begin
-                    WriteLn('Error ', filename, ': Superclass ', par_class.Parent, ' of ', par_class.Name, ' does not exist');
-                    // TODO: Add source file of superclass
+                    WriteLn('Error ', ExtractFilename(par.FileLocation), ': Superclass ', par_class.Parent, ' of ', par_class.Name, ' does not exist');
                     // TODO: (if possible) add location in file
                     halt;
                 end;
@@ -202,7 +199,7 @@ begin
                     case method.MethodType of
                         methodDeclare, methodAdd: begin
                             if MethodList.IndexOf(LowerCase(method.Name)) > -1 then begin
-                                WriteLn('Error ', filename, ': Method ', method.Name, ' already exists in category');
+                                WriteLn('Error ', ExtractFilename(par.FileLocation), ': Method ', method.Name, ' already exists in category');
                                 halt;
                             end;
                             // WriteLn('Adding method ', method.Name, ' to big list o'' methods.');
@@ -228,7 +225,7 @@ begin
                 end;
 
                 WriteLn('>>> Loading dependencies for ', required);
-                LoadDependencies(parsers[required], required);
+                LoadDependencies(parsers[required]);
             end;
         end;
     end;
@@ -256,7 +253,7 @@ begin
             par.Verbose := params.InSwitch('V', 'P');
             par.Parse();
 
-            LoadDependencies(par, filename);
+            LoadDependencies(par);
             // for class_item in par.ClassList do
             // begin
             //     AllExtClasses.Add(class_item.Name);
@@ -1257,10 +1254,12 @@ begin
                     WriteLn(tfOut, '; Constants for ', class_item.Name);
                     for constant_item in class_item.ClassConstants do
                     begin
+                        // FIX: Hex constants need to be converted from 0x00 to 00h format
                         WriteLn(tfOut, format('%s equ (%s)', [constant_item.Name, constant_item.Value]));
                     end;
                 end;
 
+                // FIX: Translate C to ASM
                 if length(class_item.ClassTypes) > 0 then begin
                     WriteLn(tfOut, '; Types for ', class_item.Name);
                     for s in class_item.ClassTypes do
@@ -1269,6 +1268,7 @@ begin
                     end;
                 end;
 
+                // FIX: Translate C to ASM
                 WriteLn(tfOut, '; Property of ', class_item.Name);
                 if length(class_item.ClassProperty) > 0 then begin
                     WriteLn(tfOut, 'PRS_', UpCase(class_item.Name), ' struc');
@@ -1398,26 +1398,22 @@ begin
         // Get the list of external files from the category class
         // TODO: extra checks?
         if Length(CatParser.ExternalList) > 0 then begin
-            // SetLength(ExtFileList, Length(CatParser.ExternalList));
             for extfile in CatParser.ExternalList do begin
                 s := CheckExternalFile(extfile, PathList);
                 if s = '' then begin
                     WriteLn('ERROR: External file "', extfile, '" not found in given path');
                     halt;
                 end;
-                // ExtFileList := concat(ExtFileList, [s]);
                 ExternalModuleList.Add(UpCase(extfile));
                 WriteLn(extfile, ': ', s);
-                // WriteLn(ExtFileList[length(ExtFileList) - 1]);
 
-                // LoadDependencies(ExtFileList[length(ExtFileList) - 1]);
                 LoadDependencies(s);
             end;
         end;
         WriteLn('List of external modules');
         for s in ExternalModuleList do WriteLn(s);
 
-        LoadDependencies(CatParser, strFilename);
+        LoadDependencies(CatParser);
 
         MethodList.Clear;
 

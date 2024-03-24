@@ -596,7 +596,6 @@ var
     class_item : TPsionOOClass;
     constant_item : TPsionOOConstantEntry;
     s : String;
-    // method_id : Integer;
     sl : TStringList;
     tfOut : TextFile;
     filepath : String;
@@ -1009,7 +1008,6 @@ var
     i : Integer;
     ForwardRefs : TStringList;
     method : TPsionOOMethodEntry;
-    // total_methods : Integer;
     c_methods : TMethodsForCFile;
     method_id : Integer;
     class_name : String;
@@ -1225,7 +1223,7 @@ begin
             WriteLn(tfOut, 'ENDIF');
         end;
 
-        // WriteLn(tfOut, '; Category Numbers');
+        WriteLn(tfOut, '; Category Numbers');
         if par.FileType = ooCategory then WriteLn(tfOut, format('CAT_%s_%s equ 0', [par.ModuleName, par.ModuleName]));
         for i := 0 to length(par.ExternalList) - 1 do
         begin;
@@ -1233,8 +1231,8 @@ begin
         end;
 
         if length(par.ClassList) > 0 then begin 
-            // WriteLn(tfOut, '; Class Numbers');
-            // NOTE: This is generating different numbers to CTRAN 5.02, but I think this is correct as it matches MakeG()
+            WriteLn(tfOut, '; Class Numbers');
+            // NOTE: This generates different numbers to CTRAN 5.02, but I think it's correct as it matches MakeG()
             for class_item in par.ClassList do
             begin
                 if InternalClassList.IndexOf(class_item.Name) < 0 then begin
@@ -1243,11 +1241,6 @@ begin
                 end;
                 WriteLn(tfOut, format('C_%s equ %d', [UpCase(class_item.Name), InternalClassList.IndexOf(class_item.Name)]));
             end;
-
-            // for i := 0 to length(par.ClassList) - 1 do
-            // begin
-            //     WriteLn(tfOut, format('C_%s equ %d', [UpCase(par.ClassList[i].Name), i]));
-            // end;
 
             method_list := BuildMethodNumbers(par);
             WriteLn(tfOut, '; Method Numbers');

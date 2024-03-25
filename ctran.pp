@@ -39,7 +39,6 @@ var
     params : TPsionSDKAppParams;
     PathList : TStringList;
     s : String;
-    // ExtFileList : Array of String;
     DependencyList : TDependencyList;
     MethodList : TStringList;
     class_item : TPsionOOClass;
@@ -49,7 +48,6 @@ var
     cur_metaclass : TStringList;
     method_item : TPsionOOMethodEntry;
     extfile : String;
-    // AllExtClasses : TStringList;
     parsers : TParserDictionary;
     par : TPsionOOLexer; // temporary parser storage
 
@@ -510,6 +508,29 @@ begin
     halt(-1);
 end;
 
+// If a class's parent is in an external module, return the ID (order in which they are listed in the
+// main category file, starting at 1). If it's in an internal one, return 0. Otherwise halt, because
+// there's something wrong in the code.
+function GetParentModuleID(class_name : String) : Integer;
+var
+    parent : String;
+    parent_module : String;
+begin
+    parent := DependencyList[class_name].Parent;
+    parent_module := UpCase(DependencyList[parent].Category);
+    // WriteLn('Finding ', s, ' for ', par.ModuleName);
+    if InternalModuleList.IndexOf(parent_module) > -1 then begin
+        // WriteLn('Internal');
+        exit(0);
+    end else if ExternalModuleList.IndexOf(parent_module) > -1 then begin
+        // WriteLn('External: ', ExternalModuleList.IndexOf(s) + 1, ' ', s);
+        exit(ExternalModuleList.IndexOf(parent_module) + 1);
+    end;
+
+    WriteLn('GetParentModuleID: Couldn''t find parent module ', parent_module, ' of parent class ', parent, ' for class ', class_name, ' - bad logic here? (Should it be ', InternalModuleList[0], '?)');
+    halt(-1);
+end;
+
 //
 // MAKE FILES
 //
@@ -684,7 +705,6 @@ begin
                     end;
                 end;
 
-                // TODO: Rework this for .ING files
                 if length(class_item.ClassTypes) > 0 then begin
                     WriteLn(tfOut, '/* Types for ', class_item.Name, ' */');
                     for s in class_item.ClassTypes do
@@ -822,18 +842,7 @@ begin
             // TODO: Can this be tidied up?
             Write(tfOut, '{');
 
-            s := UpCase(DependencyList[DependencyList[class_item.Name].Parent].Category);
-            // WriteLn('Finding ', s, ' for ', par.ModuleName);
-            if InternalModuleList.IndexOf(s) > -1 then begin
-                // WriteLn('Internal');
-                Write(tfOut, '0');
-            end else if ExternalModuleList.IndexOf(s) > -1 then begin
-                // WriteLn('External: ', ExternalModuleList.IndexOf(s) + 1, ' ', s);
-                Write(tfOut, ExternalModuleList.IndexOf(s) + 1);
-            end else begin
-                WriteLn('MakeC: Couldn''t find class ', s, ' anywhere - bad logic here? (Should it be ', par.ModuleName, '?)');
-                halt(-1);
-            end;
+            Write(tfOut, GetParentModuleID(class_item.Name));
 
             Write(tfOut, ',(P_CLASS *)');
 
@@ -1065,26 +1074,7 @@ begin
             WriteLn(tfOut, ' _TEXT ends');
             WriteLn(tfOut, ' _TEXT segment byte public ''CODE''');
 
-            WriteLn(tfOut, 'GLDEF_C c_', class_item.Name);
-            flg := false;
-            s := UpCase(DependencyList[DependencyList[class_item.Name].Parent].Category);
-            if s = UpCase(par.ModuleName) then begin
-                Write(tfOut, '0');
-                flg := true;
-            end else begin
-                for i := 0 to length(par.ExternalList) - 1 do begin
-                    if s = UpCase(par.ExternalList[i]) then begin
-                        WriteLn(tfOut, ' dw   ', i + 1);
-                        flg := true;
-                        break;
-                    end;
-                end;
-            end;
-
-            if not flg then begin
-                WriteLn('MakeASM: Couldn''t find class ', s, ' anywhere - bad logic here? (Should it be ', par.ModuleName, '?)');
-                halt;
-            end;
+            WriteLn(tfOut, ' dw   ', GetParentModuleID(class_item.Name));
 
             Write(tfOut, ' dw   ');
             if DependencyList[class_item.Parent].Category = par.ModuleName then

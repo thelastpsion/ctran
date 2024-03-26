@@ -516,6 +516,8 @@ var
     parent : String;
     parent_module : String;
 begin
+    // TODO: Why did I use the DependencyList on the next line?
+    // Isn't it better to just send the entire class or just the parent's name from class_item.Parent?
     parent := DependencyList[class_name].Parent;
     parent_module := UpCase(DependencyList[parent].Category);
     // WriteLn('Finding ', s, ' for ', par.ModuleName);
@@ -846,6 +848,9 @@ begin
 
             Write(tfOut, ',(P_CLASS *)');
 
+            // TODO: Should this actually be:
+            // if GetParentModuleID() = 0 then
+            // (storing it in a local variable)?
             if DependencyList[class_item.Parent].Category = par.ModuleName then
             begin
                 Write(tfOut, '&c_', class_item.Parent)
@@ -1072,11 +1077,15 @@ begin
                 end;
             end;
             WriteLn(tfOut, ' _TEXT ends');
-            WriteLn(tfOut, ' _TEXT segment byte public ''CODE''');
 
+            WriteLn(tfOut, ' _TEXT segment byte public ''CODE''');
+            WriteLn(tfOut, 'GLDEF_C c_', class_item.Name);
             WriteLn(tfOut, ' dw   ', GetParentModuleID(class_item.Name));
 
             Write(tfOut, ' dw   ');
+            // TODO: Should this actually be:
+            // if GetParentModuleID() = 0 then
+            // (storing it in a local variable)?
             if DependencyList[class_item.Parent].Category = par.ModuleName then
             begin
                 WriteLn(tfOut, 'c_', class_item.Parent);
@@ -1091,20 +1100,10 @@ begin
             WriteLn(tfOut, ' db   ', length(c_methods.Methods));
             WriteLn(tfOut, ' db   ', class_item.PropertyAutodestroyCount);
 
-            flg := false;
-            method_id := -1;
+            method_id := -1; // INFO: I don't know why this works, but it matches the output from classic CTRAN
             for method in c_methods.Methods do
             begin
-                // if flg then begin
-                //     WriteLn(tfOut, ',')
-                // end else begin
-                //     WriteLn(tfOut, '{');
-                //     flg := true;
-                // end;
-                if (method.Name = '') then begin
-                    // WriteLn(tfOut, ' dw   0');
-                    // inc(method_id);
-                end else begin
+                if (method.Name <> '') then begin
                     for i := 1 to method_id do
                     begin
                         WriteLn(tfOut, ' dw   0');
@@ -1118,11 +1117,6 @@ begin
                 inc(method_id);
             end;
 
-            if flg then begin
-                WriteLn(tfOut);
-                flg := false;
-            end;
-
             WriteLn(tfOut, ' EEND');
             WriteLn(tfOut, ' _TEXT ends');
         end;
@@ -1132,6 +1126,7 @@ begin
         WriteLn(tfOut, ' _TEXT segment byte public ''CODE''');
         WriteLn(tfOut, 'GLDEF_C ClassTable');
 
+        // TODO: Original way might have been better:
         // for s in InternalClassList do
         // begin
         //     WriteLn(tfOut, ' dw   c_', s);

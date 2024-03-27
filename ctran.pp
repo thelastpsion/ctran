@@ -74,12 +74,23 @@ end;
 function FormatStringList(sl : TStringList ; format_main : String ; format_final : String = '') : TStringList;
 var
     i : Integer;
+    arr_strings : TStringArray;
 begin
     Result := TStringList.Create();
 
-    // TODO: Check that format_main has at least one `%s`
-    // TODO: If format_final isn't empty, check that it has at least one '%s'
     // TODO: For both format_main and format_final, if there is more than one %s, repeat sl[i] in the array
+
+    if AnsiPos('%s', format_main) = 0 then
+    begin
+        WriteLn('FormatStringList: Missing %s from format_main.');
+        halt(-1);
+    end;
+    if (format_final <> '') and (AnsiPos('%s', format_main) = 0) then
+    begin
+        WriteLn('FormatStringList: Missing %s from format_final.');
+        halt(-1);
+    end;
+
 
     for i := 0 to sl.Count - 2 do
     begin
@@ -89,6 +100,24 @@ begin
         Result.Add(format(format_main, [sl[sl.Count - 1]]))
     else
         Result.Add(format(format_final, [sl[sl.Count - 1]]));
+end;
+
+function RepeatStr(s: String; c: integer) : String;
+var
+    i : Integer;
+    l : Integer;
+begin
+    Result := '';
+    if c > 0 then begin
+        l := Length(s);
+        if l > 0 then begin
+            SetLength(Result, l * c);
+            for i := 0 to c - 1 do
+            begin
+                move(s[1], Result[l * i + 1], l);
+            end;
+        end;
+    end;
 end;
 
 function ExtractFileStem(s : String) : String;
@@ -387,6 +416,7 @@ var
     s : String;
 begin
     // TODO: Check ancestor classes for circular reference (ancestor TStringList?)
+    // (Might not need to do this here if it's checked elsewhere.)
     // TODO: Sort methods as per original CTRAN (the order that they appear in External files)
     Result := TStringList.Create();
 
@@ -624,7 +654,6 @@ var
     flgNotSDK : Boolean;
 begin
     flgNotSDK := ((not params.SwitchExists('S')) and (par.FileType = ooCategory));
-    WriteLn('>>> ', par.ModuleName, ' flgNotSDK = ', flgNotSDK);
 
     filepath := params.SwitchVal('G');
     if (length(filepath) > 0) and (RightStr(filepath, 1) <> DirectorySeparator) then filepath += DirectorySeparator;
@@ -687,10 +716,12 @@ begin
             end;
 
             method_list := BuildMethodNumbers(par);
-            WriteLn(tfOut, '/* Method Numbers */');
-            for s in method_list do
-            begin
-                WriteLn(tfOut, '#define O_', s);
+            if method_list.Count > 0 then begin
+                WriteLn(tfOut, '/* Method Numbers */');
+                for s in method_list do
+                begin
+                    WriteLn(tfOut, '#define O_', s);
+                end;
             end;
 
             for class_item in par.ClassList do
@@ -725,14 +756,17 @@ begin
                     end;
                     WriteLn(tfOut, '} PRS_', UpCase(class_item.Name), ';');
                 end;
+
                 WriteLn(tfOut, 'typedef struct pr_', class_item.Name);
                 WriteLn(tfOut, '{');
+
                 sl := GetAncestorsWithProperty(class_item).Reverse;
                 for s in sl do
                 begin
                     WriteLn(tfOut, format('PRS_%s %s;', [UpCase(s), s]));
                 end;
                 FreeAndNil(sl);
+
                 if length(class_item.ClassProperty) > 0 then begin
                     WriteLn(tfOut, format('PRS_%s %s;', [UpCase(class_item.Name), class_item.Name]));
                 end;
@@ -752,20 +786,19 @@ var
     i : Integer;
     s : String;
     sl : TStringList;
+    flg : Boolean;
     tfOut : TextFile;
     class_name : String;
     class_item : TPsionOOClass;
     filepath : String;
     method : TPsionOOMethodEntry;
     ForwardRefs : TStringList;
-    flg : Boolean;
     total_methods : Integer;
     c_methods : TMethodsForCFile;
+    parent_extcat_id : Integer;
     flgNotSDK : Boolean;
 begin
-    // flgNotSDK := ((not params.SwitchExists('S')) or (par.FileType <> ooCategory));
     flgNotSDK := (not params.SwitchExists('S'));
-    // WriteLn('>>> ', par.ModuleName, ' flgNotSDK = ', flgNotSDK);
 
     filepath := params.SwitchVal('C');
     if (length(filepath) > 0) and (RightStr(filepath, 1) <> DirectorySeparator) then filepath += DirectorySeparator;
@@ -817,6 +850,7 @@ begin
         for class_name in InternalClassList do
         begin
             class_item := GetClassFromParsers(class_name);
+            parent_extcat_id := GetParentModuleID(class_item.Name);
 
             WriteLn(tfOut);
             WriteLn(tfOut);
@@ -842,51 +876,53 @@ begin
             WriteLn(tfOut, '} c_', class_item.Name, ' =');
             WriteLn(tfOut, '{');
 
-            // TODO: Can this be tidied up?
+            // Define the class
+
             Write(tfOut, '{');
-
-            Write(tfOut, GetParentModuleID(class_item.Name));
-
+            Write(tfOut, parent_extcat_id);
             Write(tfOut, ',(P_CLASS *)');
 
-            // TODO: Should this actually be:
-            if GetParentModuleID(class_item.Name) = 0 then
-            // (storing it in a local variable)?
-            // if DependencyList[class_item.Parent].Category = par.ModuleName then
-            begin
+            if parent_extcat_id = 0 then
+            begin // It's internal
                 Write(tfOut, '&c_', class_item.Parent)
             end else begin
                 Write(tfOut, 'ERC_', UpCase(class_item.Parent));
             end;
 
             Write(tfOut, ',sizeof(PR_', UpCase(class_item.Name), '),');
-            if length(c_methods.Methods) = 0 then Write(tfOut, '0') else Write(tfOut, c_methods.StartIndex);
+            if length(c_methods.Methods) = 0 then
+            begin
+                Write(tfOut, '0');
+            end else begin
+                Write(tfOut, c_methods.StartIndex);
+            end;
             WriteLn(tfOut, format(',0x6b,%d,%d},', [length(c_methods.Methods), class_item.PropertyAutodestroyCount]));
-            // NOTE: Down to here.
 
-            flg := false;
+            // Define the methods
+
+            sl := TStringList.Create();
             for method in c_methods.Methods do
             begin
-                if flg then begin
-                    WriteLn(tfOut, ',')
-                end else begin
-                    WriteLn(tfOut, '{');
-                    flg := true;
-                end;
                 if (method.Name = '') then begin
-                    Write(tfOut, 'NULL');
+                    sl.Add('NULL');
                 end else if method.ForwardRef = '' then begin
-                    Write(tfOut, class_item.Name, '_', method.Name);
+                    sl.Add(class_item.Name + '_' + method.Name);
                 end else begin
-                    Write(tfOut, method.ForwardRef);
+                    sl.Add(method.ForwardRef);
                 end;
             end;
 
-            if flg then begin
-                WriteLn(tfOut);
+            if sl.Count > 0 then
+            begin
+                WriteLn(tfOut, '{');
+                sl := FormatStringList(sl, '%s,', '%s');
+                for s in sl do
+                begin
+                    WriteLn(tfOut, s);
+                end;
                 WriteLn(tfOut, '}');
-                flg := false;
             end;
+            FreeAndNil(sl);
 
             WriteLn(tfOut, '};');
         end;
@@ -930,12 +966,10 @@ begin
                 Write(tfOut, '    {');
                 for i := 1 to length(s) do
                 begin
-                    Write(tfOut, '''', LowerCase(copy(s, i, 1)), ''',');
+                    Write(tfOut, '''', LowerCase(s[i]), ''',');
                 end;
                 Write(tfOut, '''.'',''D'',''Y'',''L''');
-                for i := length(s) + 4 to 13 do begin
-                    Write(tfOut, ',0');
-                end;
+                Write(tfOut, RepeatStr(',0', 10 - length(s)));
                 Write(tfOut, '}');
             end;
             WriteLn(tfOut);
@@ -1010,18 +1044,19 @@ end;
 
 procedure MakeASM(par : TPsionOOLexer);
 var
-    filepath : String;
-    tfOut : TextFile;
-    class_item : TPsionOOClass;
+    i : Integer;
     s : String;
     sl : TStringList;
     flg : Boolean;
-    i : Integer;
-    ForwardRefs : TStringList;
+    tfOut : TextFile;
+    class_item : TPsionOOClass;
+    filepath : String;
     method : TPsionOOMethodEntry;
+    ForwardRefs : TStringList;
     c_methods : TMethodsForCFile;
     method_id : Integer;
     class_name : String;
+    parent_extcat_id : Integer;
 begin
     filepath := params.SwitchVal('A');
     if (length(filepath) > 0) and (RightStr(filepath, 1) <> DirectorySeparator) then filepath += DirectorySeparator;
@@ -1061,6 +1096,7 @@ begin
         for class_name in InternalClassList do
         begin
             class_item := GetClassFromParsers(class_name);
+            parent_extcat_id := GetParentModuleID(class_item.Name);
 
             WriteLn(tfOut);
             WriteLn(tfOut);
@@ -1080,13 +1116,11 @@ begin
 
             WriteLn(tfOut, ' _TEXT segment byte public ''CODE''');
             WriteLn(tfOut, 'GLDEF_C c_', class_item.Name);
-            WriteLn(tfOut, ' dw   ', GetParentModuleID(class_item.Name));
+            WriteLn(tfOut, ' dw   ', parent_extcat_id);
 
             Write(tfOut, ' dw   ');
             // TODO: Should this actually be:
-            if GetParentModuleID(class_item.Name) = 0 then
-            // (storing it in a local variable)?
-            // if DependencyList[class_item.Parent].Category = par.ModuleName then
+            if parent_extcat_id = 0 then
             begin
                 WriteLn(tfOut, 'c_', class_item.Parent);
             end else begin
@@ -1125,11 +1159,6 @@ begin
         WriteLn(tfOut, ' _TEXT segment byte public ''CODE''');
         WriteLn(tfOut, 'GLDEF_C ClassTable');
 
-        // TODO: Original way might have been better:
-        // for s in InternalClassList do
-        // begin
-        //     WriteLn(tfOut, ' dw   c_', s);
-        // end;
         sl := FormatStringList(InternalClassList, ' dw   c_%s');
         for s in sl do WriteLn(tfOut, s);
         FreeAndNil(sl);
@@ -1218,7 +1247,7 @@ begin
             for class_item in par.ClassList do
             begin
                 if InternalClassList.IndexOf(class_item.Name) < 0 then begin
-                    WriteLn('MakeASM: Can''t find class ', class_item.Name, ' in InternalClassList');
+                    WriteLn('MakeING: Can''t find class ', class_item.Name, ' in InternalClassList');
                     halt(-1);
                 end;
                 WriteLn(tfOut, format('C_%s equ %d', [UpCase(class_item.Name), InternalClassList.IndexOf(class_item.Name)]));
@@ -1268,6 +1297,7 @@ begin
                     end;
                     WriteLn(tfOut, 'PRS_', UpCase(class_item.Name), ' ends');
                 end;
+
                 WriteLn(tfOut, 'PR_', UpCase(class_item.Name), ' struc');
 
                 sl := GetAncestorsWithProperty(class_item).Reverse;

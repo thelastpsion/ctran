@@ -413,6 +413,7 @@ begin
     // Result := ancestor_list;
 end;
 
+// TODO: Review this!
 function MakeMethodsForOutput(class_item : TPsionOOClass) : TMethodsForCFile;
 var
     method : TPsionOOMethodEntry;
@@ -660,7 +661,7 @@ begin
             end;
             WriteLn(tfOut, '#define CAT_', par.ModuleName, '_', par.ModuleName, ' 0');
             for i := 0 to length(par.ExternalList) - 1 do
-            begin;
+            begin
                 WriteLn(tfOut, format('#define CAT_%s_%s %d', [par.ModuleName, UpCase(par.ExternalList[i]),  i + 1]));
             end;
             if flgNotSDK then begin
@@ -764,7 +765,7 @@ var
 begin
     // flgNotSDK := ((not params.SwitchExists('S')) or (par.FileType <> ooCategory));
     flgNotSDK := (not params.SwitchExists('S'));
-    WriteLn('>>> ', par.ModuleName, ' flgNotSDK = ', flgNotSDK);
+    // WriteLn('>>> ', par.ModuleName, ' flgNotSDK = ', flgNotSDK);
 
     filepath := params.SwitchVal('C');
     if (length(filepath) > 0) and (RightStr(filepath, 1) <> DirectorySeparator) then filepath += DirectorySeparator;
@@ -849,9 +850,9 @@ begin
             Write(tfOut, ',(P_CLASS *)');
 
             // TODO: Should this actually be:
-            // if GetParentModuleID() = 0 then
+            if GetParentModuleID(class_item.Name) = 0 then
             // (storing it in a local variable)?
-            if DependencyList[class_item.Parent].Category = par.ModuleName then
+            // if DependencyList[class_item.Parent].Category = par.ModuleName then
             begin
                 Write(tfOut, '&c_', class_item.Parent)
             end else begin
@@ -940,7 +941,6 @@ begin
             WriteLn(tfOut);
             WriteLn(tfOut, '    }');
             WriteLn(tfOut, '    };');
-            // if not params.SwitchExists('S') then WriteLn(tfOut, '#endif');
             if flgNotSDK then WriteLn(tfOut, '#endif');
         end;
 
@@ -988,9 +988,9 @@ begin
             for class_item in parsers[module_name].ClassList do
             begin
                 WriteLn(tfOut, class_item.Name);
-                sl := GetAncestors(class_item).Reverse;
+                sl := GetAncestors(class_item);
                 if sl.Count > 0 then begin
-                    WriteLn(tfOut, '        Derived from ', sl.CommaText);
+                    WriteLn(tfOut, '        Derived from ', sl.Reverse.CommaText);
                 end;
 
                 // TODO: Make the order of children match classic CTRAN's .LIS files
@@ -1084,9 +1084,9 @@ begin
 
             Write(tfOut, ' dw   ');
             // TODO: Should this actually be:
-            // if GetParentModuleID() = 0 then
+            if GetParentModuleID(class_item.Name) = 0 then
             // (storing it in a local variable)?
-            if DependencyList[class_item.Parent].Category = par.ModuleName then
+            // if DependencyList[class_item.Parent].Category = par.ModuleName then
             begin
                 WriteLn(tfOut, 'c_', class_item.Parent);
             end else begin
@@ -1121,7 +1121,6 @@ begin
             WriteLn(tfOut, ' _TEXT ends');
         end;
 
-
         WriteLn(tfOut, '; Class Lookup Table');
         WriteLn(tfOut, ' _TEXT segment byte public ''CODE''');
         WriteLn(tfOut, 'GLDEF_C ClassTable');
@@ -1152,7 +1151,6 @@ begin
                 end;
                 WriteLn(tfOut);
             end;
-
 
             WriteLn(tfOut, ' EEND');
             WriteLn(tfOut, ' _TEXT ends');
@@ -1243,8 +1241,11 @@ begin
                     WriteLn(tfOut, '; Constants for ', class_item.Name);
                     for constant_item in class_item.ClassConstants do
                     begin
-                        // FIX: Hex constants need to be converted from 0x00 to 00h format
-                        WriteLn(tfOut, format('%s equ (%s)', [constant_item.Name, constant_item.Value]));
+                        case copy(constant_item.Value, 1, 2) of
+                            '0x': s := '0' + copy(constant_item.Value, 3) + 'h';
+                            else s := constant_item.Value;
+                        end;
+                        WriteLn(tfOut, format('%s equ (%s)', [constant_item.Name, s]));
                     end;
                 end;
 

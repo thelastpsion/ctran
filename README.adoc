@@ -19,7 +19,7 @@ In Object Pascal.
 * [x] Generate `.ext` files
 * [x] Generate `.c` files
 * [x] Generate `.g` files
-* [ ] Handle sub-category (.CL) files
+* [x] Handle sub-category (.CL) files
 * [x] Generate files designed to only work with the SDK
 * [ ] Generate skeleton method files
 * [x] Generate `.asm` (TASM assembly) files [started, `PROPERTY` and `TYPES` currently broken]

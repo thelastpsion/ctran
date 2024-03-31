@@ -201,7 +201,7 @@ type
             function _GetTypes() : TPsionOOTypes;
             function _GetProperty() : TPsionOOProperty;
             procedure _CheckForBrace();
-            function _TokenValidForFiletypes(toktype: TTokenType; valid_filetypes: array of TFileType) : boolean;
+            // function _TokenValidForFiletypes(toktype: TTokenType; valid_filetypes: array of TFileType) : boolean;
 
             // Methods: Misc
             procedure _ErrShowLine(tokline : TTokenisedLine ; toknum : Integer ; message : String);
@@ -745,7 +745,6 @@ begin
 
             stateClassConstants: begin
                 tok := _GrabNextToken();
-
                 case tok.Literal of
                     '}': begin
                         _AddToken(tknBraceRight, tok);
@@ -801,7 +800,7 @@ begin
         halt;
     end;
     if length(toktypes) <> args then begin
-        Writeln('[CheckLine] args doesn''t equal the number of token types provided');
+        Writeln('[_CheckLine] args doesn''t equal the number of token types provided');
         halt;
     end;
 
@@ -821,17 +820,17 @@ begin
     end;
 end;
 
-function TPsionOOLexer._TokenValidForFiletypes(toktype: TTokenType; valid_filetypes: array of TFileType) : boolean;
-var
-    ft: TFileType;
-begin
-    Result := false;
-
-    for ft in valid_filetypes do
-    begin
-        if ft = self.FileType then exit(true);
-    end;
-end;
+// function TPsionOOLexer._TokenValidForFiletypes(toktype: TTokenType; valid_filetypes: array of TFileType) : boolean;
+// var
+//     ft: TFileType;
+// begin
+//     Result := false;
+//
+//     for ft in valid_filetypes do
+//     begin
+//         if ft = self.FileType then exit(true);
+//     end;
+// end;
 
 function TPsionOOLexer._BuildConstant(tokline : TTokenisedLine) : TPsionOOConstantEntry;
 begin
@@ -1052,8 +1051,7 @@ begin
             end;
 
             tknHasMethod: begin
-                // if _FileType <> ooExternal then begin
-                if not _TokenValidForFiletypes(tknHasMethod, [ooExternal]) then begin
+                if _FileType <> ooExternal then begin
                     _ErrShowLine(tokline, 0, 'tknHasMethod only valid in External files');
                 end;
                 if Verbose then WriteLn('Detected HAS_METHOD');
@@ -1061,8 +1059,7 @@ begin
             end;
 
             tknHasProperty : begin
-                // if _FileType <> ooExternal then begin
-                if not _TokenValidForFiletypes(tknHasProperty, [ooExternal]) then begin
+                if _FileType <> ooExternal then begin
                     _ErrShowLine(tokline, 0, 'tknHasProperty only valid in External files');
                 end;
                 if Verbose then WriteLn('Detected HAS_PROPERTY');

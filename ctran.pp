@@ -71,6 +71,11 @@ begin
     WriteLn(s);
 end;
 
+// Takes a TStringList and formats every element using format_main. If
+// format_final exists, the last element in the TStringList will be formatted
+// with it instead.
+// Useful for generating output for a file where the last line needs to be
+// different, such as a comma separated list.
 function FormatStringList(sl : TStringList ; format_main : String ; format_final : String = '') : TStringList;
 var
     i : Integer;
@@ -102,6 +107,7 @@ begin
         Result.Add(format(format_final, [sl[sl.Count - 1]]));
 end;
 
+// Creates a string where s is repeated c times.
 function RepeatStr(s: String; c: integer) : String;
 var
     i : Integer;
@@ -120,6 +126,8 @@ begin
     end;
 end;
 
+// Gets the stem of a filename (i.e. without the extension). If it has no
+// extension, it just returns the filename.
 function ExtractFileStem(s : String) : String;
 begin
     if ExtractFileExt(s) = '' then
@@ -128,6 +136,7 @@ begin
         Result := copy(ExtractFileName(s), 1, length(ExtractFileName(s)) - AnsiPos(ExtractFileExt(s), ExtractFileExt(s)) - 1);
 end;
 
+// Checks a provided path string, separated by semicolons.
 function CheckPath(s: String) : TStringList;
 var
     protopaths : TStringArray;
@@ -150,6 +159,7 @@ begin
     end;
 end;
 
+// Reverses the order of elements in a TStringList
 function TStringListHelper.Reverse() : TStringList;
 var
     i : Integer;
@@ -161,7 +171,8 @@ begin
     end;
 end;
 
-
+// Makes sure that an external category file exists. If so, return the absolute
+// path.
 function CheckExternalFile(s : String; paths : TStringList) : String;
 var
     ext : String;
@@ -191,7 +202,10 @@ begin
     Result := '';
 end;
 
+// Recursively build a list of classes and their parents, so that dependencies
+// can easily be found.
 procedure LoadDependencies(par : TPsionOOLexer);
+// FIX: Deal with "shadow" classes that only contain DEFERred methods (see SOLIPEG's TASK class as an example)
 var
     ext_class : TPsionOOCatClass;
     par_class : TPsionOOClass;
@@ -200,7 +214,6 @@ var
     element : TPsionOOFileElement;
     required : String;
 begin
-    // FIX: Deal with "shadow" classes that only contain DEFERred methods (see SOLIPEG's TASK class as an example)
     category := par.ModuleName;
 
     for element in par.ElementList do
@@ -258,6 +271,8 @@ begin
     end;
 end;
 
+// Calls the main LoadDependencies() procedure after creating a temporary
+// parser instance. Only used for loading external category files.
 procedure LoadDependencies(filename : String);
 var
     par : TPsionOOLexer;
@@ -293,7 +308,9 @@ begin
     end;
 end;
 
+// Return all the ancestors of a class that have a HAS_PROPERTY flag.
 function GetAncestorsWithProperty(class_item : TPsionOOClass) : TStringList;
+// TODO: Check if this should be modified for internal classes
 var
     ancestor : String;
 begin
@@ -307,6 +324,7 @@ begin
     end;
 end;
 
+// Return all the ancestors of a class, "eldest" first
 function GetAncestors(class_item : TPsionOOClass) : TStringList;
 var
     ancestor : String;
@@ -335,7 +353,10 @@ begin
     end;
 end;
 
+// Builds a list of methods by superimposing all of a class's ancestors'
+// methods. This does not include the current class's methods.
 function MakeMetaclass(class_item : TPsionOOClass) : TStringList;
+// TODO: Is it right to ignore REPLACEd methods? Do they matter if they have already been declared?
 var
     method : TPsionOOMethodEntry;
     ancestor : String;
@@ -366,6 +387,7 @@ begin
     end;
 end;
 
+// Return all the first-generation children of a class
 function GetChildren(par : TPsionOOLexer ; parent : String) : TStringList;
 var
     class_item : TPsionOOClass;
@@ -381,6 +403,8 @@ end;
 // Functions shared between MakeG and MakeING
 //
 
+// Gives every method a number, based on the order it is mentioned in the
+// current category (or sub-category) file.
 function BuildMethodNumbers(par : TPsionOOLexer) : TStringList;
 var
     class_item : TPsionOOClass;
@@ -409,15 +433,17 @@ end;
 // Functions shared between MakeC and MakeASM
 //
 
-// Returns a list of the first external ancestor of every class in the provided category file
+// Creates a unique list of classes. It looks at the ancestry of every class in
+// a category file and finds each class's first external ancestor. If an
+// ancestor class is already in the list, don't add it again.
 function GetExternalAncestors(par : TPsionOOLexer) : TStringList;
+// TODO: Check ancestor classes for circular reference (ancestor TStringList?)
+// (Might not need to do this here if it's checked elsewhere.)
+// TODO: Sort methods as per original CTRAN (the order that they appear in External files)
 var
     ancestor : String;
     s : String;
 begin
-    // TODO: Check ancestor classes for circular reference (ancestor TStringList?)
-    // (Might not need to do this here if it's checked elsewhere.)
-    // TODO: Sort methods as per original CTRAN (the order that they appear in External files)
     Result := TStringList.Create();
 
     for s in InternalClassList do
@@ -443,8 +469,8 @@ begin
     // Result := ancestor_list;
 end;
 
-// TODO: Review this!
 function MakeMethodsForOutput(class_item : TPsionOOClass) : TMethodsForCFile;
+// TODO: Review this!
 var
     method : TPsionOOMethodEntry;
     methodAdd_list : array of TPsionOOMethodEntry;
@@ -506,6 +532,9 @@ begin
     end;
 end;
 
+// Finds all the class method forward references across all internal category
+// and sub-cat files. Used to generate the "Class Method Forward References"
+// section at the start of .C and .ASM files.
 function GetMethodForwardRefs(par : TPsionOOLexer) : TStringList;
 var
     class_item : TPsionOOClass;
@@ -539,9 +568,9 @@ begin
     halt(-1);
 end;
 
-// If a class's parent is in an external module, return the ID (order in which they are listed in the
-// main category file, starting at 1). If it's in an internal one, return 0. Otherwise halt, because
-// there's something wrong in the code.
+// If a class's parent is in an external module, return the ID (order in which
+// they are listed in the main category file, starting at 1). If it's in an
+// internal one, return 0. Otherwise halt, because there's a bug in CTRAN.
 function GetParentModuleID(class_name : String) : Integer;
 var
     parent : String;
@@ -1119,7 +1148,7 @@ begin
             WriteLn(tfOut, ' dw   ', parent_extcat_id);
 
             Write(tfOut, ' dw   ');
-            // TODO: Should this actually be:
+
             if parent_extcat_id = 0 then
             begin
                 WriteLn(tfOut, 'c_', class_item.Parent);
@@ -1320,7 +1349,11 @@ begin
     end;
 end;
 
-
+// Opens all possible internal category (and sub-category) files
+// It creates a new parser, opening `filename`. Once that is done, it looks at the file's
+// REQUIREd sub-category files and parses them, adding each parser as a new parser object.
+//
+// Each internal file will now exist as a parser object in the TObjectDictionary `parsers`.
 function WalkParsers(filename: String) : String;
 var
     par : TPsionOOLexer;

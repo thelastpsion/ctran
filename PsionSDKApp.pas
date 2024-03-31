@@ -99,14 +99,14 @@ begin
                 if length(thisParam) > 2 then begin
                     _ParamList[switch_id].Value := copy(thisParam, 3);
                 end;
-                WriteLn('Switch ''', _DecodeParamID(switch_id), ''' (', switch_id, ') value ''', _ParamList[switch_id].Value, '''');
+                // WriteLn('Switch ''', _DecodeParamID(switch_id), ''' (', switch_id, ') value ''', _ParamList[switch_id].Value, '''');
             end;
         end else begin
             if flgFoundName then begin
                 WriteLn('Too many items without a switch.');
                 halt;
             end;
-            writeln('Found name of file to process: ', thisParam);
+            // writeln('Found name of file to process: ', thisParam);
             flgFoundName := true;
             _Filename := thisParam;
         end;

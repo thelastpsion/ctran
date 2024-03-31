@@ -490,6 +490,9 @@ begin
     end;
 end;
 
+// _SeekStartOfSection()
+// Looks for a tknBraceLeft. If found, it changes the current lexer state to NextLexerState.
+// It also increments the brace level.
 procedure TPsionOOLexer._SeekStartOfSection(NextLexerState : TLexerState);
 var
     tok: TToken;
@@ -508,7 +511,9 @@ begin
     end;
 end;
 
-
+// _DetectFileType()
+// Identifies the type of category file (regular, sub-category, external) based on the
+// file extension. If no file extension is provided, it assumes a regular category file.
 procedure TPsionOOLexer._DetectFileType(strFilename : String);
 var
     ext : String;
@@ -657,82 +662,81 @@ begin
 
             stateClass: begin
                 tok := _GrabNextToken();
-                if tok.Literal = '}' then begin
-                    _AddToken(tknBraceRight, tok);
-                    if Verbose then Writeln('>>> End of CLASS section found!');
-                    dec(_BraceLevel);
-                    if Verbose then Writeln('>>>   Brace level: ', _BraceLevel);
-                    _LexerState := stateSeekKeyword;
-                    if Verbose then Writeln('>>> Now in stateSeekKeyword');
-                end else begin
-                    case UpCase(tok.Literal) of
-                        'ADD': begin
-                            if Verbose then Writeln('>>> ADD found!');
-                            _AddToken(tknAdd, tok);
-                            _GrabAndAddStringTokens(1);
-                            tok := _GrabNextToken();
-                            if tok.Literal = '=' then begin
-                                _AddToken(tknEquals, tok);
-                                _GrabAndAddStringTokens(1);
-                            end;
-                        end;
-                        'REPLACE': begin
-                            if Verbose then Writeln('>>> REPLACE found!');
-                            _AddToken(tknReplace, tok);
-                            _GrabAndAddStringTokens(1);
-                            tok := _GrabNextToken();
-                            if tok.Literal = '=' then begin
-                                _AddToken(tknEquals, tok);
-                                _GrabAndAddStringTokens(1);
-                            end;
-                        end;
-                        'DEFER': begin
-                            if Verbose then Writeln('>>> DEFER found!');
-                            _AddToken(tknDefer, tok);
+                case UpCase(tok.Literal) of
+                    '}': begin
+                        _AddToken(tknBraceRight, tok);
+                        if Verbose then Writeln('>>> End of CLASS section found!');
+                        dec(_BraceLevel);
+                        if Verbose then Writeln('>>>   Brace level: ', _BraceLevel);
+                        _LexerState := stateSeekKeyword;
+                        if Verbose then Writeln('>>> Now in stateSeekKeyword');
+                    end;
+                    'ADD': begin
+                        if Verbose then Writeln('>>> ADD found!');
+                        _AddToken(tknAdd, tok);
+                        _GrabAndAddStringTokens(1);
+                        tok := _GrabNextToken();
+                        if tok.Literal = '=' then begin
+                            _AddToken(tknEquals, tok);
                             _GrabAndAddStringTokens(1);
                         end;
-                        'CONSTANTS': begin
-                            if Verbose then Writeln('>>> CONSTANTS found!');
-                            _AddToken(tknConstants, tok);
-                            _LexerState := stateClassConstantsSeekStart;
-                            if Verbose then Writeln('>>>   Now in stateClassConstantsSeekStart');
-                        end;
-                        'TYPES': begin
-                            if Verbose then Writeln('>>> TYPES found!');
-                            _AddToken(tknTypes, tok);
-                            _LexerState := stateClassTypesSeekStart;
-                            if Verbose then Writeln('>>>   Now in stateClassTypesSeekStart');
-                        end;
-                        'PROPERTY': begin
-                            if Verbose then Writeln('>>> PROPERTY found!');
-                            _AddToken(tknProperty, tok);
-                            tok := _GrabNextToken();
-                            if Verbose then Writeln('>>> Literal grabbed: ', tok.Literal);
-                            if TryStrToInt(tok.Literal, x) then begin
-                                if Verbose then Writeln('>>> Number found!');
-                                _AddToken(tknString, tok);
-                            end;
-                            _LexerState := stateClassPropertySeekStart;
-                            if Verbose then Writeln('>>>   Now in stateClassPropertySeekStart');
-                        end;
-                        // External reference (.EXT) keywords
-                        'DECLARE': begin
-                            if Verbose then Writeln('>>> DECLARE found!');
-                            _AddToken(tknDeclare, tok);
+                    end;
+                    'REPLACE': begin
+                        if Verbose then Writeln('>>> REPLACE found!');
+                        _AddToken(tknReplace, tok);
+                        _GrabAndAddStringTokens(1);
+                        tok := _GrabNextToken();
+                        if tok.Literal = '=' then begin
+                            _AddToken(tknEquals, tok);
                             _GrabAndAddStringTokens(1);
                         end;
-                        'HAS_METHOD': begin
-                            if Verbose then Writeln('>>> HAS_METHOD found!');
-                            _AddToken(tknHasMethod, tok);
+                    end;
+                    'DEFER': begin
+                        if Verbose then Writeln('>>> DEFER found!');
+                        _AddToken(tknDefer, tok);
+                        _GrabAndAddStringTokens(1);
+                    end;
+                    'CONSTANTS': begin
+                        if Verbose then Writeln('>>> CONSTANTS found!');
+                        _AddToken(tknConstants, tok);
+                        _LexerState := stateClassConstantsSeekStart;
+                        if Verbose then Writeln('>>>   Now in stateClassConstantsSeekStart');
+                    end;
+                    'TYPES': begin
+                        if Verbose then Writeln('>>> TYPES found!');
+                        _AddToken(tknTypes, tok);
+                        _LexerState := stateClassTypesSeekStart;
+                        if Verbose then Writeln('>>>   Now in stateClassTypesSeekStart');
+                    end;
+                    'PROPERTY': begin
+                        if Verbose then Writeln('>>> PROPERTY found!');
+                        _AddToken(tknProperty, tok);
+                        tok := _GrabNextToken();
+                        if Verbose then Writeln('>>> Literal grabbed: ', tok.Literal);
+                        if TryStrToInt(tok.Literal, x) then begin
+                            if Verbose then Writeln('>>> Number found!');
+                            _AddToken(tknString, tok);
                         end;
-                        'HAS_PROPERTY': begin
-                            if Verbose then Writeln('>>> HAS_PROPERTY found!');
-                            _AddToken(tknHasProperty, tok);
-                        end;
-                        else begin
-                            WriteLn('!!! Invalid string literal found: ', tok.Literal);
-                            halt;
-                        end;
+                        _LexerState := stateClassPropertySeekStart;
+                        if Verbose then Writeln('>>>   Now in stateClassPropertySeekStart');
+                    end;
+                    // External reference (.EXT) keywords
+                    'DECLARE': begin
+                        if Verbose then Writeln('>>> DECLARE found!');
+                        _AddToken(tknDeclare, tok);
+                        _GrabAndAddStringTokens(1);
+                    end;
+                    'HAS_METHOD': begin
+                        if Verbose then Writeln('>>> HAS_METHOD found!');
+                        _AddToken(tknHasMethod, tok);
+                    end;
+                    'HAS_PROPERTY': begin
+                        if Verbose then Writeln('>>> HAS_PROPERTY found!');
+                        _AddToken(tknHasProperty, tok);
+                    end;
+                    else begin
+                        WriteLn('!!! Invalid string literal found: ', tok.Literal);
+                        halt;
                     end;
                 end;
             end;

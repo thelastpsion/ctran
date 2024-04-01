@@ -2,15 +2,15 @@
 unit PsionOOCatDiagnostics;
 
 interface
-uses sysutils, PsionOOLexer;
+uses sysutils, PsionOOParser;
 
-procedure PrintArray(lex : TPsionOOLexer);
-procedure ShowTree(lex : TPsionOOLexer);
-procedure Reconstruct(lex: TPsionOOLexer);
+procedure PrintArray(lex : TPsionOOParser);
+procedure ShowTree(lex : TPsionOOParser);
+procedure Reconstruct(lex: TPsionOOParser);
 
 implementation
 
-procedure PrintArray(lex : TPsionOOLexer);
+procedure PrintArray(lex : TPsionOOParser);
 var
     s: String;
     tok : TToken;
@@ -29,7 +29,7 @@ begin
     Writeln('Length: ', Length(lex.Tokens));
 end;
 
-procedure ShowTree(lex : TPsionOOLexer);
+procedure ShowTree(lex : TPsionOOParser);
 var
     i : integer;
     s: String;
@@ -120,7 +120,7 @@ begin
     end;
 end;
 
-procedure Reconstruct(lex: TPsionOOLexer);
+procedure Reconstruct(lex: TPsionOOParser);
 var
     s: String;
     element : TPsionOOFileElement;

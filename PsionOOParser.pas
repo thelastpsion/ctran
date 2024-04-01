@@ -1,9 +1,10 @@
 {$mode objfpc}{$H+}{$J-}
 {$ModeSwitch typehelpers}
-unit PsionOOLexer;
-{ *** Psion Object Oriented Lexer ***
+unit PsionOOParser;
+{ *** Psion Object Oriented Lexer/Parser ***
 
-The tokeniser/lexer part of the reverse-engineered CTRAN.
+A lexer/parser class for Psion SIBO C category files, including external (.EXT)
+and internal (.CAT and .CL) types.
 
 }
 
@@ -147,7 +148,7 @@ type
         Tokens : array of TToken;
     end;
 
-    TPsionOOLexer = class
+    TPsionOOParser = class
         strict private
             // Fields: File Information
             _slCategoryFile : TStringList;
@@ -237,7 +238,7 @@ begin
     WriteStr(Result, self);
 end;
 
-constructor TPsionOOLexer.Create();
+constructor TPsionOOParser.Create();
 begin
     inherited Create;
     _slCategoryFile := TStringList.Create;
@@ -248,7 +249,7 @@ begin
     _resetTLB();
 end;
 
-procedure TPsionOOLexer.Reset();
+procedure TPsionOOParser.Reset();
 begin
     _LexerState := stateInitial;
     _curLineNum := 0;
@@ -259,7 +260,7 @@ begin
     _BraceLevel := 0;
 end;
 
-procedure TPsionOOLexer._ResetTLB();
+procedure TPsionOOParser._ResetTLB();
 begin
     _nextTLBTokenIndex := 0;
 end;
@@ -268,7 +269,7 @@ end;
 // TOKENISED LINE BUILDER
 //
 
-function TPsionOOLexer._GetNextLine() : TTokenisedLine;
+function TPsionOOParser._GetNextLine() : TTokenisedLine;
 begin
     Result.Tokens := nil; // Because it remembers what was here before!
 
@@ -288,7 +289,7 @@ begin
     end;
 end;
 
-procedure TPsionOOLexer._ErrShowLine(tokline : TTokenisedLine ; toknum : Integer ; message : String);
+procedure TPsionOOParser._ErrShowLine(tokline : TTokenisedLine ; toknum : Integer ; message : String);
 var
     spaces : Integer;
     line : String;
@@ -309,7 +310,7 @@ end;
 // OUTPUT (should really be in testing)
 //
 
-procedure TPsionOOLexer.PrintTokenisedLines();
+procedure TPsionOOParser.PrintTokenisedLines();
 var
     tokline : TTokenisedLine;
     tok : TToken;
@@ -341,14 +342,14 @@ end;
 //
 
 // Takes a TokenType and a String and puts it into a Token record
-function TPsionOOLexer._NewToken(newTokenLineNum: Integer; newTokenType: TTokenType; newTokenLiteral: String): TToken;
+function TPsionOOParser._NewToken(newTokenLineNum: Integer; newTokenType: TTokenType; newTokenLiteral: String): TToken;
 begin
     Result.TType := newTokenType;
     Result.Literal := newTokenLiteral;
     Result.LineNum := newTokenLineNum;
 end;
 
-procedure TPsionOOLexer._AddToken(toktype: TTokenType; part_tok: TToken);
+procedure TPsionOOParser._AddToken(toktype: TTokenType; part_tok: TToken);
 var
     tok: TToken;
 begin
@@ -358,7 +359,7 @@ begin
     _TokenArray := concat(_TokenArray, [tok]);
 end;
 
-procedure TPsionOOLexer._AddToken(toktype: TTokenType; tokliteral: String);
+procedure TPsionOOParser._AddToken(toktype: TTokenType; tokliteral: String);
 var
     tok: TToken;
 begin
@@ -374,7 +375,7 @@ end;
 // LINE PROCESSING
 //
 
-function TPsionOOLexer._GrabNextToken() : TToken;
+function TPsionOOParser._GrabNextToken() : TToken;
 var
     pos : Integer;
     flgFoundText : Boolean = false;
@@ -413,7 +414,7 @@ begin
     _curLinePos += length(Result.Literal);
 end;
 
-procedure TPsionOOLexer._GrabAndAddStringTokens(count : Integer);
+procedure TPsionOOParser._GrabAndAddStringTokens(count : Integer);
 var
     i : Integer;
     tok : TToken;
@@ -431,7 +432,7 @@ begin
     end;
 end;
 
-procedure TPsionOOLexer._ProcessCLine();
+procedure TPsionOOParser._ProcessCLine();
 var
     tok: TToken;
 begin
@@ -474,7 +475,7 @@ end;
 // _SeekStartOfSection()
 // Looks for a tknBraceLeft. If found, it changes the current lexer state to NextLexerState.
 // It also increments the brace level.
-procedure TPsionOOLexer._SeekStartOfSection(NextLexerState : TLexerState);
+procedure TPsionOOParser._SeekStartOfSection(NextLexerState : TLexerState);
 var
     tok: TToken;
 begin
@@ -495,7 +496,7 @@ end;
 // _DetectFileType()
 // Identifies the type of category file (regular, sub-category, external) based on the
 // file extension. If no file extension is provided, it assumes a regular category file.
-procedure TPsionOOLexer._DetectFileType(strFilename : String);
+procedure TPsionOOParser._DetectFileType(strFilename : String);
 var
     ext : String;
 begin
@@ -522,7 +523,7 @@ begin
     if Verbose then WriteLn('File is ', _FileType);
 end;
 
-procedure TPsionOOLexer._DetectModuleName(strFilename : String);
+procedure TPsionOOParser._DetectModuleName(strFilename : String);
 var
     s : String;
 begin
@@ -532,7 +533,7 @@ begin
     if Verbose then Writeln('Module name: ', _ModuleName);
 end;
 
-procedure TPsionOOLexer.LoadFile(strFilename : String);
+procedure TPsionOOParser.LoadFile(strFilename : String);
 begin
     _slCategoryFile := TStringList.Create;
 
@@ -543,7 +544,7 @@ begin
 end;
 
 // TODO: Check for braces inside lines?
-procedure TPsionOOLexer.Lex();
+procedure TPsionOOParser.Lex();
 var
     x : LongInt;
     tok : TToken;
@@ -766,7 +767,7 @@ begin
     _AddToken(tknEOF, '');
 end;
 
-procedure TPsionOOLexer._CheckLine(tokline : TTokenisedLine; args : Integer; compulsary_args : Integer; toktypes : array of TTokenType);
+procedure TPsionOOParser._CheckLine(tokline : TTokenisedLine; args : Integer; compulsary_args : Integer; toktypes : array of TTokenType);
 var
     i : Integer;
     tokline_argcount : Integer;
@@ -801,7 +802,7 @@ begin
     end;
 end;
 
-// function TPsionOOLexer._TokenValidForFiletypes(toktype: TTokenType; valid_filetypes: array of TFileType) : boolean;
+// function TPsionOOParser._TokenValidForFiletypes(toktype: TTokenType; valid_filetypes: array of TFileType) : boolean;
 // var
 //     ft: TFileType;
 // begin
@@ -813,13 +814,13 @@ end;
 //     end;
 // end;
 
-function TPsionOOLexer._BuildConstant(tokline : TTokenisedLine) : TPsionOOConstantEntry;
+function TPsionOOParser._BuildConstant(tokline : TTokenisedLine) : TPsionOOConstantEntry;
 begin
     Result.Name := tokline.Tokens[0].Literal;
     Result.Value := tokline.Tokens[1].Literal;
 end;
 
-function TPsionOOLexer._GetConstants() : TPsionOOConstants;
+function TPsionOOParser._GetConstants() : TPsionOOConstants;
 var
     tokline : TTokenisedLine;
 begin
@@ -844,7 +845,7 @@ begin
     end;
 end;
 
-function TPsionOOLexer._GetTypes() : TPsionOOTypes;
+function TPsionOOParser._GetTypes() : TPsionOOTypes;
 var
     tokline : TTokenisedLine;
 begin
@@ -869,7 +870,7 @@ begin
     end;
 end;
 
-function TPsionOOLexer._GetProperty() : TPsionOOProperty;
+function TPsionOOParser._GetProperty() : TPsionOOProperty;
 var
     tokline : TTokenisedLine;
 begin
@@ -894,7 +895,7 @@ begin
     end;
 end;
 
-procedure TPsionOOLexer._CheckForBrace();
+procedure TPsionOOParser._CheckForBrace();
 var
     tokline : TTokenisedLine;
 begin
@@ -905,7 +906,7 @@ begin
     _CheckLine(tokline, 0, 0, []);
 end;
 
-// procedure TPsionOOLexer._AddMethodEntry(method_type: TMethodType, s: String);
+// procedure TPsionOOParser._AddMethodEntry(method_type: TMethodType, s: String);
 // var
 //     curMethodEntry : TPsionOOMethodEntry;
 // begin
@@ -914,7 +915,7 @@ end;
 //     Result.Methods := concat(Result.Methods, [curMethodEntry]);
 // end;
 
-function TPsionOOLexer._GetClass(tokline_class : TTokenisedLine) : TPsionOOClass;
+function TPsionOOParser._GetClass(tokline_class : TTokenisedLine) : TPsionOOClass;
 var
     tokline : TTokenisedLine;
     curMethodEntry : TPsionOOMethodEntry;
@@ -1058,7 +1059,7 @@ begin
     end;
 end;
 
-procedure TPsionOOLexer.Parse();
+procedure TPsionOOParser.Parse();
 var
     tokline : TTokenisedLine;
     curElement : TPsionOOFileElement;

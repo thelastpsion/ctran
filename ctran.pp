@@ -2,7 +2,7 @@
 program ctran;
 
 uses
-    sysutils, classes, PsionOOLexer, PsionOOCatDiagnostics, PsionSDKApp, Generics.Collections, StringThings;
+    sysutils, classes, PsionOOParser, PsionOOCatDiagnostics, PsionSDKApp, Generics.Collections, StringThings;
 
 type
     TPsionOOMethodList = Array of String;
@@ -26,11 +26,11 @@ type
     //     commentASM
     // );
 
-    TParserDictionary = specialize TObjectDictionary<String, TPsionOOLexer>;
+    TParserDictionary = specialize TObjectDictionary<String, TPsionOOParser>;
 
 var
     strFilename : String;
-    CatParser : TPsionOOLexer;
+    CatParser : TPsionOOParser;
     params : TPsionSDKAppParams;
     PathList : TStringList;
     s : String;
@@ -44,7 +44,7 @@ var
     method_item : TPsionOOMethodEntry;
     extfile : String;
     parsers : TParserDictionary;
-    par : TPsionOOLexer; // temporary parser storage
+    par : TPsionOOParser; // temporary parser storage
 
 procedure HelpText();
 var
@@ -122,7 +122,7 @@ end;
 
 // Recursively build a list of classes and their parents, so that dependencies
 // can easily be found.
-procedure LoadDependencies(par : TPsionOOLexer);
+procedure LoadDependencies(par : TPsionOOParser);
 // FIX: Deal with "shadow" classes that only contain DEFERred methods (see SOLIPEG's TASK class as an example)
 var
     ext_class : TPsionOOCatClass;
@@ -193,7 +193,7 @@ end;
 // parser instance. Only used for loading external category files.
 procedure LoadDependencies(filename : String);
 var
-    par : TPsionOOLexer;
+    par : TPsionOOParser;
     // class_item : TPsionOOClass;
 begin
     if filename = '' then begin
@@ -203,7 +203,7 @@ begin
 
     try
         begin
-            par := TPsionOOLexer.Create;
+            par := TPsionOOParser.Create;
             // WriteLn('Loading ', filename);
             par.LoadFile(filename);
 
@@ -306,7 +306,7 @@ begin
 end;
 
 // Return all the first-generation children of a class
-function GetChildren(par : TPsionOOLexer ; parent : String) : TStringList;
+function GetChildren(par : TPsionOOParser ; parent : String) : TStringList;
 var
     class_item : TPsionOOClass;
 begin
@@ -323,7 +323,7 @@ end;
 
 // Gives every method a number, based on the order it is mentioned in the
 // current category (or sub-category) file.
-function BuildMethodNumbers(par : TPsionOOLexer) : TStringList;
+function BuildMethodNumbers(par : TPsionOOParser) : TStringList;
 var
     class_item : TPsionOOClass;
     method_id : Integer;
@@ -354,7 +354,7 @@ end;
 // Creates a unique list of classes. It looks at the ancestry of every class in
 // a category file and finds each class's first external ancestor. If an
 // ancestor class is already in the list, don't add it again.
-function GetExternalAncestors(par : TPsionOOLexer) : TStringList;
+function GetExternalAncestors(par : TPsionOOParser) : TStringList;
 // TODO: Check ancestor classes for circular reference (ancestor TStringList?)
 // (Might not need to do this here if it's checked elsewhere.)
 // TODO: Sort methods as per original CTRAN (the order that they appear in External files)
@@ -453,7 +453,7 @@ end;
 // Finds all the class method forward references across all internal category
 // and sub-cat files. Used to generate the "Class Method Forward References"
 // section at the start of .C and .ASM files.
-function GetMethodForwardRefs(par : TPsionOOLexer) : TStringList;
+function GetMethodForwardRefs(par : TPsionOOParser) : TStringList;
 var
     class_item : TPsionOOClass;
     method : TPsionOOMethodEntry;
@@ -515,7 +515,7 @@ end;
 // MAKE FILES
 //
 
-procedure MakeEXT(par: TPsionOOLexer);
+procedure MakeEXT(par: TPsionOOParser);
 var
     // element : TPsionOOFileElement; // NOTE: Might need this again for OVAL support
     method: TPsionOOMethodEntry;
@@ -586,7 +586,7 @@ begin
     end;
 end;
 
-procedure MakeG(par : TPsionOOLexer);
+procedure MakeG(par : TPsionOOParser);
 var
     inc_file : String;
     inc_file_def : String;
@@ -728,7 +728,7 @@ begin
     end;
 end;
 
-procedure MakeC(par : TPsionOOLexer);
+procedure MakeC(par : TPsionOOParser);
 var
     i : Integer;
     s : String;
@@ -932,7 +932,7 @@ begin
     end;
 end;
 
-procedure MakeLIS(par : TPsionOOLexer);
+procedure MakeLIS(par : TPsionOOParser);
 var
     filepath : String;
     tfOut : TextFile;
@@ -989,7 +989,7 @@ begin
     end;
 end;
 
-procedure MakeASM(par : TPsionOOLexer);
+procedure MakeASM(par : TPsionOOParser);
 var
     i : Integer;
     s : String;
@@ -1142,7 +1142,7 @@ begin
 
 end;
 
-procedure MakeING(par : TPsionOOLexer);
+procedure MakeING(par : TPsionOOParser);
 var
     inc_file : String;
     inc_stem : String;
@@ -1274,12 +1274,12 @@ end;
 // Each internal file will now exist as a parser object in the TObjectDictionary `parsers`.
 function WalkParsers(filename: String) : String;
 var
-    par : TPsionOOLexer;
+    par : TPsionOOParser;
     s : String;
 begin
     WriteLn('>>> Parsing ', filename);
 
-    par := TPsionOOLexer.Create();
+    par := TPsionOOParser.Create();
     par.LoadFile(filename);
 
     par.Verbose := params.InSwitch('V', 'L');

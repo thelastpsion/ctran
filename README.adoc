@@ -14,16 +14,16 @@ In Object Pascal.
 
 * [x] Psion Category file lexer
 * [x] Psion Category file parser/AST builder
-* [x] Command line parser [basic, but works well enough!]
+* [x] Command line parser _[basic, but works well enough!]_
 * [x] Build class dependency tree
 * [x] Generate `.ext` files
 * [x] Generate `.c` files
 * [x] Generate `.g` files
 * [x] Handle sub-category (.CL) files
 * [x] Generate files designed to only work with the SDK
-* [ ] Generate skeleton method files
-* [x] Generate `.asm` (TASM assembly) files [started, `PROPERTY` and `TYPES` currently broken]
-* [ ] Generate `.ing` (TASM assembly header) files
+* [x] Generate skeleton method files
+* [x] Generate `.asm` (TASM assembly) files
+* [ ] Generate `.ing` (TASM assembly header) files _[mostly working; `PROPERTY` and `TYPES` currently broken]_
 * [x] Generate `.lis` (class listing) files
 
 == What is (or was) `CTRAN`?

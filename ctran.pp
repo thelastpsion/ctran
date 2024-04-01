@@ -2,7 +2,7 @@
 program ctran;
 
 uses
-    sysutils, classes, PsionOOLexer, PsionOOCatDiagnostics, PsionSDKApp, Generics.Collections;
+    sysutils, classes, PsionOOLexer, PsionOOCatDiagnostics, PsionSDKApp, Generics.Collections, StringThings;
 
 type
     TPsionOOMethodList = Array of String;
@@ -27,11 +27,6 @@ type
     // );
 
     TParserDictionary = specialize TObjectDictionary<String, TPsionOOLexer>;
-
-    TStringListHelper = Class Helper for TStringList
-        Public
-            Function Reverse : TStringList;
-    end;
 
 var
     strFilename : String;
@@ -71,71 +66,6 @@ begin
     WriteLn(s);
 end;
 
-// Takes a TStringList and formats every element using format_main. If
-// format_final exists, the last element in the TStringList will be formatted
-// with it instead.
-// Useful for generating output for a file where the last line needs to be
-// different, such as a comma separated list.
-function FormatStringList(sl : TStringList ; format_main : String ; format_final : String = '') : TStringList;
-var
-    i : Integer;
-    arr_strings : TStringArray;
-begin
-    Result := TStringList.Create();
-
-    // TODO: For both format_main and format_final, if there is more than one %s, repeat sl[i] in the array
-
-    if AnsiPos('%s', format_main) = 0 then
-    begin
-        WriteLn('FormatStringList: Missing %s from format_main.');
-        halt(-1);
-    end;
-    if (format_final <> '') and (AnsiPos('%s', format_main) = 0) then
-    begin
-        WriteLn('FormatStringList: Missing %s from format_final.');
-        halt(-1);
-    end;
-
-
-    for i := 0 to sl.Count - 2 do
-    begin
-        Result.Add(format(format_main, [sl[i]]));
-    end;
-    if format_final = '' then
-        Result.Add(format(format_main, [sl[sl.Count - 1]]))
-    else
-        Result.Add(format(format_final, [sl[sl.Count - 1]]));
-end;
-
-// Creates a string where s is repeated c times.
-function RepeatStr(s: String; c: integer) : String;
-var
-    i : Integer;
-    l : Integer;
-begin
-    Result := '';
-    if c > 0 then begin
-        l := Length(s);
-        if l > 0 then begin
-            SetLength(Result, l * c);
-            for i := 0 to c - 1 do
-            begin
-                move(s[1], Result[l * i + 1], l);
-            end;
-        end;
-    end;
-end;
-
-// Gets the stem of a filename (i.e. without the extension). If it has no
-// extension, it just returns the filename.
-function ExtractFileStem(s : String) : String;
-begin
-    if ExtractFileExt(s) = '' then
-        Result := ExtractFileName(s)
-    else
-        Result := copy(ExtractFileName(s), 1, length(ExtractFileName(s)) - AnsiPos(ExtractFileExt(s), ExtractFileExt(s)) - 1);
-end;
-
 // Checks a provided path string, separated by semicolons.
 function CheckPath(s: String) : TStringList;
 var
@@ -156,18 +86,6 @@ begin
 
         if RightStr(pathitemexpand, 1) <> DirectorySeparator then pathitemexpand += DirectorySeparator;
         Result.Add(pathitemexpand);
-    end;
-end;
-
-// Reverses the order of elements in a TStringList
-function TStringListHelper.Reverse() : TStringList;
-var
-    i : Integer;
-begin
-    Result := TStringList.Create();
-    for i := Self.Count - 1 downto 0 do
-    begin
-        Result.Add(Self[i]);
     end;
 end;
 

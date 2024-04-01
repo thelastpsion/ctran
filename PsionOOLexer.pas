@@ -10,7 +10,7 @@ The tokeniser/lexer part of the reverse-engineered CTRAN.
 interface
 
 uses
-    sysutils, Classes;
+    sysutils, Classes, StringThings;
 
 type
     // TokenType = string;
@@ -176,7 +176,7 @@ type
             _ExternalList : TStringArray;
             _IncludeList : TStringArray;
             _ClassList : array of TPsionOOClass;
-            _RequireList : TStringArray; //TStringArray;
+            _RequireList : TStringArray;
 
             // Methods: Lexing
             procedure _DetectFileType(strFilename : String);
@@ -235,25 +235,6 @@ implementation
 function TTokenTypeHelper.ToString() : String;
 begin
     WriteStr(Result, self);
-end;
-
-// Removes everything in a string after the first semicolon
-procedure TrimAfterSemicolon(var s: String);
-begin
-    if ansipos(';', s) > 0 then s := copy(s, 1, ansipos(';', s));
-    s := s.Trim;
-end;
-
-function RepeatString(s: String; c: integer) : String;
-var
-    i : Integer;
-begin
-    Result := '';
-
-    for i := 1 to c do
-    begin
-        Result := Result + s;
-    end;
 end;
 
 constructor TPsionOOLexer.Create();
@@ -318,8 +299,8 @@ begin
     Writeln(format('%.3d: %s', [tokline.LineNum, line]));
     if toknum = -1 then spaces := length(line) else spaces := tokline.Tokens[toknum].LinePos;
 
-    Write('    ', RepeatString(' ', spaces), '^');
-    if toknum > -1 then Write(RepeatString('~', length(tokline.Tokens[toknum].Literal) - 1));
+    Write('    ', RepeatStr(' ', spaces), '^');
+    if toknum > -1 then Write(RepeatStr('~', length(tokline.Tokens[toknum].Literal) - 1));
     WriteLn;
     halt(-1);
 end;

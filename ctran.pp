@@ -525,8 +525,10 @@ var
     class_item : TPsionOOClass;
     class_name : String;
 begin
+    // TODO: Tidy this
     filepath := params.SwitchVal('X');
     if (length(filepath) > 0) and (RightStr(filepath, 1) <> DirectorySeparator) then filepath += DirectorySeparator;
+    CheckPath(filepath);
 
     AssignFile(tfOut, filepath + par.ModuleName + '.EXT');
 
@@ -602,8 +604,10 @@ var
 begin
     flgNotSDK := ((not params.SwitchExists('S')) and (par.FileType = ooCategory));
 
+    // TODO: Tidy this
     filepath := params.SwitchVal('G');
     if (length(filepath) > 0) and (RightStr(filepath, 1) <> DirectorySeparator) then filepath += DirectorySeparator;
+    CheckPath(filepath);
 
     AssignFile(tfOut, filepath + par.ModuleName + '.G');
 
@@ -747,8 +751,10 @@ var
 begin
     flgNotSDK := (not params.SwitchExists('S'));
 
+    // TODO: Tidy this
     filepath := params.SwitchVal('C');
     if (length(filepath) > 0) and (RightStr(filepath, 1) <> DirectorySeparator) then filepath += DirectorySeparator;
+    CheckPath(filepath);
 
     AssignFile(tfOut, filepath + par.ModuleName + '.C');
 
@@ -940,8 +946,10 @@ var
     sl : TStringList;
     module_name : String;
 begin
+    // TODO: Tidy this
     filepath := params.SwitchVal('L');
     if (length(filepath) > 0) and (RightStr(filepath, 1) <> DirectorySeparator) then filepath += DirectorySeparator;
+    CheckPath(filepath);
 
     AssignFile(tfOut, filepath + par.ModuleName + '.LIS');
 
@@ -1004,8 +1012,10 @@ var
     class_name : String;
     parent_extcat_id : Integer;
 begin
+    // TODO: Tidy this
     filepath := params.SwitchVal('A');
     if (length(filepath) > 0) and (RightStr(filepath, 1) <> DirectorySeparator) then filepath += DirectorySeparator;
+    CheckPath(filepath);
 
     AssignFile(tfOut, filepath + par.ModuleName + '.ASM');
 
@@ -1155,8 +1165,10 @@ var
     method_list : TStringList;
     inc_ext : String;
 begin
+    // TODO: Tidy this
     filepath := params.SwitchVal('I');
     if (length(filepath) > 0) and (RightStr(filepath, 1) <> DirectorySeparator) then filepath += DirectorySeparator;
+    CheckPath(filepath);
 
     AssignFile(tfOut, filepath + par.ModuleName + '.ING');
 
@@ -1330,7 +1342,6 @@ begin
             except
                 on E: EFCreateError do begin
                     WriteLn('ERROR: Unable to create skeleton file ', filepath, class_name, '.c');
-                    WriteLn('Does the folder exist?');
                     WriteLn('[', E.ClassName, '] ', E.Message);
                     halt;
                 end;

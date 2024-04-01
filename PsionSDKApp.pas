@@ -14,8 +14,6 @@ type
 
     TPsionSDKAppParams = class
         // TODO: Add allowed params (switch, description, optional, type?)
-        // TODO: Check that param exists
-        // TODO: Seek param and get value
         strict private
             _Filename : string;
             _ParamList : TPsionSDKParamList;

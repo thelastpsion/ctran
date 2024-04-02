@@ -525,10 +525,7 @@ var
     class_item : TPsionOOClass;
     class_name : String;
 begin
-    // TODO: Tidy this
-    filepath := params.SwitchVal('X');
-    if (length(filepath) > 0) and (RightStr(filepath, 1) <> DirectorySeparator) then filepath += DirectorySeparator;
-    CheckPath(filepath);
+    filepath := CheckPath(params.SwitchVal('X'))[0];
 
     AssignFile(tfOut, filepath + par.ModuleName + '.EXT');
 
@@ -604,10 +601,7 @@ var
 begin
     flgNotSDK := ((not params.SwitchExists('S')) and (par.FileType = ooCategory));
 
-    // TODO: Tidy this
-    filepath := params.SwitchVal('G');
-    if (length(filepath) > 0) and (RightStr(filepath, 1) <> DirectorySeparator) then filepath += DirectorySeparator;
-    CheckPath(filepath);
+    filepath := CheckPath(params.SwitchVal('G'))[0];
 
     AssignFile(tfOut, filepath + par.ModuleName + '.G');
 
@@ -751,10 +745,7 @@ var
 begin
     flgNotSDK := (not params.SwitchExists('S'));
 
-    // TODO: Tidy this
-    filepath := params.SwitchVal('C');
-    if (length(filepath) > 0) and (RightStr(filepath, 1) <> DirectorySeparator) then filepath += DirectorySeparator;
-    CheckPath(filepath);
+    filepath := CheckPath(params.SwitchVal('C'))[0];
 
     AssignFile(tfOut, filepath + par.ModuleName + '.C');
 
@@ -946,10 +937,7 @@ var
     sl : TStringList;
     module_name : String;
 begin
-    // TODO: Tidy this
-    filepath := params.SwitchVal('L');
-    if (length(filepath) > 0) and (RightStr(filepath, 1) <> DirectorySeparator) then filepath += DirectorySeparator;
-    CheckPath(filepath);
+    filepath := CheckPath(params.SwitchVal('L'))[0];
 
     AssignFile(tfOut, filepath + par.ModuleName + '.LIS');
 
@@ -1012,10 +1000,7 @@ var
     class_name : String;
     parent_extcat_id : Integer;
 begin
-    // TODO: Tidy this
-    filepath := params.SwitchVal('A');
-    if (length(filepath) > 0) and (RightStr(filepath, 1) <> DirectorySeparator) then filepath += DirectorySeparator;
-    CheckPath(filepath);
+    filepath := CheckPath(params.SwitchVal('A'))[0];
 
     AssignFile(tfOut, filepath + par.ModuleName + '.ASM');
 
@@ -1165,10 +1150,7 @@ var
     method_list : TStringList;
     inc_ext : String;
 begin
-    // TODO: Tidy this
-    filepath := params.SwitchVal('I');
-    if (length(filepath) > 0) and (RightStr(filepath, 1) <> DirectorySeparator) then filepath += DirectorySeparator;
-    CheckPath(filepath);
+    filepath := CheckPath(params.SwitchVal('I'))[0];
 
     AssignFile(tfOut, filepath + par.ModuleName + '.ING');
 
@@ -1322,9 +1304,7 @@ var
     class_item : TPsionOOClass;
     filepath: String;
 begin
-    filepath := params.SwitchVal('K');
-    if (length(filepath) > 0) and (RightStr(filepath, 1) <> DirectorySeparator) then filepath += DirectorySeparator;
-    CheckPath(filepath);
+    filepath := CheckPath(params.SwitchVal('K'))[0];
 
     // Generate Class Files
     for class_name in InternalClassList do

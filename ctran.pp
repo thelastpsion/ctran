@@ -358,7 +358,7 @@ end;
 function GetExternalAncestors(par : TPsionOOParser) : TStringList;
 // TODO: Check ancestor classes for circular reference (ancestor TStringList?)
 // (Might not need to do this here if it's checked elsewhere.)
-// TODO: Sort methods as per original CTRAN (the order that they appear in External files)
+// TODO: Sort methods as per classic CTRAN (the order that they appear in External files)
 var
     ancestor : String;
     s : String;
@@ -1407,17 +1407,22 @@ begin
 
     strFilename := params.Filename;
     case ExtractFileExt(strFilename) of
-        '.', '': strfilename += '.cat';
+        '.', '': strFilename += '.cat';
     end;
 
-    WriteLn('Filename: ', strFilename);
+    if not(FileExists(strFilename)) then begin
+        WriteLn('Error ', ExpandFileName(strFilename), ' 0: Failed to open ', ExpandFileName(strFilename));
+        WriteLn('File does not exist');
+        halt(-1);
+    end;
+
+    if params.SwitchExists('V') then WriteLn('Translating ', Upcase(ExtractFileStem(strFilename)));
 
     // Get the path for external files (from `-e`)
-    // TODO: extra checks?
     if params.SwitchExists('E') then begin
         PathList := CheckPath(params.SwitchVal('E'));
     end else begin
-        PathList := CheckPath('.');
+        PathList := CheckPath('');
     end;
 
     Try

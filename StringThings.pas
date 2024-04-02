@@ -44,11 +44,17 @@ end;
 // Gets the stem of a filename (i.e. without the extension). If it has no
 // extension, it just returns the filename.
 function ExtractFileStem(s : String) : String;
+var
+    file_ext : String;
+    file_name : String;
 begin
-    if ExtractFileExt(s) = '' then
+    file_ext := ExtractFileExt(s);
+    if file_ext = '' then begin
         Result := ExtractFileName(s)
-    else
-        Result := copy(ExtractFileName(s), 1, length(ExtractFileName(s)) - AnsiPos(ExtractFileExt(s), ExtractFileExt(s)) - 1);
+    end else begin
+        file_name := ExtractFileName(s);
+        Result := copy(file_name, 1, AnsiPos(file_ext, file_name) - 1);
+    end;
 end;
 
 // TStringList

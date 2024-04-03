@@ -78,7 +78,11 @@ There is also a small issue when processing classes that only have `DEFER`red me
 The original way of handling this is to completely skip these classes, which the new `CTRAN` doesn't do.
 This shouldn't impact existing code, but it will be fixed in the future.
 
-TASM file generation (specifically `.ING` files) needs some extra work, potentially requiring some major work on the parser.
+TASM file generation, specifically `.ING` ASM include files, is currently broken.
+It is currently unable to convert the C in category file `PROPERTY` and `TYPES` sections to 8086 assembly.
+Generated files will include the original C code, commented out.
+If you want to use `.ING` files, you will need to manually convert the C to ASM.
+Fixing this will require some major work, requiring a miniature C compiler to be written and added to the code.
 
 Finally, it can't generate files for use with Psion OVAL (see below).
 

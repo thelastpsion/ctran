@@ -50,7 +50,7 @@ procedure HelpText();
 var
     s : String;
 begin
-    s := 'CTRAN Version x.xx (C) xxx' + LineEnding +
+    s := 'CTRAN-ng Version 0.0.1 (C) Alex Brown' + LineEnding +
          'Parameters: <name> [-e<dir>] [-x[<dir>] -g[<dir>] -a[<dir>] -i[<dir>] -l[<dir>] -c[<dir>] -s -k -v]' + LineEnding +
          '<name>       Category source input file' + LineEnding +
          '-e<dir>      Input externals directory' + LineEnding +
@@ -58,7 +58,7 @@ begin
          '-c<dir>      Output .C code file' + LineEnding +
          '-g<dir>      Output .G include file' + LineEnding +
          '-a<dir>      Output .ASM code file' + LineEnding +
-         '-i<dir>      Output .ING code file' + LineEnding +
+         '-i<dir>      Output .ING code file [currently broken]' + LineEnding +
          '-l<dir>      Output .LIS file' + LineEnding +
          '-s           SDK output' + LineEnding +
          '-k           Output skeleton source files' + LineEnding +
@@ -1228,21 +1228,27 @@ begin
                 // FIX: Translate C to ASM
                 if length(class_item.ClassTypes) > 0 then begin
                     WriteLn(tfOut, '; Types for ', class_item.Name);
+                    WriteLn(tfOut, '; *** WARNING! THIS IS BROKEN! ***');
+                    WriteLn(tfOut, '; *** Unconverted C code follows ***');
                     for s in class_item.ClassTypes do
                     begin
-                        WriteLn(tfOut, s);
+                        WriteLn(tfOut, '; ', s);
                     end;
+                    WriteLn(tfOut, '; *** Unconverted C code ends ***');
                 end;
 
                 // FIX: Translate C to ASM
                 WriteLn(tfOut, '; Property of ', class_item.Name);
                 if length(class_item.ClassProperty) > 0 then begin
                     WriteLn(tfOut, 'PRS_', UpCase(class_item.Name), ' struc');
+                    WriteLn(tfOut, '; *** WARNING! THIS IS BROKEN! ***');
+                    WriteLn(tfOut, '; *** Unconverted C code follows ***');
                     for s in class_item.ClassProperty do
                     begin
-                        WriteLn(tfOut, s);
+                        WriteLn(tfOut, '; ', s);
                     end;
                     WriteLn(tfOut, 'PRS_', UpCase(class_item.Name), ' ends');
+                    WriteLn(tfOut, '; *** Unconverted C code ends ***');
                 end;
 
                 WriteLn(tfOut, 'PR_', UpCase(class_item.Name), ' struc');
@@ -1392,6 +1398,11 @@ end;
 //
 
 begin
+    WriteLn('WARNING: This is alpha quality software.');
+    WriteLn('         It has had limited testing.');
+    WriteLn('         Use it at your own risk.');
+    WriteLn;
+
     params := TPsionSDKAppParams.Create;
     params.Grab;
 
@@ -1518,6 +1529,15 @@ begin
             MakeC(CatParser);
         end;
         if params.SwitchExists('I') then begin
+            WriteLn;
+            WriteLn('*** WARNING! .ING FILE GENERATION IS BROKEN! ***');
+            WriteLn('CTRAN-ng is currently unable to convert the C in category file');
+            WriteLn('PROPERTY and TYPES sections to ASM. The file generated will');
+            WriteLn('include the original C code, commented out. If you want to use');
+            WriteLn('.ING files, you will need to manually convert the C to ASM.');
+            WriteLn('It is next on the list to be fixed, but it will take time as');
+            WriteLn('it requires a miniature C compiler to be written.');
+            WriteLn;
             for par in parsers.Values do begin
                 MakeING(par);
             end;

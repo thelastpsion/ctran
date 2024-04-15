@@ -17,6 +17,7 @@ function RepeatStr(s: String; c: integer) : String;
 function ExtractFileStem(s : String) : String;
 procedure TrimAfterSemicolon(var s: String);
 function FormatStringList(sl : TStringList ; format_main : String ; format_final : String = '') : TStringList;
+function DelimitString(s : String; delimiter : String; step: Integer = 1) : String;
 
 implementation
 
@@ -93,6 +94,20 @@ begin
         Result.Add(format(format_main, [sl[sl.Count - 1]]))
     else
         Result.Add(format(format_final, [sl[sl.Count - 1]]));
+end;
+
+function DelimitString(s : String; delimiter : String; step: Integer = 1) : String;
+var
+    i : Integer;
+begin
+    Result := '';
+    for i := 1 to length(s) do
+    begin
+        if (i > 1) and ((i - 1) mod step = 0) then begin
+            Result += delimiter;
+        end;
+        Result += copy(s, i, 1);
+    end;
 end;
 
 // Reverses the order of elements in a TStringList

@@ -729,13 +729,9 @@ end;
 
 procedure MakeC(par : TPsionOOParser);
 var
-    i : Integer;
     s : String;
-    ext_dyl : String;
-    splitter_string : String;
     sl : TStringList;
     slFile : TStringList;
-    flg : Boolean;
     class_name : String;
     class_item : TPsionOOClass;
     filepath : String;

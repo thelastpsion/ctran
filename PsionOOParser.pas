@@ -782,22 +782,22 @@ begin
         halt;
     end;
     if length(toktypes) <> args then begin
-        Writeln('[_CheckLine] args doesn''t equal the number of token types provided');
+        WriteLn('[_CheckLine] args doesn''t equal the number of token types provided');
         halt;
     end;
 
     if tokline_argcount < compulsary_args then begin
-        _ErrShowLine(tokline, -1, format('Current line has too few (%s) arguments', [tokline_argcount]));
+        _ErrShowLine(tokline, -1, format('Current line has too few (%d) arguments', [tokline_argcount]));
     end;
 
     if tokline_argcount - 1 > args then begin
-        _ErrShowLine(tokline, args + 1, format('Current line has too many (%s) arguments', [tokline_argcount]))
+        _ErrShowLine(tokline, args + 1, format('Current line has too many (%d) arguments', [tokline_argcount]))
     end;
 
     for i := 1 to tokline_argcount - 1 do
     begin
         if (tokline.Tokens[i].TType <> toktypes[i-1]) then begin
-            _ErrShowLine(tokline, 1, format('Incorrect token type on line %d. Expected %s but got %s', [tokline.LineNum, toktypes[i-1], tokline.Tokens[i].TType.ToString()]));
+            _ErrShowLine(tokline, 1, format('Incorrect token type. Expected %s but got %s', [toktypes[i-1], tokline.Tokens[i].TType.ToString()]));
         end;
     end;
 end;

@@ -65,7 +65,7 @@ end;
 // with it instead.
 // Useful for generating output for a file where the last line needs to be
 // different, such as a comma separated list.
-function FormatStringList(sl : TStringList ; format_main : String ; format_final : String = '') : TStringList;
+function FormatStringList(sl : TStringList ; fmt_main : String ; fmt_final : String = '') : TStringList;
 var
     i : Integer;
     arr_strings : TStringArray;
@@ -74,12 +74,12 @@ begin
 
     // TODO: For both format_main and format_final, if there is more than one %s, repeat sl[i] in the array
 
-    if AnsiPos('%s', format_main) = 0 then
+    if AnsiPos('%s', fmt_main) = 0 then
     begin
         WriteLn('FormatStringList: Missing %s from format_main.');
         halt(-1);
     end;
-    if (format_final <> '') and (AnsiPos('%s', format_main) = 0) then
+    if (fmt_final <> '') and (AnsiPos('%s', fmt_main) = 0) then
     begin
         WriteLn('FormatStringList: Missing %s from format_final.');
         halt(-1);
@@ -88,12 +88,12 @@ begin
 
     for i := 0 to sl.Count - 2 do
     begin
-        Result.Add(format(format_main, [sl[i]]));
+        Result.Add(fmt_main, [sl[i]]);
     end;
     if format_final = '' then
-        Result.Add(format(format_main, [sl[sl.Count - 1]]))
+        Result.Add(fmt_main, [sl[sl.Count - 1]])
     else
-        Result.Add(format(format_final, [sl[sl.Count - 1]]));
+        Result.Add(fmt_final, [sl[sl.Count - 1]]);
 end;
 
 function DelimitString(s : String; delimiter : String; step: Integer = 1) : String;

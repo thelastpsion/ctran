@@ -642,17 +642,17 @@ begin
             slFile.Add('#endif /* EPOC */');
             slFile.Add('#ifdef EPOC');
         end;
-        slFile.Add(format('#define CAT_%s_%s 0', [par.ModuleName, par.ModuleName]));
+        slFile.Add('#define CAT_%s_%s 0', [par.ModuleName, par.ModuleName]);
         for i := 0 to length(par.ExternalList) - 1 do
         begin
-            slFile.Add(format('#define CAT_%s_%s %d', [par.ModuleName, UpCase(par.ExternalList[i]),  i + 1]));
+            slFile.Add('#define CAT_%s_%s %d', [par.ModuleName, UpCase(par.ExternalList[i]),  i + 1]);
         end;
         if flgNotSDK then begin
             slFile.Add('#else');
-            slFile.Add(format('#define CAT_%s_%s (&ct_%s[0])', [par.ModuleName, par.ModuleName, LowerCase(par.ModuleName)]));
+            slFile.Add('#define CAT_%s_%s (&ct_%s[0])', [par.ModuleName, par.ModuleName, LowerCase(par.ModuleName)]);
             for s in par.ExternalList do
             begin
-                slFile.Add(format('#define CAT_%s_%s (&ct_%s[0])', [par.ModuleName, UpCase(s), LowerCase(s)]));
+                slFile.Add('#define CAT_%s_%s (&ct_%s[0])', [par.ModuleName, UpCase(s), LowerCase(s)]);
             end;
             slFile.Add('#endif');
         end;
@@ -666,7 +666,7 @@ begin
                 WriteLn('MakeG: Can''t find class ', class_item.Name, ' in InternalClassList');
                 halt(-1);
             end;
-            slFile.Add(format('#define C_%s %d', [UpCase(class_item.Name), InternalClassList.IndexOf(class_item.Name)]));
+            slFile.Add('#define C_%s %d', [UpCase(class_item.Name), InternalClassList.IndexOf(class_item.Name)]);
         end;
 
         method_list := BuildMethodNumbers(par);
@@ -690,7 +690,7 @@ begin
                 slFile.Add('/* Constants for ' + class_item.Name + ' */');
                 for constant_item in class_item.ClassConstants do
                 begin
-                    slFile.Add(format('#define %s %s', [constant_item.Name, constant_item.Value]));
+                    slFile.Add('#define %s %s', [constant_item.Name, constant_item.Value]);
                 end;
             end;
 
@@ -712,12 +712,12 @@ begin
             sl := GetAncestorsWithProperty(class_item).Reverse;
             for s in sl do
             begin
-                slFile.Add(format('PRS_%s %s;', [UpCase(s), s]));
+                slFile.Add('PRS_%s %s;', [UpCase(s), s]);
             end;
             FreeAndNil(sl);
 
             if length(class_item.ClassProperty) > 0 then begin
-                slFile.Add(format('PRS_%s %s;', [UpCase(class_item.Name), class_item.Name]));
+                slFile.Add('PRS_%s %s;', [UpCase(class_item.Name), class_item.Name]);
             end;
             slFile.Add('} PR_' + UpCase(class_item.Name) + ';');
         end;
@@ -770,15 +770,15 @@ begin
     sl := GetExternalAncestors(par);
     for s in sl do
     begin
-        slFile.Add(format('#define ERC_%s C_%s', [UpCase(s), UpCase(s)]));
+        slFile.Add('#define ERC_%s C_%s', [UpCase(s), UpCase(s)]);
     end;
     if flgNotSDK then begin
         slFile.Add('#else');
 
         for s in sl do
         begin
-            slFile.Add(format('GLREF_D P_CLASS c_%s;', [s]));
-            slFile.Add(format('#define ERC_%s &c_%s', [UpCase(s), s]));
+            slFile.Add('GLREF_D P_CLASS c_%s;', [s]);
+            slFile.Add('#define ERC_%s &c_%s', [UpCase(s), s]);
         end;
 
         slFile.Add('#endif');
@@ -789,7 +789,7 @@ begin
     ForwardRefs := GetMethodForwardRefs(par);
     if ForwardRefs.Count > 0 then begin
         slFile.Add('/* Method function forward references */');
-        for s in ForwardRefs do slFile.Add(format('GLREF_C VOID %s();', [s]));
+        for s in ForwardRefs do slFile.Add('GLREF_C VOID %s();', [s])
     end;
     FreeAndNil(ForwardRefs);
 
@@ -807,7 +807,7 @@ begin
         c_methods := MakeMethodsForOutput(class_item);
         for method in c_methods.Methods do begin
             if (method.Name <> '') and (method.ForwardRef = '') then begin
-                slFile.Add(format('GLREF_C VOID %s_%s();', [class_item.Name, method.Name]));
+                slFile.Add('GLREF_C VOID %s_%s();', [class_item.Name, method.Name]);
             end;
         end;
 
@@ -818,7 +818,7 @@ begin
 
         total_methods := length(c_methods.Methods);
         if total_methods > 0 then begin
-            slFile.Add(format('VOID (*v[%d])();', [total_methods]));
+            slFile.Add('VOID (*v[%d])();', [total_methods]);
         end;
 
         slFile.Add('} c_' + class_item.Name + ' =');
@@ -890,15 +890,15 @@ begin
         slFile.Add('GLDEF_D struct');
         slFile.Add('    {');
         slFile.Add('    UWORD number;');
-        slFile.Add(format('    UBYTE names[%d][14];', [length(par.ExternalList)]));
+        slFile.Add('    UBYTE names[%d][14];', [length(par.ExternalList)]);
         slFile.Add('    } ExtCatTable =');
-        slFile.Add(format('    {%d,', [length(par.ExternalList)]));
+        slFile.Add('    {%d,', [length(par.ExternalList)]);
         slFile.Add('    {');
 
         sl := TStringList.Create();
         for s in par.ExternalList do
         begin
-            sl.Add(format('    {''%s''%s}', [DelimitString(s + '.DYL', ''','''), RepeatStr(',0', 10 - length(s))]));
+            sl.Add('    {''%s''%s}', [DelimitString(s + '.DYL', ''','''), RepeatStr(',0', 10 - length(s))]);
         end;
         slFile.AddStrings(FormatStringList(sl, '%s,', '%s'));
         FreeAndNil(sl);
@@ -1010,7 +1010,7 @@ begin
     sl := GetExternalAncestors(par);
     for s in sl do
     begin
-        slFile.Add(format('ERC_%s equ C_%s', [UpCase(s), UpCase(s)]));
+        slFile.Add('ERC_%s equ C_%s', [UpCase(s), UpCase(s)]);
     end;
     FreeAndNil(sl);
 
@@ -1040,14 +1040,14 @@ begin
         slFile.Add(' ASSUME CS:_TEXT');
         for method in c_methods.Methods do begin
             if (method.Name <> '') and (method.ForwardRef = '') then begin
-                slFile.Add(format('GLREF_C %s_%s', [class_item.Name, method.Name]));
+                slFile.Add('GLREF_C %s_%s', [class_item.Name, method.Name]);
             end;
         end;
         slFile.Add(' _TEXT ends');
 
         slFile.Add(' _TEXT segment byte public ''CODE''');
         slFile.Add('GLDEF_C c_' + class_item.Name);
-        slFile.Add(format(' dw   %d', [parent_extcat_id]));
+        slFile.Add(' dw   %d', [parent_extcat_id]);
 
         if parent_extcat_id = 0 then
         begin
@@ -1062,12 +1062,12 @@ begin
         begin
             slFile.Add(' db   0');
         end else begin
-            slFile.Add(format(' db   %d', [c_methods.StartIndex]));
+            slFile.Add(' db   %d', [c_methods.StartIndex]);
         end;
 
         slFile.Add(' db   06bh');
-        slFile.Add(format(' db   %d', [length(c_methods.Methods)]));
-        slFile.Add(format(' db   %d', [class_item.PropertyAutodestroyCount]));
+        slFile.Add(' db   %d', [length(c_methods.Methods)]);
+        slFile.Add(' db   %d', [class_item.PropertyAutodestroyCount]);
 
         method_id := -1; // INFO: I don't know why this works, but it matches the output from classic CTRAN
         for method in c_methods.Methods do
@@ -1078,7 +1078,7 @@ begin
                     slFile.Add(' dw   0');
                 end;
                 if method.ForwardRef = '' then begin
-                    slFile.Add(format(' dw   %s_%s', [class_item.Name, method.Name]));
+                    slFile.Add(' dw   %s_%s', [class_item.Name, method.Name]);
                 end else begin
                     slFile.Add(' dw   ' + method.ForwardRef);
                 end;
@@ -1103,7 +1103,7 @@ begin
         slFile.Add(' _TEXT segment byte public ''CODE''');
         slFile.Add('GLDEF_C ExtCatTable');
 
-        slFile.Add(format(' dw   %d', [length(par.ExternalList)]));
+        slFile.Add(' dw   %d', [length(par.ExternalList)]);
         for s in par.ExternalList do
         begin
             slFile.Add(' db "' + s + '.DYL"' + RepeatStr(',0', 10 - length(s)));
@@ -1288,7 +1288,7 @@ begin
     // TODO: Check that this creates all the correct methods
     for method in c_methods.Methods do begin
         if (method.Name <> '') and (method.ForwardRef = '') then begin
-            Result.Add(format('METHOD VOID %s_%s(PR_%s *self)', [class_item.Name, method.Name, UpCase(class_item.Name)]));
+            Result.Add('METHOD VOID %s_%s(PR_%s *self)', [class_item.Name, method.Name, UpCase(class_item.Name)]);
             Result.Add('    {');
             Result.Add('    }');
             Result.Add('');

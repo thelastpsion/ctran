@@ -634,11 +634,7 @@ begin
         if flgNotSDK then begin
             slFile.Add('#ifndef EPOC');
             slFile.Add('GLREF_D P_CLASS *ct_' + LowerCase(par.ModuleName) + '[];');
-            for s in par.ExternalList do
-            begin
-                slFile.Add('GLREF_D P_CLASS *ct_' + s + '[];');
-            end;
-            // slFile.AddStrings(FormatStringList(par.ExternalList, 'GLREF_D P_CLASS *ct_%s[];'));
+            slFile.AddStrings(par.ExternalList.FormatAll('GLREF_D P_CLASS *ct_%s[];'));
             slFile.Add('#endif /* EPOC */');
             slFile.Add('#ifdef EPOC');
         end;
@@ -672,7 +668,7 @@ begin
         method_list := BuildMethodNumbers(par);
         if method_list.Count > 0 then begin
             slFile.Add('/* Method Numbers */');
-            slFile.AddStrings(FormatStringList(method_list, '#define O_%s'));
+            slFile.AddStrings(method_list.FormatAll('#define O_%s'));
             // for s in method_list do
             // begin
             //     WriteLn(tfOut, '#define O_', s);
@@ -861,7 +857,7 @@ begin
         if sl.Count > 0 then
         begin
             slFile.Add('{');
-            slFile.AddStrings(FormatStringList(sl, '%s,', '%s'));
+            slFile.AddStrings(sl.FormatAll('%s,', '%s'));
             slFile.Add('}');
         end;
         FreeAndNil(sl);
@@ -880,7 +876,7 @@ begin
 
     slFile.Add('{');
 
-    slFile.AddStrings(FormatStringList(InternalClassList, '(P_CLASS *)&c_%s,', '(P_CLASS *)&c_%s'));
+    slFile.AddStrings(InternalClassList.FormatAll('(P_CLASS *)&c_%s,', '(P_CLASS *)&c_%s'));
 
     slFile.Add('};');
 
@@ -898,9 +894,9 @@ begin
         sl := TStringList.Create();
         for s in par.ExternalList do
         begin
-            sl.Add('    {''%s''%s}', [DelimitString(s + '.DYL', ''','''), RepeatStr(',0', 10 - length(s))]);
+            sl.Add('    {''%s''%s}', [DelimitStr(s + '.DYL', ''','''), RepeatStr(',0', 10 - length(s))]);
         end;
-        slFile.AddStrings(FormatStringList(sl, '%s,', '%s'));
+        slFile.AddStrings(sl.FormatAll('%s,', '%s'));
         FreeAndNil(sl);
         slFile.Add('    }');
         slFile.Add('    };');
@@ -1019,7 +1015,7 @@ begin
         slFile.Add('; Method function forward references');
         slFile.Add(' _TEXT segment byte public ''CODE''');
         slFile.Add(' ASSUME CS:_TEXT');
-        slFile.AddStrings(FormatStringList(sl, 'GLREF_C %s'));
+        slFile.AddStrings(sl.FormatAll('GLREF_C %s'));
         slFile.Add(' _TEXT ends');
     end;
     FreeAndNil(sl);
@@ -1093,7 +1089,7 @@ begin
     slFile.Add('; Class Lookup Table');
     slFile.Add(' _TEXT segment byte public ''CODE''');
     slFile.Add('GLDEF_C ClassTable');
-    slFile.AddStrings(FormatStringList(InternalClassList, ' dw   c_%s'));
+    slFile.AddStrings(InternalClassList.FormatAll(' dw   c_%s'));
     slFile.Add(' EEND');
 
     slFile.Add(' _TEXT ends');

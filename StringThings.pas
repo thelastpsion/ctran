@@ -11,13 +11,17 @@ type
     TStringListHelper = Class Helper for TStringList
         Public
             Function Reverse : TStringList;
+            function FormatAll(fmt_main : String ; fmt_final : String = '') : TStringList;
+    end;
+    TStringArrayHelper = Type Helper for TStringArray
+        Public
+            function FormatAll(fmt_main : String ; fmt_final : String = '') : TStringArray;
     end;
 
 function RepeatStr(s: String; c: integer) : String;
 function ExtractFileStem(s : String) : String;
 procedure TrimAfterSemicolon(var s: String);
-function FormatStringList(sl : TStringList ; format_main : String ; format_final : String = '') : TStringList;
-function DelimitString(s : String; delimiter : String; step: Integer = 1) : String;
+function DelimitStr(s : String; delimiter : String; step: Integer = 1) : String;
 
 implementation
 
@@ -58,45 +62,7 @@ begin
     end;
 end;
 
-// TStringList
-
-// Takes a TStringList and formats every element using format_main. If
-// format_final exists, the last element in the TStringList will be formatted
-// with it instead.
-// Useful for generating output for a file where the last line needs to be
-// different, such as a comma separated list.
-function FormatStringList(sl : TStringList ; fmt_main : String ; fmt_final : String = '') : TStringList;
-var
-    i : Integer;
-    arr_strings : TStringArray;
-begin
-    Result := TStringList.Create();
-
-    // TODO: For both format_main and format_final, if there is more than one %s, repeat sl[i] in the array
-
-    if AnsiPos('%s', fmt_main) = 0 then
-    begin
-        WriteLn('FormatStringList: Missing %s from format_main.');
-        halt(-1);
-    end;
-    if (fmt_final <> '') and (AnsiPos('%s', fmt_main) = 0) then
-    begin
-        WriteLn('FormatStringList: Missing %s from format_final.');
-        halt(-1);
-    end;
-
-
-    for i := 0 to sl.Count - 2 do
-    begin
-        Result.Add(fmt_main, [sl[i]]);
-    end;
-    if format_final = '' then
-        Result.Add(fmt_main, [sl[sl.Count - 1]])
-    else
-        Result.Add(fmt_final, [sl[sl.Count - 1]]);
-end;
-
-function DelimitString(s : String; delimiter : String; step: Integer = 1) : String;
+function DelimitStr(s : String; delimiter : String; step: Integer = 1) : String;
 var
     i : Integer;
 begin
@@ -110,6 +76,15 @@ begin
     end;
 end;
 
+// Removes everything in a string after the first semicolon
+procedure TrimAfterSemicolon(var s: String);
+begin
+    if ansipos(';', s) > 0 then s := copy(s, 1, ansipos(';', s));
+    s := s.Trim;
+end;
+
+// TStringList
+
 // Reverses the order of elements in a TStringList
 function TStringListHelper.Reverse() : TStringList;
 var
@@ -122,11 +97,72 @@ begin
     end;
 end;
 
-// Removes everything in a string after the first semicolon
-procedure TrimAfterSemicolon(var s: String);
+// Takes a TStringArray and formats every element using format_main. If
+// fmt_final exists, the last element in the TStringList will be formatted
+// with it instead.
+// Useful for generating output for a file where the last line needs to be
+// different, such as a comma separated list.
+function TStringArrayHelper.FormatAll(fmt_main : String ; fmt_final : String = '') : TStringArray;
+var
+    i : Integer;
 begin
-    if ansipos(';', s) > 0 then s := copy(s, 1, ansipos(';', s));
-    s := s.Trim;
+    SetLength(Result, length(self));
+
+    // TODO: For both fmt_main and fmt_final, if there is more than one %s, repeat sl[i] in the array
+
+    if AnsiPos('%s', fmt_main) = 0 then
+    begin
+        WriteLn('FormatStringArray: Missing %s from format_main.');
+        halt(-1);
+    end;
+    if (fmt_final <> '') and (AnsiPos('%s', fmt_main) = 0) then
+    begin
+        WriteLn('FormatStringArray: Missing %s from fmt_final.');
+        halt(-1);
+    end;
+
+    for i := 0 to length(self) - 2 do
+    begin
+        Result[i] := format(fmt_main, [self[i]]);
+    end;
+    if fmt_final = '' then
+        Result[length(Result) - 1] := format(fmt_main, [self[length(self) - 1]])
+    else
+        Result[length(Result) - 1] := format(fmt_final, [self[length(self) - 1]]);
+end;
+
+// Takes a TStringList and formats every element using format_main. If
+// fmt_final exists, the last element in the TStringList will be formatted
+// with it instead.
+// Useful for generating output for a file where the last line needs to be
+// different, such as a comma separated list.
+function TStringListHelper.FormatAll(fmt_main : String ; fmt_final : String = '') : TStringList;
+var
+    i : Integer;
+begin
+    Result := TStringList.Create();
+
+    // TODO: For both fmt_main and fmt_final, if there is more than one %s, repeat sl[i] in the array
+
+    if AnsiPos('%s', fmt_main) = 0 then
+    begin
+        WriteLn('FormatStringList: Missing %s from format_main.');
+        halt(-1);
+    end;
+    if (fmt_final <> '') and (AnsiPos('%s', fmt_main) = 0) then
+    begin
+        WriteLn('FormatStringList: Missing %s from fmt_final.');
+        halt(-1);
+    end;
+
+    for i := 0 to self.Count - 2 do
+    begin
+        Result.Add(fmt_main, [self[i]]);
+    end;
+    if fmt_final = '' then
+        Result.Add(fmt_main, [self[self.Count - 1]])
+    else
+        Result.Add(fmt_final, [self[self.Count - 1]]);
 end;
 
 end.

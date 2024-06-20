@@ -33,7 +33,7 @@ var
     CatParser : TPsionOOParser;
     params : TPsionSDKAppParams;
     PathList : TStringList;
-    s : String;
+    s : String; // FIX: Remove this!
     DependencyList : TDependencyList;
     MethodList : TStringList;
     class_item : TPsionOOClass;
@@ -400,6 +400,7 @@ var
     flgExists : Boolean;
     i : Integer;
     count_possible_nulls : Integer;
+    s : String;
 begin
     SetLength(Result.Methods, 0);
     for method in class_item.Methods do
@@ -1113,6 +1114,105 @@ begin
     FreeAndNil(slFile);
 end;
 
+function CLineToTasm(cstr : String; prefix : String) : String;
+var
+    c_type : String;
+    asm_type : String;
+    ident : String;
+    space_pos : Integer;
+    asm_type_size : String;
+    bracket_pos : Integer;
+begin
+    space_pos := pos(' ', cstr);
+    if space_pos < 1 then begin
+        WriteLn('No space found in this C line:');
+        WriteLn(cstr);
+        halt(-1);
+    end;
+
+    c_type := copy(cstr, 1, space_pos - 1);
+    ident := trim(copy(cstr, space_pos + 1));
+    ident := copy(ident, 1, length(ident) - 1);
+
+    Result := '';
+    bracket_pos := pos('[', ident);
+    if bracket_pos > 0 then begin
+        asm_type_size := copy(ident, bracket_pos + 1, pos(']', ident) - bracket_pos - 1);
+        ident := copy(ident, 1, bracket_pos - 1);
+        case c_type of
+            'BYTE', 'UBYTE', 'char', 'TEXT': asm_type := '1';
+            'WORD', 'UWORD', 'HANDLE', 'INT', 'UINT', 'int': asm_type := '2';
+            'LONG', 'ULONG': asm_type := '4';
+            else asm_type := 'size ' + c_type;
+        end;
+        asm_type := 'db (' + asm_type + ')* ' + asm_type_size + ' dup (?)';
+    end else begin
+        case c_type of
+            'BYTE', 'UBYTE', 'char', 'TEXT': asm_type := ' db ?';
+            'WORD', 'UWORD', 'HANDLE', 'INT', 'UINT', 'int': asm_type := ' dw ?';
+            'LONG', 'ULONG': asm_type := ' dd ?';
+            'DOUBLE': asm_type := ' db 8 dup (?)';
+        end;
+        if asm_type = '' then begin
+            asm_type := c_type + ' <>';
+        end;
+    end;
+
+    Result := prefix + UpCase(ident[1]) + copy(ident, 2) + ' ' + asm_type;
+end;
+
+function CTypesToTasm(class_item : TPsionOOClass) : TStringList;
+var
+    cur_line : Integer;
+    cur_typedef_line : Integer;
+    typedef_start_line : Integer;
+    typedef_end_line : Integer;
+    struct_name : String;
+begin
+    Result := TStringList.Create();
+    cur_line := 0;
+
+    while cur_line < length(class_item.ClassTypes) - 1 do
+    begin
+        // if length(class_item.ClassTypes) - cur_line < 4 then begin
+        //     break;
+        // end;
+        if copy(class_item.ClassTypes[cur_line],1, 14) <> 'typedef struct' then begin
+            inc(cur_line);
+            continue;
+        end;
+        if class_item.ClassTypes[cur_line + 1] <> '{' then begin
+            WriteLn(class_item.Name, ': struct found, but no opening brace follows');
+            WriteLn(class_item.ClassTypes[cur_line]);
+            halt(-1);
+        end;
+
+        typedef_start_line := cur_line + 2;
+        struct_name := '';
+        for cur_typedef_line := typedef_start_line to length(class_item.ClassTypes) - 1 do
+        begin
+            if class_item.ClassTypes[cur_typedef_line][1] = '}' then begin
+                struct_name := copy(class_item.ClassTypes[cur_typedef_line], 3);
+                struct_name := copy(struct_name, 1, length(struct_name) - 1);
+                typedef_end_line := cur_typedef_line - 1;
+                break;
+            end;
+        end;
+        if struct_name = '' then begin
+            WriteLn(class_item.Name, ': struct name not found');
+            halt(-1);
+        end;
+
+        Result.Add(struct_name + ' struc');
+        for cur_typedef_line := typedef_start_line to typedef_end_line do
+        begin
+            Result.Add(CLineToTasm(class_item.ClassTypes[cur_typedef_line], struct_name));
+        end;
+        Result.Add(struct_name + ' ends');
+        cur_line := typedef_end_line + 2;
+    end;
+end;
+
 procedure MakeING(par : TPsionOOParser);
 var
     inc_file : String;
@@ -1191,30 +1291,21 @@ begin
                 end;
             end;
 
-            // FIX: Translate C to ASM
             if length(class_item.ClassTypes) > 0 then begin
+                slFile.Add('');
                 slFile.Add('; Types for ' + class_item.Name);
-                slFile.Add('; *** WARNING! THIS IS BROKEN! ***');
-                slFile.Add('; *** Unconverted C code follows ***');
-                for s in class_item.ClassTypes do
-                begin
-                    slFile.Add('; ' + s);
-                end;
-                slFile.Add('; *** Unconverted C code ends ***');
+                slFile.AddStrings(CTypesToTasm(class_item));
             end;
 
-            // FIX: Translate C to ASM
-            slFile.Add('; Property of ' + class_item.Name);
             if length(class_item.ClassProperty) > 0 then begin
+                slFile.Add('');
+                slFile.Add('; Property of ' + class_item.Name);
                 slFile.Add( 'PRS_' + UpCase(class_item.Name) + ' struc');
-                slFile.Add('; *** WARNING! THIS IS BROKEN! ***');
-                slFile.Add('; *** Unconverted C code follows ***');
                 for s in class_item.ClassProperty do
                 begin
-                    slFile.Add('; ' + s);
+                    slFile.Add(CLineToTasm(s, UpCase(class_item.Name[1]) + LowerCase(copy(class_item.Name, 2))));
                 end;
                 slFile.Add('PRS_' + UpCase(class_item.Name) + ' ends');
-                slFile.Add('; *** Unconverted C code ends ***');
             end;
 
             slFile.Add('PR_' + UpCase(class_item.Name) + ' struc');

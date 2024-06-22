@@ -53,7 +53,7 @@ begin
     s := 'CTRAN-ng Version 0.0.1 (C) Alex Brown' + LineEnding +
          'Parameters: <name> [-e<dir>] [-x[<dir>] -g[<dir>] -a[<dir>] -i[<dir>] -l[<dir>] -c[<dir>] -s -k -v]' + LineEnding +
          '<name>       Category source input file' + LineEnding +
-         '-e<dir>      Input externals directory' + LineEnding +
+         '-e<dir>      Input externals directory (multiple separated by `;`' + LineEnding +
          '-x<dir>      Output .EXT file' + LineEnding +
          '-c<dir>      Output .C code file' + LineEnding +
          '-g<dir>      Output .G include file' + LineEnding +
@@ -62,7 +62,12 @@ begin
          '-l<dir>      Output .LIS file' + LineEnding +
          '-s           SDK output' + LineEnding +
          '-k           Output skeleton source files' + LineEnding +
-         '-v           Verbose output';
+         '-v           Verbose output, using a compination of:' + LineEnding +
+         '    l          show lexer debug output' + LineEnding +
+         '    t          show table of tokens' + LineEnding +
+         '    p          show parser debug output' + LineEnding +
+         '    a          show abstract syntax tables' + LineEnding +
+         '    r          reconstruct all input files from abstract syntax';
     WriteLn(s);
 end;
 
@@ -1593,16 +1598,19 @@ begin
         if params.SwitchExists('C') then begin
             MakeC(CatParser);
         end;
+        if params.SwitchExists('I') or params.SwitchExists('A') then begin
+            WriteLn;
+            WriteLn('*** WARNING! TASM FILE GENERATION IS EXPERIMENTAL! ***');
+            WriteLn('CTRAN-ng replicates the way that Psion''s CTRAN.EXE generates');
+            WriteLn('Borland Turbo Assember (TASM) source. Conversion of the');
+            WriteLn('variables and typedefs in PROPERTY and TYPES sections is very');
+            WriteLn('rudimentary and barely does any error checking. Is is very');
+            WriteLn('likely that generated assembly code will not work. It is');
+            WriteLn('recommended that you check any generated .ASM and .ING files');
+            WriteLn('before using them.');
+            WriteLn;
+        end;
         if params.SwitchExists('I') then begin
-            WriteLn;
-            WriteLn('*** WARNING! .ING FILE GENERATION IS BROKEN! ***');
-            WriteLn('CTRAN-ng is currently unable to convert the C in category file');
-            WriteLn('PROPERTY and TYPES sections to ASM. The file generated will');
-            WriteLn('include the original C code, commented out. If you want to use');
-            WriteLn('.ING files, you will need to manually convert the C to ASM.');
-            WriteLn('It is next on the list to be fixed, but it will take time as');
-            WriteLn('it requires a miniature C compiler to be written.');
-            WriteLn;
             for par in parsers.Values do begin
                 MakeING(par);
             end;

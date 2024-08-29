@@ -438,7 +438,7 @@ var
 begin
     if (_LexerState <> stateClassTypes) and (_LexerState <> stateClassProperty) then begin
         WriteLn('_ProcessCLine: Why am I here?');
-        halt;
+        halt(-1);
     end;
 
     tok := _GrabNextToken();
@@ -635,7 +635,7 @@ begin
                     end;
                     else begin
                         WriteLn('!!! Invalid string literal found: ', tok.Literal);
-                        halt;
+                        halt(-1);
                     end;
                 end;
             end;
@@ -718,7 +718,7 @@ begin
                     end;
                     else begin
                         WriteLn('!!! Invalid string literal found: ', tok.Literal);
-                        halt;
+                        halt(-1);
                     end;
                 end;
             end;
@@ -779,11 +779,11 @@ begin
 
     if args < compulsary_args then begin
         WriteLn('[_CheckLine] args is less than compulsary_args');
-        halt;
+        halt(-1);
     end;
     if length(toktypes) <> args then begin
         WriteLn('[_CheckLine] args doesn''t equal the number of token types provided');
-        halt;
+        halt(-1);
     end;
 
     if tokline_argcount < compulsary_args then begin
@@ -1073,7 +1073,7 @@ begin
     case tokline.Tokens[0].TType of
         tknEOF: begin
             Writeln('INFO: EOF found in initial parser state. (Empty file, or no starter token?)');
-            halt;
+            halt(-1);
         end;
         tknName:    _CategoryType := catName;
         tknImage:   _CategoryType := catImage;

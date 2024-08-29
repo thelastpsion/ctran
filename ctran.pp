@@ -33,7 +33,7 @@ var
     CatParser : TPsionOOParser;
     params : TPsionSDKAppParams;
     PathList : TStringList;
-    s : String; // FIX: Remove this!
+    // s : String; // FIX: Remove this!
     DependencyList : TDependencyList;
     MethodList : TStringList;
     class_item : TPsionOOClass;
@@ -42,7 +42,7 @@ var
     ExternalModuleList : TStringList;
     cur_metaclass : TStringList;
     method_item : TPsionOOMethodEntry;
-    extfile : String;
+    // extfile : String;
     parsers : TParserDictionary;
     par : TPsionOOParser; // temporary parser storage
 
@@ -86,7 +86,7 @@ begin
         pathitemexpand := ExpandFileName(pathitem);
         if not DirectoryExists(pathitemexpand) then begin
             WriteLn('Path doesn''t exist. (', pathitemexpand, ' from ', pathitem, ')');
-            halt;
+            halt(-1);
         end;
 
         if RightStr(pathitemexpand, 1) <> DirectorySeparator then pathitemexpand += DirectorySeparator;
@@ -106,7 +106,7 @@ begin
     extopts := ['', '.ext', '.EXT'];
     if paths.Count = 0 then begin
         WriteLn('CheckExternalFile(): Path list is empty.');
-        halt;
+        halt(-1);
     end;
     for path in paths do begin
         for ext in extopts do begin
@@ -148,13 +148,13 @@ begin
                 if DependencyList.ContainsKey(LowerCase(par_class.Name)) then begin
                     WriteLn('Error ', ExtractFilename(par.FileLocation), ': Class ', par_class.Name, ' already defined in ', DependencyList[LowerCase(par_class.Name)].Category);
                     // TODO: (if possible) add location in file
-                    halt;
+                    halt(-1);
                 end;
 
                 if (not DependencyList.ContainsKey(LowerCase(par_class.Parent))) and (par_class.Parent <> '') then begin
                     WriteLn('Error ', ExtractFilename(par.FileLocation), ': Superclass ', par_class.Parent, ' of ', par_class.Name, ' does not exist');
                     // TODO: (if possible) add location in file
-                    halt;
+                    halt(-1);
                 end;
 
                 for method in par_class.Methods do
@@ -163,7 +163,7 @@ begin
                         methodDeclare, methodAdd: begin
                             if MethodList.IndexOf(LowerCase(method.Name)) > -1 then begin
                                 WriteLn('Error ', ExtractFilename(par.FileLocation), ': Method ', method.Name, ' already exists in category');
-                                halt;
+                                halt(-1);
                             end;
                             // WriteLn('Adding method ', method.Name, ' to big list o'' methods.');
                             MethodList.Add(LowerCase(method.Name));
@@ -268,7 +268,7 @@ begin
                 writeln(Result[i]);
             end;
             writeln('> ', ancestor);
-            halt;
+            halt(-1);
         end;
 
         Result.insert(0, ancestor);
@@ -300,7 +300,7 @@ begin
                 methodAdd, methodDefer, methodDeclare: begin
                     if Result.IndexOf(method.Name) > -1 then begin
                         WriteLn('Error ', strFilename, ': Method ', method.Name, ' in class ', ancestor, 'already exists');
-                        halt;
+                        halt(-1);
                     end;
                     // WriteLn('Adding method ', method.Name);
                     Result.Add(method.Name);
@@ -518,6 +518,32 @@ begin
     halt(-1);
 end;
 
+
+// Get the list of external files from the category class
+// TODO: extra checks?
+procedure MakeExternalModuleList();
+var
+    s : String;
+    extfile : String;
+begin
+    if Length(CatParser.ExternalList) > 0 then begin
+        for extfile in CatParser.ExternalList do begin
+            s := CheckExternalFile(extfile, PathList);
+            if s = '' then begin
+                WriteLn('ERROR: External file "', extfile, '" not found in given path');
+                halt(-1);
+            end;
+            ExternalModuleList.Add(UpCase(extfile));
+            WriteLn(extfile, ': ', s);
+
+            LoadDependencies(s);
+        end;
+    end;
+
+    // WriteLn('List of external modules');
+    // for s in ExternalModuleList do WriteLn(s);
+end;
+
 //
 // MAKE FILES
 //
@@ -595,7 +621,7 @@ begin
         on E: EFCreateError do begin
             WriteLn('ERROR: Unable to create ', par.ModuleName, '.EXT at ', filepath);
             WriteLn('[', E.ClassName, '] ', E.Message);
-            halt;
+            halt(-1);
         end;
     end;
     FreeAndNil(slFile);
@@ -725,7 +751,7 @@ begin
         on E: EFCreateError do begin
             WriteLn('ERROR: Unable to create ', par.ModuleName, '.G at ', filepath);
             WriteLn('[', E.ClassName, '] ', E.Message);
-            halt;
+            halt(-1);
         end;
     end;
     FreeAndNil(slFile);
@@ -906,7 +932,7 @@ begin
         on E: EFCreateError do begin
             WriteLn('ERROR: Unable to create ', par.ModuleName, '.C at ', filepath);
             WriteLn('[', E.ClassName, '] ', E.Message);
-            halt;
+            halt(-1);
         end;
     end;
     FreeAndNil(slFile);
@@ -968,7 +994,7 @@ begin
         on E: EFCreateError do begin
             WriteLn('ERROR: Unable to create ', par.ModuleName, '.LIS at ', filepath);
             WriteLn('[', E.ClassName, '] ', E.Message);
-            halt;
+            halt(-1);
         end;
     end;
     FreeAndNil(slFile);
@@ -1113,7 +1139,7 @@ begin
         on E: EFCreateError do begin
             WriteLn('ERROR: Unable to create ', par.ModuleName, '.ASM at ', filepath);
             WriteLn('[', E.ClassName, '] ', E.Message);
-            halt;
+            halt(-1);
         end;
     end;
     FreeAndNil(slFile);
@@ -1337,7 +1363,7 @@ begin
         on E: EFCreateError do begin
             WriteLn('ERROR: Unable to create ', par.ModuleName, '.ING at ', filepath);
             WriteLn('[', E.ClassName, '] ', E.Message);
-            halt;
+            halt(-1);
         end;
     end;
     FreeAndNil(slFile);
@@ -1406,7 +1432,7 @@ begin
                 on E: EFCreateError do begin
                     WriteLn('ERROR: Unable to create skeleton file ', filepath, class_name, '.c');
                     WriteLn('[', E.ClassName, '] ', E.Message);
-                    halt;
+                    halt(-1);
                 end;
             end;
         end;
@@ -1513,8 +1539,7 @@ begin
         InternalModuleList := TStringList.Create();
         ExternalModuleList := TStringList.Create();
 
-        s := WalkParsers(strFilename);
-        CatParser := parsers[s];
+        CatParser := parsers[WalkParsers(strFilename)];
         // WriteLn('List of parser objects');
         // for s in parsers.Keys do WriteLn(s);
         // WriteLn('List of modules');
@@ -1524,23 +1549,7 @@ begin
         MethodList := TStringList.Create();
 
 
-        // Get the list of external files from the category class
-        // TODO: extra checks?
-        if Length(CatParser.ExternalList) > 0 then begin
-            for extfile in CatParser.ExternalList do begin
-                s := CheckExternalFile(extfile, PathList);
-                if s = '' then begin
-                    WriteLn('ERROR: External file "', extfile, '" not found in given path');
-                    halt;
-                end;
-                ExternalModuleList.Add(UpCase(extfile));
-                WriteLn(extfile, ': ', s);
-
-                LoadDependencies(s);
-            end;
-        end;
-        WriteLn('List of external modules');
-        for s in ExternalModuleList do WriteLn(s);
+        MakeExternalModuleList();
 
         LoadDependencies(CatParser);
 
@@ -1562,18 +1571,18 @@ begin
                     methodReplace: begin
                         if cur_metaclass.IndexOf(method_item.Name) = -1 then begin
                             WriteLn('Error: Can''t replace method ', method_item.Name, ' as it doesn''t already exist');
-                            halt;
+                            halt(-1);
                         end;
                     end;
                     methodDefer, methodAdd: begin
                         if cur_metaclass.IndexOf(method_item.Name) > -1 then begin
                             WriteLn('Error: Method ', method_item.Name, ' already exists');
-                            halt;
+                            halt(-1);
                         end;
                     end;
                     else begin
                         WriteLn('Unknown methodtype when trying to check if a method exists in a metaclass.');
-                        halt;
+                        halt(-1);
                     end;
                 end;
             end;

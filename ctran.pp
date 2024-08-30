@@ -5,8 +5,6 @@ uses
     sysutils, classes, PsionOOParser, PsionOOCatDiagnostics, PsionSDKApp, Generics.Collections, StringThings;
 
 type
-    TPsionOOMethodList = Array of String;
-
     TMethodsForCFile = record
         Methods : array of TPsionOOMethodEntry;
         StartIndex : Integer;
@@ -32,19 +30,12 @@ var
     strFilename : String;
     CatParser : TPsionOOParser;
     params : TPsionSDKAppParams;
-    PathList : TStringList;
-    // s : String; // FIX: Remove this!
+    PathList : TStringList; // TODO: Could this be removed?
     DependencyList : TDependencyList;
-    MethodList : TStringList;
-    class_item : TPsionOOClass;
     InternalClassList : TStringList;
     InternalModuleList : TStringList;
     ExternalModuleList : TStringList;
-    cur_metaclass : TStringList;
-    method_item : TPsionOOMethodEntry;
-    // extfile : String;
     parsers : TParserDictionary;
-    par : TPsionOOParser; // temporary parser storage
 
 procedure HelpText();
 var
@@ -133,11 +124,13 @@ var
     ext_class : TPsionOOCatClass;
     par_class : TPsionOOClass;
     method : TPsionOOMethodEntry;
+    method_list : TStringList;
     category : String;
     element : TPsionOOFileElement;
     required : String;
 begin
     category := par.ModuleName;
+    method_list := TSTringList.Create();
 
     for element in par.ElementList do
     begin
@@ -161,12 +154,12 @@ begin
                 begin
                     case method.MethodType of
                         methodDeclare, methodAdd: begin
-                            if MethodList.IndexOf(LowerCase(method.Name)) > -1 then begin
+                            if method_list.IndexOf(LowerCase(method.Name)) > -1 then begin
                                 WriteLn('Error ', ExtractFilename(par.FileLocation), ': Method ', method.Name, ' already exists in category');
                                 halt(-1);
                             end;
                             // WriteLn('Adding method ', method.Name, ' to big list o'' methods.');
-                            MethodList.Add(LowerCase(method.Name));
+                            method_list.Add(LowerCase(method.Name));
                         end;
                     end;
                 end;
@@ -544,6 +537,45 @@ begin
     // for s in ExternalModuleList do WriteLn(s);
 end;
 
+procedure CheckMethodInheritance();
+var
+    class_item : TPsionOOClass;
+    method_item : TPsionOOMethodEntry;
+    cur_metaclass : TStringList;
+begin
+    for class_item in CatParser.ClassList do
+    begin
+        cur_metaclass := MakeMetaclass(class_item);
+
+        // WriteLn;
+        // WriteLn('Ancestor metaclass for ', class_item.Name, ':');
+        // for s in cur_metaclass do begin
+        //     WriteLn(s);
+        // end;
+
+        for method_item in class_item.Methods do
+        begin
+            case method_item.MethodType of
+                methodReplace: begin
+                    if cur_metaclass.IndexOf(method_item.Name) = -1 then begin
+                        WriteLn('Error: Can''t replace method ', method_item.Name, ' as it doesn''t already exist');
+                        halt(-1);
+                    end;
+                end;
+                methodDefer, methodAdd: begin
+                    if cur_metaclass.IndexOf(method_item.Name) > -1 then begin
+                        WriteLn('Error: Method ', method_item.Name, ' already exists');
+                        halt(-1);
+                    end;
+                end;
+                else begin
+                    WriteLn('Unknown methodtype when trying to check if a method exists in a metaclass.');
+                    halt(-1);
+                end;
+            end;
+        end;
+    end;
+end;
 //
 // MAKE FILES
 //
@@ -755,6 +787,15 @@ begin
         end;
     end;
     FreeAndNil(slFile);
+end;
+
+procedure MakeAllG();
+var
+    par : TPsionOOParser;
+begin
+    for par in parsers.Values do begin
+        MakeG(par);
+    end;
 end;
 
 procedure MakeC(par : TPsionOOParser);
@@ -1369,6 +1410,15 @@ begin
     FreeAndNil(slFile);
 end;
 
+procedure MakeAllING();
+var
+    par : TPsionOOParser;
+begin
+    for par in parsers.Values do begin
+        MakeING(par);
+    end;
+end;
+
 function MakeSkeletonFile(class_item : TPsionOOClass) : TStringList;
 var
     c_methods : TMethodsForCFile;
@@ -1546,47 +1596,12 @@ begin
         // for s in InternalModuleList do WriteLn(s);
 
         InternalClassList := TStringList.Create();
-        MethodList := TStringList.Create();
-
 
         MakeExternalModuleList();
 
         LoadDependencies(CatParser);
 
-        MethodList.Clear;
-
-        for class_item in CatParser.ClassList do
-        begin
-            cur_metaclass := MakeMetaclass(class_item);
-
-            // WriteLn;
-            // WriteLn('Ancestor metaclass for ', class_item.Name, ':');
-            // for s in cur_metaclass do begin
-            //     WriteLn(s);
-            // end;
-
-            for method_item in class_item.Methods do
-            begin
-                case method_item.MethodType of
-                    methodReplace: begin
-                        if cur_metaclass.IndexOf(method_item.Name) = -1 then begin
-                            WriteLn('Error: Can''t replace method ', method_item.Name, ' as it doesn''t already exist');
-                            halt(-1);
-                        end;
-                    end;
-                    methodDefer, methodAdd: begin
-                        if cur_metaclass.IndexOf(method_item.Name) > -1 then begin
-                            WriteLn('Error: Method ', method_item.Name, ' already exists');
-                            halt(-1);
-                        end;
-                    end;
-                    else begin
-                        WriteLn('Unknown methodtype when trying to check if a method exists in a metaclass.');
-                        halt(-1);
-                    end;
-                end;
-            end;
-        end;
+        CheckMethodInheritance();
 
         // WriteLn('List of All Classes Across All External Files:');
         // for s in AllExtClasses do begin
@@ -1597,9 +1612,7 @@ begin
             MakeEXT(CatParser);
         end;
         if params.SwitchExists('G') then begin
-            for par in parsers.Values do begin
-                MakeG(par);
-            end;
+            MakeAllG();
         end;
         if params.SwitchExists('L') then begin
             MakeLIS(CatParser);
@@ -1620,9 +1633,7 @@ begin
             WriteLn;
         end;
         if params.SwitchExists('I') then begin
-            for par in parsers.Values do begin
-                MakeING(par);
-            end;
+            MakeAllING();
         end;
         if params.SwitchExists('A') then begin
             MakeASM(CatParser);

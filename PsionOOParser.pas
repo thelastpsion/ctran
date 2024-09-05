@@ -294,7 +294,7 @@ var
     spaces : Integer;
     line : String;
 begin
-    WriteLn('Error: ', message);
+    WriteLn('ERROR: ', message);
     line := _slCategoryFile[tokline.LineNum - 1];
 
     Writeln(format('%.3d: %s', [tokline.LineNum, line]));
@@ -379,6 +379,7 @@ function TPsionOOParser._GrabNextToken() : TToken;
 var
     pos : Integer;
     flgFoundText : Boolean = false;
+    curChar : Char;
 begin
     Result.Literal := '';
     Result.TType := tknEOF;
@@ -387,23 +388,24 @@ begin
 
     for pos := _curLinePos to length(_strCurLine) do
     begin
-        if trim(_strCurLine[pos]) = '' then begin
+        curChar := _strCurLine[pos];
+        if trim(curChar) = '' then begin
             if flgFoundText then begin
                 _curLinePos := pos + 1;
                 exit;
             end;
-        end else if (ansipos(_strCurLine[pos], '={}') > 0) then begin
+        end else if curChar in ['=', '{', '}'] then begin
             if flgFoundText then begin
                 _curLinePos := pos;
             end else begin
-                Result.Literal := _strCurLine[pos];
+                Result.Literal := curChar;
                 Result.LineNum := _curLineNum;
                 Result.LinePos := pos;
                 _curLinePos := pos + 1;
             end;
             exit;
         end else begin
-            Result.Literal += _strCurLine[pos];
+            Result.Literal += curChar;
             if not(flgFoundText) then begin
                 Result.LineNum := _curLineNum;
                 Result.LinePos := pos;
@@ -437,8 +439,7 @@ var
     tok: TToken;
 begin
     if (_LexerState <> stateClassTypes) and (_LexerState <> stateClassProperty) then begin
-        WriteLn('_ProcessCLine: Why am I here?');
-        halt(-1);
+        raise Exception.Create('_ProcessCLine called when not processing a TYPES or PROPERTY block');
     end;
 
     tok := _GrabNextToken();
@@ -778,12 +779,10 @@ begin
     if tokline.Tokens[tokline_argcount].TType = tknEOF then dec(tokline_argcount);
 
     if args < compulsary_args then begin
-        WriteLn('[_CheckLine] args is less than compulsary_args');
-        halt(-1);
+        raise Exception.Create('_CheckLine: args is less than compulsary_args');
     end;
     if length(toktypes) <> args then begin
-        WriteLn('[_CheckLine] args doesn''t equal the number of token types provided');
-        halt(-1);
+        raise Exception.Create('_CheckLine: args doesn''t equal the number of token types provided');
     end;
 
     if tokline_argcount < compulsary_args then begin
@@ -1109,10 +1108,10 @@ begin
         _ErrShowLine(tokline, -1, 'Starter token found, but nothing following it on the line.');
     end;
     if length(tokline.Tokens) > 2 then begin
-        _ErrShowLine(tokline, 2, 'Too many tokens on this line. (Is there a bug in the lexer?)');
+        _ErrShowLine(tokline, 2, 'Too many tokens on this line. (Is there a bug in the parser?)');
     end;
     if tokline.Tokens[1].TType <> tknString then begin
-        _ErrShowLine(tokline, 1, format('Incorrect token type. Expected tknString but got %s. (Is there a bug in the lexer?)', [ tokline.Tokens[1].TType.ToString()]));
+        _ErrShowLine(tokline, 1, format('Incorrect token type. Expected tknString but got %s. (Is there a bug in the parser?)', [ tokline.Tokens[1].TType.ToString()]));
     end;
 
     if _ModuleName <> UpCase(tokline.Tokens[1].Literal) then begin

@@ -96,8 +96,7 @@ var
 begin
     extopts := ['', '.ext', '.EXT'];
     if paths.Count = 0 then begin
-        WriteLn('CheckExternalFile(): Path list is empty.');
-        halt(-1);
+        raise Exception.Create('CheckExternalFile(): Path list is empty.');
     end;
     for path in paths do begin
         for ext in extopts do begin
@@ -139,13 +138,13 @@ begin
                 par_class := par.ClassList[element.index];
 
                 if DependencyList.ContainsKey(LowerCase(par_class.Name)) then begin
-                    WriteLn('Error ', ExtractFilename(par.FileLocation), ': Class ', par_class.Name, ' already defined in ', DependencyList[LowerCase(par_class.Name)].Category);
+                    WriteLn('ERROR ', ExtractFilename(par.FileLocation), ': Class ', par_class.Name, ' already defined in ', DependencyList[LowerCase(par_class.Name)].Category);
                     // TODO: (if possible) add location in file
                     halt(-1);
                 end;
 
                 if (not DependencyList.ContainsKey(LowerCase(par_class.Parent))) and (par_class.Parent <> '') then begin
-                    WriteLn('Error ', ExtractFilename(par.FileLocation), ': Superclass ', par_class.Parent, ' of ', par_class.Name, ' does not exist');
+                    WriteLn('ERROR ', ExtractFilename(par.FileLocation), ': Superclass ', par_class.Parent, ' of ', par_class.Name, ' does not exist');
                     // TODO: (if possible) add location in file
                     halt(-1);
                 end;
@@ -155,7 +154,7 @@ begin
                     case method.MethodType of
                         methodDeclare, methodAdd: begin
                             if method_list.IndexOf(LowerCase(method.Name)) > -1 then begin
-                                WriteLn('Error ', ExtractFilename(par.FileLocation), ': Method ', method.Name, ' already exists in category');
+                                WriteLn('ERROR ', ExtractFilename(par.FileLocation), ': Method ', method.Name, ' already exists in category');
                                 halt(-1);
                             end;
                             // WriteLn('Adding method ', method.Name, ' to big list o'' methods.');
@@ -176,8 +175,7 @@ begin
             incRequire: begin
                 required := UpCase(par.RequireList[element.index]);
                 if not parsers.ContainsKey(required) then begin
-                    WriteLn('LoadDependencies: Can''t find ', required, ' in dictionary!');
-                    halt(-1);
+                    raise Exception.CreateFmt('LoadDependencies: Can''t find %s in dictionary!', [required]);
                 end;
 
                 WriteLn('>>> Loading dependencies for ', required);
@@ -195,8 +193,7 @@ var
     // class_item : TPsionOOClass;
 begin
     if filename = '' then begin
-        WriteLn('LoadDependencies: filename is empty');
-        halt(-1);
+        raise Exception.Create('LoadDependencies: filename is empty');
     end;
 
     try
@@ -253,7 +250,7 @@ begin
     while ancestor <> '' do
     begin
         if Result.indexof(ancestor) > -1 then begin
-            writeln('Error: circular class dependency (', ancestor, '). current list of classes is:');
+            writeln('ERROR: circular class dependency (', ancestor, '). current list of classes is:');
             writeln('  ', class_item.name);
             for i := Result.Count - 1 downto 0 do
             begin
@@ -292,7 +289,8 @@ begin
             case method.MethodType of
                 methodAdd, methodDefer, methodDeclare: begin
                     if Result.IndexOf(method.Name) > -1 then begin
-                        WriteLn('Error ', strFilename, ': Method ', method.Name, ' in class ', ancestor, 'already exists');
+                        // TODO: Look at replacing strFilename
+                        WriteLn('ERROR ', strFilename, ': Method ', method.Name, ' in class ', ancestor, 'already exists');
                         halt(-1);
                     end;
                     // WriteLn('Adding method ', method.Name);
@@ -471,8 +469,7 @@ var
     class_item : TPsionOOClass;
 begin
     if not DependencyList.ContainsKey(class_name) then begin
-        WriteLn('GetClassFromParsers: Can''t find ', class_name, ' in DependencyList');
-        halt(-1);
+        raise Exception.CreateFmt('GetClassFromParsers: Can''t find %s in DependencyList', [class_name]);
     end;
 
     for class_item in parsers[DependencyList[class_name].Category].ClassList do
@@ -482,8 +479,7 @@ begin
         end;
     end;
 
-    WriteLn('GetClassFromParsers: Can''t find ', class_name, ' in parser ', DependencyList[class_name].Category);
-    halt(-1);
+    raise Exception.CreateFmt('GetClassFromParsers: Can''t find %s in parser %s', [class_name, DependencyList[class_name].Category]);
 end;
 
 // If a class's parent is in an external module, return the ID (order in which
@@ -507,8 +503,7 @@ begin
         exit(ExternalModuleList.IndexOf(parent_module) + 1);
     end;
 
-    WriteLn('GetParentModuleID: Couldn''t find parent module ', parent_module, ' of parent class ', parent, ' for class ', class_name, ' - bad logic here? (Should it be ', InternalModuleList[0], '?)');
-    halt(-1);
+    raise Exception.CreateFmt('GetParentModuleID: Couldn''t find parent module %s of parent class %s for class %s - bad logic here? (Should it be %s?)', [parent_module, parent, class_name, InternalModuleList[0]]);
 end;
 
 
@@ -558,13 +553,13 @@ begin
             case method_item.MethodType of
                 methodReplace: begin
                     if cur_metaclass.IndexOf(method_item.Name) = -1 then begin
-                        WriteLn('Error: Can''t replace method ', method_item.Name, ' as it doesn''t already exist');
+                        WriteLn('ERROR: Can''t replace method ', method_item.Name, ' as it doesn''t already exist');
                         halt(-1);
                     end;
                 end;
                 methodDefer, methodAdd: begin
                     if cur_metaclass.IndexOf(method_item.Name) > -1 then begin
-                        WriteLn('Error: Method ', method_item.Name, ' already exists');
+                        WriteLn('ERROR: Method ', method_item.Name, ' already exists');
                         halt(-1);
                     end;
                 end;
@@ -599,8 +594,7 @@ begin
         catImage:   s := 'IMAGE';
         catLibrary: s := 'LIBRARY';
         else begin
-            WriteLn('MakeEXT: Unknown category type ', par.CategoryType);
-            halt(-1);
+            raise Exception.CreateFmt('MakeEXT: Unknown category type %s', [par.CategoryType]);
         end;
     end;
     slFile.Add(s + ' ' + LowerCase(par.ModuleName));
@@ -719,8 +713,7 @@ begin
         for class_item in par.ClassList do
         begin
             if InternalClassList.IndexOf(class_item.Name) < 0 then begin
-                WriteLn('MakeG: Can''t find class ', class_item.Name, ' in InternalClassList');
-                halt(-1);
+                raise Exception.CreateFmt('MakeG: Can''t find class %s in InternalClassList', [class_item.Name]);
             end;
             slFile.Add('#define C_%s %d', [UpCase(class_item.Name), InternalClassList.IndexOf(class_item.Name)]);
         end;
@@ -998,8 +991,7 @@ begin
         catLibrary: cat_type := 'LIBRARY ';
         catName:    cat_type := 'NAME ';
         else begin
-            WriteLn('MakeLIS: Unknown category type ', par.CategoryType);
-            halt(-1);
+            raise Exception.CreateFmt('MakeLIS: Unknown category type %s', [par.CategoryType]);
         end;
     end;
 
@@ -1197,7 +1189,7 @@ var
 begin
     space_pos := pos(' ', cstr);
     if space_pos < 1 then begin
-        WriteLn('No space found in this C line:');
+        WriteLn('ERROR: No space found in this C line:');
         WriteLn(cstr);
         halt(-1);
     end;
@@ -1254,7 +1246,7 @@ begin
             continue;
         end;
         if class_item.ClassTypes[cur_line + 1] <> '{' then begin
-            WriteLn(class_item.Name, ': struct found, but no opening brace follows');
+            WriteLn('ERROR ', class_item.Name, ': struct found, but no opening brace follows');
             WriteLn(class_item.ClassTypes[cur_line]);
             halt(-1);
         end;
@@ -1271,7 +1263,7 @@ begin
             end;
         end;
         if struct_name = '' then begin
-            WriteLn(class_item.Name, ': struct name not found');
+            WriteLn('ERROR ', class_item.Name, ': can''t find a struct name');
             halt(-1);
         end;
 
@@ -1332,8 +1324,7 @@ begin
         for class_item in par.ClassList do
         begin
             if InternalClassList.IndexOf(class_item.Name) < 0 then begin
-                WriteLn('MakeING: Can''t find class ', class_item.Name, ' in InternalClassList');
-                halt(-1);
+                raise Exception.CreateFmt('MakeING: Can''t find class %s in InternalClassList', [class_item.Name]);
             end;
             slFile.Add('C_%s equ %d', [UpCase(class_item.Name), InternalClassList.IndexOf(class_item.Name)]);
         end;
@@ -1568,7 +1559,7 @@ begin
     end;
 
     if not(FileExists(strFilename)) then begin
-        WriteLn('Error ', ExpandFileName(strFilename), ' 0: Failed to open ', ExpandFileName(strFilename));
+        WriteLn('ERROR ', ExpandFileName(strFilename), ' 0: Failed to open ', ExpandFileName(strFilename));
         WriteLn('File does not exist');
         halt(-1);
     end;

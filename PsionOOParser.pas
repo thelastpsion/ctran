@@ -796,22 +796,10 @@ begin
     for i := 1 to tokline_argcount - 1 do
     begin
         if (tokline.Tokens[i].TType <> toktypes[i-1]) then begin
-            _ErrShowLine(tokline, 1, format('Incorrect token type. Expected %s but got %s', [toktypes[i-1], tokline.Tokens[i].TType.ToString()]));
+            _ErrShowLine(tokline, 1, format('Incorrect token type. Expected %s but found %s', [toktypes[i-1], tokline.Tokens[i].TType.ToString()]));
         end;
     end;
 end;
-
-// function TPsionOOParser._TokenValidForFiletypes(toktype: TTokenType; valid_filetypes: array of TFileType) : boolean;
-// var
-//     ft: TFileType;
-// begin
-//     Result := false;
-//
-//     for ft in valid_filetypes do
-//     begin
-//         if ft = self.FileType then exit(true);
-//     end;
-// end;
 
 function TPsionOOParser._BuildConstant(tokline : TTokenisedLine) : TPsionOOConstantEntry;
 begin
@@ -900,7 +888,7 @@ var
 begin
     tokline := _GetNextLine();
     if tokline.Tokens[0].TType <> tknBraceLeft then begin
-        _ErrShowLine(tokline, 0, format('Expected tknBraceLeft, got %s', [tokline.Tokens[0].TType.ToString()]));
+        _ErrShowLine(tokline, 0, format('Expected tknBraceLeft, found %s', [tokline.Tokens[0].TType.ToString()]));
     end;
     _CheckLine(tokline, 0, 0, []);
 end;
@@ -918,6 +906,17 @@ function TPsionOOParser._GetClass(tokline_class : TTokenisedLine) : TPsionOOClas
 var
     tokline : TTokenisedLine;
     curMethodEntry : TPsionOOMethodEntry;
+
+    procedure CheckValidForEXT(TokLiteral: String; IsValidForExternalFile: Boolean);
+    begin
+        if (_FileType = ooExternal) and not IsValidForExternalFile then begin
+            _ErrShowLine(tokline, 0, format('%s not valid in External files', [TokLiteral]));
+        end
+        else if (_FileType <> ooExternal) and IsValidForExternalFile then begin
+            _ErrShowLine(tokline, 0, format('%s only valid in External files', [TokLiteral]));
+        end;
+    end;
+
 begin
     if tokline_class.Tokens[0].TType <> tknClass then begin
         _ErrShowLine(tokline_class, 0, '[_GetClass] Been sent the wrong line.');
@@ -944,41 +943,37 @@ begin
 
     while tokline.Tokens[0].TType <> tknEOF do
     begin
+        curMethodEntry.ForwardRef := '';
+
         case tokline.Tokens[0].TType of
             tknAdd: begin
-                if _FileType = ooExternal then begin
-                    _ErrShowLine(tokline, 0, 'tknAdd not valid in External files');
-                end;
+                CheckValidForEXT('ADD', false);
                 _CheckLine(tokline, 3, 1, [tknString, tknEquals, tknString]);
                 curMethodEntry.MethodType := methodAdd;
                 curMethodEntry.Name := tokline.Tokens[1].Literal;
                 if length(tokline.Tokens) = 4 then begin
                     curMethodEntry.ForwardRef := tokline.Tokens[3].Literal;
-                end else begin
-                    curMethodEntry.ForwardRef := '';
+                // end else begin
+                //     curMethodEntry.ForwardRef := '';
                 end;
                 Result.Methods := concat(Result.Methods, [curMethodEntry]);
             end;
 
             tknReplace: begin
-                if _FileType = ooExternal then begin
-                    _ErrShowLine(tokline, 0, 'tknReplace not valid in External files');
-                end;
+                CheckValidForEXT('REPLACE', false);
                 _CheckLine(tokline, 3, 1, [tknString, tknEquals, tknString]);
                 curMethodEntry.MethodType := methodReplace;
                 curMethodEntry.Name := tokline.Tokens[1].Literal;
                 if length(tokline.Tokens) = 4 then begin
                     curMethodEntry.ForwardRef := tokline.Tokens[3].Literal;
-                end else begin
-                    curMethodEntry.ForwardRef := '';
+                // end else begin
+                //     curMethodEntry.ForwardRef := '';
                 end;
                 Result.Methods := concat(Result.Methods, [curMethodEntry]);
             end;
 
             tknDefer: begin
-                if _FileType = ooExternal then begin
-                    _ErrShowLine(tokline, 0, 'tknDefer not valid in External files');
-                end;
+                CheckValidForEXT('DEFER', false);
                 _CheckLine(tokline, 1, 1, [tknString]);
                 curMethodEntry.MethodType := methodDefer;
                 curMethodEntry.Name := tokline.Tokens[1].Literal;
@@ -986,9 +981,7 @@ begin
             end;
 
             tknDeclare: begin
-                if _FileType <> ooExternal then begin
-                    _ErrShowLine(tokline, 0, 'tknDeclare only valid in External files');
-                end;
+                CheckValidForEXT('DECLARE', true);
                 _CheckLine(tokline, 1, 1, [tknString]);
                 curMethodEntry.MethodType := methodDeclare;
                 curMethodEntry.Name := tokline.Tokens[1].Literal;
@@ -996,9 +989,7 @@ begin
             end;
 
             tknTypes: begin
-                if _FileType = ooExternal then begin
-                    _ErrShowLine(tokline, 0, 'tknTypes not valid in External files');
-                end;
+                CheckValidForEXT('TYPES', false);
                 _CheckLine(tokline, 0, 0, []);
                 if Verbose then WriteLn('Found TYPES');
                 _CheckForBrace();
@@ -1006,14 +997,12 @@ begin
             end;
 
             tknProperty: begin
-                if _FileType = ooExternal then begin
-                    _ErrShowLine(tokline, 0, 'tknProperty not valid in External files');
-                end;
+                CheckValidForEXT('PROPERTY', false);
                 _CheckLine(tokline, 1, 0, [tknString]);
                 if Verbose then WriteLn('Found PROPERTY');
                 if length(tokline.Tokens) = 2 then begin
                     if not TryStrToInt(tokline.Tokens[1].Literal, Result.PropertyAutodestroyCount) then begin
-                        _ErrShowLine(tokline, 2, 'Expected a number, got something else.');
+                        _ErrShowLine(tokline, 2, 'Expected a number, found something else.');
                     end;
                     if Verbose then WriteLn('>>> Property has Autodestroy Count of ', Result.PropertyAutodestroyCount);
                 end;
@@ -1022,9 +1011,7 @@ begin
             end;
 
             tknConstants: begin
-                if _FileType = ooExternal then begin
-                    _ErrShowLine(tokline, 1, 'tknConstants not valid in External files');
-                end;
+                CheckValidForEXT('CONSTANTS', false);
                 _CheckLine(tokline, 0, 0, []);
                 if Verbose then WriteLn('Found CONSTANTS');
                 _CheckForBrace();
@@ -1032,18 +1019,14 @@ begin
             end;
 
             tknHasMethod: begin
-                if _FileType <> ooExternal then begin
-                    _ErrShowLine(tokline, 0, 'tknHasMethod only valid in External files');
-                end;
-                if Verbose then WriteLn('Detected HAS_METHOD');
+                CheckValidForEXT('HAS_METHOD', true);
+                if Verbose then WriteLn('Found HAS_METHOD');
                 Result.HasMethod := true;
             end;
 
             tknHasProperty : begin
-                if _FileType <> ooExternal then begin
-                    _ErrShowLine(tokline, 0, 'tknHasProperty only valid in External files');
-                end;
-                if Verbose then WriteLn('Detected HAS_PROPERTY');
+                CheckValidForEXT('HAS_PROPERTY', true);
+                if Verbose then WriteLn('Found HAS_PROPERTY');
                 Result.HasProperty := true;
             end;
 
@@ -1108,10 +1091,10 @@ begin
         _ErrShowLine(tokline, -1, 'Starter token found, but nothing following it on the line.');
     end;
     if length(tokline.Tokens) > 2 then begin
-        _ErrShowLine(tokline, 2, 'Too many tokens on this line. (Is there a bug in the parser?)');
+        _ErrShowLine(tokline, 2, 'Too many tokens on this line.');
     end;
     if tokline.Tokens[1].TType <> tknString then begin
-        _ErrShowLine(tokline, 1, format('Incorrect token type. Expected tknString but got %s. (Is there a bug in the parser?)', [ tokline.Tokens[1].TType.ToString()]));
+        _ErrShowLine(tokline, 1, format('Incorrect token type. Expected tknString but found %s.', [ tokline.Tokens[1].TType.ToString()]));
     end;
 
     if _ModuleName <> UpCase(tokline.Tokens[1].Literal) then begin

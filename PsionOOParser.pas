@@ -195,7 +195,7 @@ type
             procedure _ResetTLB();
 
             // Methods: Parser
-            procedure _CheckLine(tokline : TTokenisedLine; args : Integer; compulsary_args : Integer; toktypes : array of TTokenType);
+            procedure _CheckLine(tokline: TTokenisedLine; toktypes: array of TTokenType; PossibleMaxMandatoryArgs: Integer = -1);
             function _GetClass(tokline_class : TTokenisedLine) : TPsionOOClass;
             function _GetConstants() : TPsionOOConstants;
             function _BuildConstant(tokline : TTokenisedLine) : TPsionOOConstantEntry;
@@ -768,32 +768,37 @@ begin
     _AddToken(tknEOF, '');
 end;
 
-procedure TPsionOOParser._CheckLine(tokline : TTokenisedLine; args : Integer; compulsary_args : Integer; toktypes : array of TTokenType);
+procedure TPsionOOParser._CheckLine(tokline : TTokenisedLine; toktypes: array of TTokenType; PossibleMaxMandatoryArgs: Integer = -1);
 var
-    i : Integer;
-    tokline_argcount : Integer;
+    i: Integer;
+    tokline_ArgCount: Integer;
+    ArgCheckCount: Integer;
+    MaxMandatoryArgs: Integer;
 begin
-    tokline_argcount := length(tokline.Tokens) - 1;
+    ArgCheckCount := length(toktypes);
+    tokline_ArgCount := length(tokline.Tokens) - 1;
+
+    if PossibleMaxMandatoryArgs < 0 then // 0 mandatory arguments is valid when all args are optional
+        MaxMandatoryArgs := ArgCheckCount // This is the default, but it also just ignores when a negative number is specified
+    else
+        MaxMandatoryArgs := PossibleMaxMandatoryArgs;
 
     // Make sure that, if the last token is tknEOF, it isn't classed as an argument
     if tokline.Tokens[tokline_argcount].TType = tknEOF then dec(tokline_argcount);
 
-    if args < compulsary_args then begin
-        raise Exception.Create('_CheckLine: args is less than compulsary_args');
-    end;
-    if length(toktypes) <> args then begin
-        raise Exception.Create('_CheckLine: args doesn''t equal the number of token types provided');
+    if ArgCheckCount < MaxMandatoryArgs then begin
+        raise Exception.Create('_CheckLine: The number of mandatory arguments requested is higher than the number of tokens given in toktypes');
     end;
 
-    if tokline_argcount < compulsary_args then begin
+    if tokline_ArgCount < MaxMandatoryArgs then begin
         _ErrShowLine(tokline, -1, format('Current line has too few (%d) arguments', [tokline_argcount]));
     end;
 
-    if tokline_argcount - 1 > args then begin
-        _ErrShowLine(tokline, args + 1, format('Current line has too many (%d) arguments', [tokline_argcount]))
+    if tokline_ArgCount - 1 > ArgCheckCount then begin
+        _ErrShowLine(tokline, ArgCheckCount + 1, format('Current line has too many (%d) arguments', [tokline_argcount]))
     end;
 
-    for i := 1 to tokline_argcount - 1 do
+    for i := 1 to tokline_ArgCount - 1 do
     begin
         if (tokline.Tokens[i].TType <> toktypes[i-1]) then begin
             _ErrShowLine(tokline, 1, format('Incorrect token type. Expected %s but found %s', [toktypes[i-1], tokline.Tokens[i].TType.ToString()]));
@@ -821,7 +826,7 @@ begin
                 exit;
             end;
             tknString: begin
-                _CheckLine(tokline, 1, 1, [tknString]);
+                _CheckLine(tokline, [tknString]);
                 Result := concat(Result, [_BuildConstant(tokline)]);
             end;
             else begin
@@ -846,7 +851,7 @@ begin
                 exit;
             end;
             tknString: begin
-                _CheckLine(tokline, 0, 0, []);
+                _CheckLine(tokline, []);
                 Result := concat(Result, [tokline.Tokens[0].Literal]);
             end;
             else begin
@@ -871,7 +876,7 @@ begin
                 exit;
             end;
             tknString: begin
-                _CheckLine(tokline, 0, 0, []);
+                _CheckLine(tokline, []);
                 Result := concat(Result, [tokline.Tokens[0].Literal]);
             end;
             else begin
@@ -890,7 +895,7 @@ begin
     if tokline.Tokens[0].TType <> tknBraceLeft then begin
         _ErrShowLine(tokline, 0, format('Expected tknBraceLeft, found %s', [tokline.Tokens[0].TType.ToString()]));
     end;
-    _CheckLine(tokline, 0, 0, []);
+    _CheckLine(tokline, []);
 end;
 
 // procedure TPsionOOParser._AddMethodEntry(method_type: TMethodType, s: String);
@@ -922,7 +927,7 @@ begin
         _ErrShowLine(tokline_class, 0, '[_GetClass] Been sent the wrong line.');
     end;
 
-    _CheckLine(tokline_class, 2, 1, [tknString, tknString]);
+    _CheckLine(tokline_class, [tknString, tknString], 1);
 
     Result.Name := tokline_class.Tokens[1].Literal;
     if length(tokline_class.Tokens) = 3 then begin
@@ -948,7 +953,7 @@ begin
         case tokline.Tokens[0].TType of
             tknAdd: begin
                 CheckValidForEXT('ADD', false);
-                _CheckLine(tokline, 3, 1, [tknString, tknEquals, tknString]);
+                _CheckLine(tokline, [tknString, tknEquals, tknString], 1);
                 curMethodEntry.MethodType := methodAdd;
                 curMethodEntry.Name := tokline.Tokens[1].Literal;
                 if length(tokline.Tokens) = 4 then begin
@@ -961,7 +966,7 @@ begin
 
             tknReplace: begin
                 CheckValidForEXT('REPLACE', false);
-                _CheckLine(tokline, 3, 1, [tknString, tknEquals, tknString]);
+                _CheckLine(tokline, [tknString, tknEquals, tknString], 1);
                 curMethodEntry.MethodType := methodReplace;
                 curMethodEntry.Name := tokline.Tokens[1].Literal;
                 if length(tokline.Tokens) = 4 then begin
@@ -974,7 +979,7 @@ begin
 
             tknDefer: begin
                 CheckValidForEXT('DEFER', false);
-                _CheckLine(tokline, 1, 1, [tknString]);
+                _CheckLine(tokline, [tknString]);
                 curMethodEntry.MethodType := methodDefer;
                 curMethodEntry.Name := tokline.Tokens[1].Literal;
                 Result.Methods := concat(Result.Methods, [curMethodEntry]);
@@ -982,7 +987,7 @@ begin
 
             tknDeclare: begin
                 CheckValidForEXT('DECLARE', true);
-                _CheckLine(tokline, 1, 1, [tknString]);
+                _CheckLine(tokline, [tknString]);
                 curMethodEntry.MethodType := methodDeclare;
                 curMethodEntry.Name := tokline.Tokens[1].Literal;
                 Result.Methods := concat(Result.Methods, [curMethodEntry]);
@@ -990,7 +995,7 @@ begin
 
             tknTypes: begin
                 CheckValidForEXT('TYPES', false);
-                _CheckLine(tokline, 0, 0, []);
+                _CheckLine(tokline, []);
                 if Verbose then WriteLn('Found TYPES');
                 _CheckForBrace();
                 Result.ClassTypes := _GetTypes();
@@ -998,7 +1003,7 @@ begin
 
             tknProperty: begin
                 CheckValidForEXT('PROPERTY', false);
-                _CheckLine(tokline, 1, 0, [tknString]);
+                _CheckLine(tokline, [tknString]);
                 if Verbose then WriteLn('Found PROPERTY');
                 if length(tokline.Tokens) = 2 then begin
                     if not TryStrToInt(tokline.Tokens[1].Literal, Result.PropertyAutodestroyCount) then begin
@@ -1012,7 +1017,7 @@ begin
 
             tknConstants: begin
                 CheckValidForEXT('CONSTANTS', false);
-                _CheckLine(tokline, 0, 0, []);
+                _CheckLine(tokline, []);
                 if Verbose then WriteLn('Found CONSTANTS');
                 _CheckForBrace();
                 Result.ClassConstants := _GetConstants();
@@ -1111,7 +1116,7 @@ begin
     begin
         case tokline.Tokens[0].TType of
             tknInclude: begin
-                _CheckLine(tokline, 1, 1, [tknString]);
+                _CheckLine(tokline, [tknString]);
                 if Verbose then WriteLn('Found INCLUDE with value ', tokline.Tokens[1].Literal);
                 curElement.index := length(_IncludeList);
                 curElement.ElementType := incInclude;
@@ -1122,7 +1127,7 @@ begin
                 if _FileType <> ooCategory then begin
                     _ErrShowLine(tokline, 1, 'EXTERNAL can only be used in category files (not external or sub-category files)');
                 end;
-                _CheckLine(tokline, 1, 1, [tknString]);
+                _CheckLine(tokline, [tknString]);
                 if Verbose then WriteLn('Found EXTERNAL with value ', tokline.Tokens[1].Literal);
                 curElement.index := length(_ExternalList);
                 curElement.ElementType := incExternal;
@@ -1130,7 +1135,7 @@ begin
                 _ExternalList := concat(_ExternalList, [tokline.Tokens[1].Literal]);
             end;
             tknRequire: begin
-                _CheckLine(tokline, 1, 1, [tknString]);
+                _CheckLine(tokline, [tknString]);
                 if Verbose then WriteLn('Found REQUIRE with value ', tokline.Tokens[1].Literal);
                 curElement.index := length(_RequireList);
                 curElement.ElementType := incRequire;
@@ -1138,7 +1143,7 @@ begin
                 _RequireList := concat(_RequireList, [tokline.Tokens[1].Literal]);
             end;
             tknClass: begin
-                _CheckLine(tokline, 2, 1, [tknString, tknString]);
+                _CheckLine(tokline, [tknString, tknString], 1);
                 if Verbose then begin
                     Write('Found CLASS with name ', tokline.Tokens[1].Literal);
                     if length(tokline.Tokens) = 3 then begin

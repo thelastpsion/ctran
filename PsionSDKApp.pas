@@ -60,8 +60,11 @@ begin
 end;
 
 function TPsionSDKAppParams.InSwitch(sw: String; val: String) : Boolean;
+var
+    Param: TPsionSDKParam;
 begin
-    Result := (_ParamList[_EncodeParamID(LeftStr(sw, 1))].Exists and (Pos(LeftStr(val, 1), UpCase(_ParamList[_EncodeParamID(LeftStr(sw, 1))].Value)) > 0));
+    Param := _ParamList[_EncodeParamID(LeftStr(sw, 1))];
+    Result := (Param.Exists and (Pos(LeftStr(val, 1), UpCase(Param.Value)) > 0));
 end;
 
 function TPsionSDKAppParams.SwitchVal(sw: String) : String;

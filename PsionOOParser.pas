@@ -912,13 +912,17 @@ var
     tokline : TTokenisedLine;
     curMethodEntry : TPsionOOMethodEntry;
 
-    procedure CheckValidForEXT(TokLiteral: String; IsValidForExternalFile: Boolean);
+    procedure StopIfEXT();
     begin
-        if (_FileType = ooExternal) and not IsValidForExternalFile then begin
-            _ErrShowLine(tokline, 0, format('%s not valid in External files', [TokLiteral]));
-        end
-        else if (_FileType <> ooExternal) and IsValidForExternalFile then begin
-            _ErrShowLine(tokline, 0, format('%s only valid in External files', [TokLiteral]));
+        if _FileType = ooExternal then begin
+            _ErrShowLine(tokline, 0, format('%s not valid in External files', [tokline.Tokens[0].Literal]));
+        end;
+    end;
+
+    procedure StopIfNotEXT();
+    begin
+        if _FileType <> ooExternal then begin
+            _ErrShowLine(tokline, 0, format('%s only valid in External files', [tokline.Tokens[0].Literal]));
         end;
     end;
 
@@ -952,7 +956,7 @@ begin
 
         case tokline.Tokens[0].TType of
             tknAdd: begin
-                CheckValidForEXT('ADD', false);
+                StopIfEXT();
                 _CheckLine(tokline, [tknString, tknEquals, tknString], 1);
                 curMethodEntry.MethodType := methodAdd;
                 curMethodEntry.Name := tokline.Tokens[1].Literal;
@@ -965,7 +969,7 @@ begin
             end;
 
             tknReplace: begin
-                CheckValidForEXT('REPLACE', false);
+                StopIfEXT();
                 _CheckLine(tokline, [tknString, tknEquals, tknString], 1);
                 curMethodEntry.MethodType := methodReplace;
                 curMethodEntry.Name := tokline.Tokens[1].Literal;
@@ -978,7 +982,7 @@ begin
             end;
 
             tknDefer: begin
-                CheckValidForEXT('DEFER', false);
+                StopIfEXT();
                 _CheckLine(tokline, [tknString]);
                 curMethodEntry.MethodType := methodDefer;
                 curMethodEntry.Name := tokline.Tokens[1].Literal;
@@ -986,7 +990,7 @@ begin
             end;
 
             tknDeclare: begin
-                CheckValidForEXT('DECLARE', true);
+                StopIfNotEXT();
                 _CheckLine(tokline, [tknString]);
                 curMethodEntry.MethodType := methodDeclare;
                 curMethodEntry.Name := tokline.Tokens[1].Literal;
@@ -994,7 +998,7 @@ begin
             end;
 
             tknTypes: begin
-                CheckValidForEXT('TYPES', false);
+                StopIfEXT();
                 _CheckLine(tokline, []);
                 if Verbose then WriteLn('Found TYPES');
                 _CheckForBrace();
@@ -1002,7 +1006,7 @@ begin
             end;
 
             tknProperty: begin
-                CheckValidForEXT('PROPERTY', false);
+                StopIfEXT();
                 _CheckLine(tokline, [tknString]);
                 if Verbose then WriteLn('Found PROPERTY');
                 if length(tokline.Tokens) = 2 then begin
@@ -1016,7 +1020,7 @@ begin
             end;
 
             tknConstants: begin
-                CheckValidForEXT('CONSTANTS', false);
+                StopIfEXT();
                 _CheckLine(tokline, []);
                 if Verbose then WriteLn('Found CONSTANTS');
                 _CheckForBrace();
@@ -1024,13 +1028,13 @@ begin
             end;
 
             tknHasMethod: begin
-                CheckValidForEXT('HAS_METHOD', true);
+                StopIfNotEXT();
                 if Verbose then WriteLn('Found HAS_METHOD');
                 Result.HasMethod := true;
             end;
 
             tknHasProperty : begin
-                CheckValidForEXT('HAS_PROPERTY', true);
+                StopIfNotEXT();
                 if Verbose then WriteLn('Found HAS_PROPERTY');
                 Result.HasProperty := true;
             end;

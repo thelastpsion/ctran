@@ -180,6 +180,7 @@ type
             _RequireList : TStringArray;
 
             // Methods: Lexing
+            procedure _SetLexerState(NewLexerState: TLexerState);
             procedure _DetectFileType(strFilename : String);
             procedure _DetectModuleName(strFilename : String);
             function _NewToken(newTokenLineNum: Integer; newTokenType: TTokenType; newTokenLiteral: String): TToken;
@@ -263,6 +264,16 @@ end;
 procedure TPsionOOParser._ResetTLB();
 begin
     _nextTLBTokenIndex := 0;
+end;
+
+procedure TPsionOOParser._SetLexerState(NewLexerState: TLexerState);
+begin
+    _LexerState := NewLexerState;
+    if Verbose then begin
+        Writeln('>>> Now in ', _LexerState);
+        if _LexerState in [stateClassSeekStart, stateClassTypesSeekStart, stateClassPropertySeekStart, stateClassConstantsSeekStart] then
+            WriteLn('>>>   (looking for brace)');
+    end;
 end;
 
 //
@@ -438,7 +449,8 @@ procedure TPsionOOParser._ProcessCLine();
 var
     tok: TToken;
 begin
-    if (_LexerState <> stateClassTypes) and (_LexerState <> stateClassProperty) then begin
+    // if (_LexerState <> stateClassTypes) and (_LexerState <> stateClassProperty) then begin
+    if not (_LexerState in [stateClassTypes, stateClassProperty]) then begin
         raise Exception.Create('_ProcessCLine called when not processing a TYPES or PROPERTY block');
     end;
 
@@ -458,8 +470,7 @@ begin
                     stateClassProperty:  Writeln('>>> End of PROPERTY section found!');
                 end;
                 _AddToken(tknBraceRight, tok);
-                _LexerState := stateClass;
-                if Verbose then Writeln('>>> Now in stateClass');
+                _SetLexerState(stateClass);
             end;
         end;
     end;
@@ -485,10 +496,7 @@ begin
     if tok.Literal = '{' then begin
         if Verbose then Writeln('>>> Start of section found!');
         _AddToken(tknBraceLeft, tok);
-
-        _LexerState := NextLexerState;
-        if Verbose then Writeln('>>>   Now in ', _LexerState);
-
+        _SetLexerState(NextLexerState);
         inc(_BraceLevel);
         if Verbose then Writeln('>>>   Brace level: ', _BraceLevel);
     end;
@@ -589,17 +597,17 @@ begin
                     'IMAGE': begin
                         if Verbose then Writeln('>>> IMAGE found!');
                         _AddToken(tknImage, tok);
-                        _LexerState := stateSeekKeyword;
+                        _SetLexerState(stateSeekKeyword);
                     end;
                     'LIBRARY': begin
                         if Verbose then Writeln('>>> LIBRARY found!');
                         _AddToken(tknLibrary, tok);
-                        _LexerState := stateSeekKeyword;
+                        _SetLexerState(stateSeekKeyword);
                     end;
                     'NAME': begin
                         if Verbose then Writeln('>>> NAME found!');
                         _AddToken(tknName, tok);
-                        _LexerState := stateSeekKeyword;
+                        _SetLexerState(stateSeekKeyword);
                     end;
                 end;
                 if _LexerState = stateSeekKeyword then
@@ -626,8 +634,7 @@ begin
                         if Verbose then Writeln('>>> CLASS found!');
                         _AddToken(tknClass, tok);
                         _GrabAndAddStringTokens(2);
-                        _LexerState := stateClassSeekStart;
-                        if Verbose then Writeln('>>>   Now in stateClassSeekStart (looking for brace)');
+                        _SetLexerState(stateClassSeekStart);
                     end;
                     'REQUIRE': begin
                         if Verbose then Writeln('>>> REQUIRE found!');
@@ -651,8 +658,8 @@ begin
                         if Verbose then Writeln('>>> End of CLASS section found!');
                         dec(_BraceLevel);
                         if Verbose then Writeln('>>>   Brace level: ', _BraceLevel);
-                        _LexerState := stateSeekKeyword;
-                        if Verbose then Writeln('>>> Now in stateSeekKeyword');
+                        _SetLexerState(stateSeekKeyword);
+                        // if Verbose then Writeln('>>> Now in stateSeekKeyword');
                     end;
                     'ADD': begin
                         if Verbose then Writeln('>>> ADD found!');
@@ -682,14 +689,12 @@ begin
                     'CONSTANTS': begin
                         if Verbose then Writeln('>>> CONSTANTS found!');
                         _AddToken(tknConstants, tok);
-                        _LexerState := stateClassConstantsSeekStart;
-                        if Verbose then Writeln('>>>   Now in stateClassConstantsSeekStart');
+                        _SetLexerState(stateClassConstantsSeekStart);
                     end;
                     'TYPES': begin
                         if Verbose then Writeln('>>> TYPES found!');
                         _AddToken(tknTypes, tok);
-                        _LexerState := stateClassTypesSeekStart;
-                        if Verbose then Writeln('>>>   Now in stateClassTypesSeekStart');
+                        _SetLexerState(stateClassTypesSeekStart);
                     end;
                     'PROPERTY': begin
                         if Verbose then Writeln('>>> PROPERTY found!');
@@ -700,8 +705,7 @@ begin
                             if Verbose then Writeln('>>> Number found!');
                             _AddToken(tknString, tok);
                         end;
-                        _LexerState := stateClassPropertySeekStart;
-                        if Verbose then Writeln('>>>   Now in stateClassPropertySeekStart');
+                        _SetLexerState(stateClassPropertySeekStart);
                     end;
                     // External reference (.EXT) keywords
                     'DECLARE': begin
@@ -732,12 +736,11 @@ begin
                     '}': begin
                         _AddToken(tknBraceRight, tok);
                         dec(_BraceLevel);
-                        _LexerState := stateClass;
                         if Verbose then begin
                             Writeln('>>> End of CONSTANTS section found!');
                             Writeln('>>>   Brace level: ', _BraceLevel);
-                            Writeln('>>> Now in stateClass');
                         end;
+                        _SetLexerState(stateClass);
                     end;
                     '{': begin
                         Writeln('!!! Too many curly braces');

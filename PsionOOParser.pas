@@ -187,16 +187,16 @@ type
             procedure _AddToken(toktype: TTokenType; tokliteral: String);
             procedure _AddToken(toktype: TTokenType; part_tok : TToken);
             procedure _ProcessCLine();
-            procedure _GrabAndAddStringTokens(count : Integer);
+            procedure _GrabAndAddStringTokens(const count: Integer);
             function _GrabNextToken() : TToken;
-            procedure _SeekStartOfSection(NextLexerState : TLexerState);
+            procedure _SeekStartOfSection(const NextLexerState: TLexerState);
 
             // Methods: Tokenised Line Builder
             function _GetNextLine() : TTokenisedLine;
             procedure _ResetTLB();
 
             // Methods: Parser
-            procedure _CheckLine(tokline: TTokenisedLine; toktypes: array of TTokenType; PossibleMaxMandatoryArgs: Integer = -1);
+            procedure _CheckLine(tokline: TTokenisedLine; const ATokTypes: array of TTokenType; const AMandatoryArgs: Integer = -1);
             function _GetClass(tokline_class : TTokenisedLine) : TPsionOOClass;
             function _GetConstants() : TPsionOOConstants;
             function _BuildConstant(tokline : TTokenisedLine) : TPsionOOConstantEntry;
@@ -427,7 +427,7 @@ begin
     _curLinePos += length(Result.Literal);
 end;
 
-procedure TPsionOOParser._GrabAndAddStringTokens(count : Integer);
+procedure TPsionOOParser._GrabAndAddStringTokens(const count: Integer);
 var
     i : Integer;
     tok : TToken;
@@ -487,7 +487,7 @@ end;
 // _SeekStartOfSection()
 // Looks for a tknBraceLeft. If found, it changes the current lexer state to NextLexerState.
 // It also increments the brace level.
-procedure TPsionOOParser._SeekStartOfSection(NextLexerState : TLexerState);
+procedure TPsionOOParser._SeekStartOfSection(const NextLexerState: TLexerState);
 var
     tok: TToken;
 begin
@@ -612,7 +612,6 @@ begin
                 end;
                 if _LexerState = stateSeekKeyword then
                 begin
-                    if Verbose then WriteLn('>>>   Now in stateSeekKeyword');
                     _GrabAndAddStringTokens(1);
                 end;
             end;
@@ -771,20 +770,20 @@ begin
     _AddToken(tknEOF, '');
 end;
 
-procedure TPsionOOParser._CheckLine(tokline : TTokenisedLine; toktypes: array of TTokenType; PossibleMaxMandatoryArgs: Integer = -1);
+procedure TPsionOOParser._CheckLine(tokline : TTokenisedLine; const ATokTypes: array of TTokenType; const AMandatoryArgs: Integer = -1);
 var
     i: Integer;
     tokline_ArgCount: Integer;
     ArgCheckCount: Integer;
     MaxMandatoryArgs: Integer;
 begin
-    ArgCheckCount := length(toktypes);
+    ArgCheckCount := length(ATokTypes);
     tokline_ArgCount := length(tokline.Tokens) - 1;
 
-    if PossibleMaxMandatoryArgs < 0 then // 0 mandatory arguments is valid when all args are optional
+    if AMandatoryArgs < 0 then // 0 mandatory arguments is valid when all args are optional
         MaxMandatoryArgs := ArgCheckCount // This is the default, but it also just ignores when a negative number is specified
     else
-        MaxMandatoryArgs := PossibleMaxMandatoryArgs;
+        MaxMandatoryArgs := AMandatoryArgs;
 
     // Make sure that, if the last token is tknEOF, it isn't classed as an argument
     if tokline.Tokens[tokline_argcount].TType = tknEOF then dec(tokline_argcount);
@@ -803,8 +802,8 @@ begin
 
     for i := 1 to tokline_ArgCount - 1 do
     begin
-        if (tokline.Tokens[i].TType <> toktypes[i-1]) then begin
-            _ErrShowLine(tokline, 1, format('Incorrect token type. Expected %s but found %s', [toktypes[i-1], tokline.Tokens[i].TType.ToString()]));
+        if (tokline.Tokens[i].TType <> ATokTypes[i-1]) then begin
+            _ErrShowLine(tokline, 1, format('Incorrect token type. Expected %s but found %s', [ATokTypes[i-1], tokline.Tokens[i].TType.ToString()]));
         end;
     end;
 end;

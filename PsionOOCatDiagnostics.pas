@@ -83,12 +83,11 @@ begin
             WriteLn;
         end;
 
-        Writeln('  Types (',  length(lex.ClassList[i].ClassTypes), '):');
+        Writeln('  Types (',  lex.ClassList[i].ClassTypes.Count, '):');
         for s in lex.ClassList[i].ClassTypes do
         begin
             Writeln('    ', s);
         end;
-
 
         Writeln('  Constants (', length(lex.ClassList[i].ClassConstants), '):');
         for constant_entry in lex.ClassList[i].ClassConstants do
@@ -96,7 +95,7 @@ begin
             Writeln('    ', constant_entry.Name, ' ', constant_entry.Value);
         end;
 
-        Writeln('  Property (', length(lex.ClassList[i].ClassProperty),'):');
+        Writeln('  Property (', lex.ClassList[i].ClassProperty.Count,'):');
         for s in lex.ClassList[i].ClassProperty do
         begin
             Writeln('    ', s);
@@ -183,7 +182,7 @@ begin
                     end;
                     Writeln('}');
                 end;
-                if length(lex.ClassList[element.index].ClassTypes) > 0 then begin
+                if lex.ClassList[element.index].ClassTypes.Count > 0 then begin
                     WriteLn('TYPES');
                     Writeln('{');
                     for s in lex.ClassList[element.index].ClassTypes do
@@ -192,7 +191,7 @@ begin
                     end;
                     Writeln('}');
                 end;
-                if length(lex.ClassList[element.index].ClassProperty) > 0 then begin
+                if lex.ClassList[element.index].ClassProperty.Count > 0 then begin
                     Write('PROPERTY');
                     if lex.ClassList[element.index].PropertyAutodestroyCount > 0 then
                         Write(' ', lex.ClassList[element.index].PropertyAutodestroyCount);

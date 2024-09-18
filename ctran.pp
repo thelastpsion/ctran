@@ -167,7 +167,7 @@ begin
                 ext_class.Category := category;
                 ext_class.Parent := LowerCase(par_class.Parent);
                 ext_class.Methods := par_class.Methods;
-                ext_class.HasProperty := ((par_class.HasProperty) or (length(par_class.ClassProperty) > 0));
+                ext_class.HasProperty := ((par_class.HasProperty) or (par_class.ClassProperty.Count > 0));
 
                 DependencyList.Add(LowerCase(par_class.Name), ext_class);
                 if par.FileType <> ooExternal then InternalClassList.Add(par_class.Name);
@@ -633,7 +633,7 @@ begin
         if flgHasMethod then begin
             slFile.Add('HAS_METHOD');
         end;
-        if length(class_item.ClassProperty) > 0 then begin
+        if class_item.ClassProperty.Count > 0 then begin
             slFile.Add('HAS_PROPERTY');
         end;
         slFile.Add('}');
@@ -739,13 +739,13 @@ begin
                 end;
             end;
 
-            if length(class_item.ClassTypes) > 0 then begin
+            if class_item.ClassTypes.Count > 0 then begin
                 slFile.Add('/* Types for ' + class_item.Name + ' */');
                 slFile.AddStrings(class_item.ClassTypes);
             end;
 
             slFile.Add('/* Property of ' + class_item.Name + ' */');
-            if length(class_item.ClassProperty) > 0 then begin
+            if class_item.ClassProperty.Count > 0 then begin
                 slFile.Add('typedef struct {');
                 slFile.AddStrings(class_item.ClassProperty);
                 slFile.Add('} PRS_' + UpCase(class_item.Name) + ';');
@@ -761,7 +761,7 @@ begin
             end;
             FreeAndNil(sl);
 
-            if length(class_item.ClassProperty) > 0 then begin
+            if class_item.ClassProperty.Count > 0 then begin
                 slFile.Add('PRS_%s %s;', [UpCase(class_item.Name), class_item.Name]);
             end;
             slFile.Add('} PR_' + UpCase(class_item.Name) + ';');
@@ -1237,7 +1237,7 @@ begin
     Result := TStringList.Create();
     cur_line := 0;
 
-    while cur_line < length(class_item.ClassTypes) - 1 do
+    while cur_line < class_item.ClassTypes.Count - 1 do
     begin
         // if length(class_item.ClassTypes) - cur_line < 4 then begin
         //     break;
@@ -1254,7 +1254,7 @@ begin
 
         typedef_start_line := cur_line + 2;
         struct_name := '';
-        for cur_typedef_line := typedef_start_line to length(class_item.ClassTypes) - 1 do
+        for cur_typedef_line := typedef_start_line to class_item.ClassTypes.Count - 1 do
         begin
             if class_item.ClassTypes[cur_typedef_line][1] = '}' then begin
                 struct_name := copy(class_item.ClassTypes[cur_typedef_line], 3);
@@ -1355,13 +1355,13 @@ begin
                 end;
             end;
 
-            if length(class_item.ClassTypes) > 0 then begin
+            if class_item.ClassTypes.Count > 0 then begin
                 slFile.Add('');
                 slFile.Add('; Types for ' + class_item.Name);
                 slFile.AddStrings(CTypesToTasm(class_item));
             end;
 
-            if length(class_item.ClassProperty) > 0 then begin
+            if class_item.ClassProperty.Count > 0 then begin
                 slFile.Add('');
                 slFile.Add('; Property of ' + class_item.Name);
                 slFile.Add( 'PRS_' + UpCase(class_item.Name) + ' struc');
@@ -1381,7 +1381,7 @@ begin
             end;
             FreeAndNil(sl);
 
-            if length(class_item.ClassProperty) > 0 then begin
+            if class_item.ClassProperty.Count > 0 then begin
                 slFile.Add(UpCase(class_item.Name[1]) + copy(class_item.Name, 2) + UpCase(class_item.Name[1]) + copy(class_item.Name, 2) + ' PRS_' + UpCase(class_item.Name) + ' <>');
             end;
             slFile.Add('PR_' + UpCase(class_item.Name) + ' ends');
@@ -1449,7 +1449,6 @@ procedure MakeAllSkeletonFiles(par : TPsionOOParser);
 // TODO: Filenames must be 8.3
 // TODO: Find out what classic CTRAN does to files where the first 8 characters of a class are the same as another
 var
-    // s : String;
     slFile : TStringList;
     class_name : String;
     class_item : TPsionOOClass;
@@ -1465,8 +1464,6 @@ begin
         slFile := MakeSkeletonFile(class_item);
         if slFile.Count > 0 then begin
             WriteLn(filepath, class_name, '.c');
-            // for s in slFile do WriteLn(s);
-            // WriteLn;
             slFile.LineBreak := #13#10;
             try
                 slFile.SaveToFile(filepath + class_name + '.c');

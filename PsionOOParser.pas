@@ -166,7 +166,6 @@ type
 
             // Fields: Token Processing
             _CurTokenIndex : Integer;
-            // _CurToken : TToken;
 
             // Fields: Tokenised Line Builder
             _nextTLBTokenIndex : Integer;
@@ -174,10 +173,10 @@ type
             // Fields: Parser
             _CategoryType : TCategoryType;
             _ElementList : array of TPsionOOFileElement;
-            _ExternalList : TStringArray;
-            _IncludeList : TStringArray;
+            _ExternalList : TStringList;
+            _IncludeList : TStringList;
             _ClassList : array of TPsionOOClass;
-            _RequireList : TStringArray;
+            _RequireList : TStringList;
 
             // Methods: Lexing
             procedure _SetLexerState(NewLexerState: TLexerState);
@@ -203,7 +202,6 @@ type
             function _GetTypes() : TPsionOOTypes;
             function _GetProperty() : TPsionOOProperty;
             procedure _CheckForBrace();
-            // function _TokenValidForFiletypes(toktype: TTokenType; valid_filetypes: array of TFileType) : boolean;
 
             // Methods: Misc
             procedure _ErrShowLine(tokline : TTokenisedLine ; toknum : Integer ; message : String);
@@ -226,10 +224,10 @@ type
             property Tokens : TTokenArray read _TokenArray;
 
             property ElementList : TPsionOOFileElementList read _ElementList;
-            property RequireList : TStringArray read _RequireList;
-            property IncludeList : TStringArray read _IncludeList;
+            property RequireList : TStringList read _RequireList;
+            property IncludeList : TStringList read _IncludeList;
             property ClassList : TPsionOOClassList read _ClassList;
-            property ExternalList : TStringArray read _ExternalList;
+            property ExternalList : TStringList read _ExternalList;
     end;
 
 implementation
@@ -259,6 +257,12 @@ begin
     _strFilename := '';
     _CurTokenIndex := -1;
     _BraceLevel := 0;
+    if assigned(_ExternalList) then FreeAndNil(_ExternalList);
+    _ExternalList := TStringList.Create();
+    If assigned(_IncludeList) then FreeAndNil(_IncludeList);
+    _IncludeList := TStringList.Create();
+    If assigned(_RequireList) then FreeAndNil(_RequireList);
+    _RequireList := TStringList.Create();
 end;
 
 procedure TPsionOOParser._ResetTLB();
@@ -1055,7 +1059,16 @@ end;
 procedure TPsionOOParser.Parse();
 var
     tokline : TTokenisedLine;
-    curElement : TPsionOOFileElement;
+
+    procedure AddElement(AElementIndex: Integer; AElementType: TElementType);
+    var
+        curElement : TPsionOOFileElement;
+    begin
+        curElement.index := AElementIndex;
+        curElement.ElementType := AElementType;
+        _ElementList := concat(_ElementList, [curElement]);
+    end;
+
 begin
     _ResetTLB();
 
@@ -1124,10 +1137,8 @@ begin
             tknInclude: begin
                 _CheckLine(tokline, [tknString]);
                 if Verbose then WriteLn('Found INCLUDE with value ', tokline.Tokens[1].Literal);
-                curElement.index := length(_IncludeList);
-                curElement.ElementType := incInclude;
-                _ElementList := concat(_ElementList, [curElement]);
-                _IncludeList := concat(_IncludeList, [tokline.Tokens[1].Literal]);
+                AddElement(_IncludeList.Count, incInclude);
+                _IncludeList.Add(tokline.Tokens[1].Literal);
             end;
             tknExternal: begin
                 if _FileType <> ooCategory then begin
@@ -1135,18 +1146,14 @@ begin
                 end;
                 _CheckLine(tokline, [tknString]);
                 if Verbose then WriteLn('Found EXTERNAL with value ', tokline.Tokens[1].Literal);
-                curElement.index := length(_ExternalList);
-                curElement.ElementType := incExternal;
-                _ElementList := concat(_ElementList, [curElement]);
-                _ExternalList := concat(_ExternalList, [tokline.Tokens[1].Literal]);
+                AddElement(_ExternalList.Count, incExternal);
+                _ExternalList.Add(tokline.Tokens[1].Literal);
             end;
             tknRequire: begin
                 _CheckLine(tokline, [tknString]);
                 if Verbose then WriteLn('Found REQUIRE with value ', tokline.Tokens[1].Literal);
-                curElement.index := length(_RequireList);
-                curElement.ElementType := incRequire;
-                _ElementList := concat(_ElementList, [curElement]);
-                _RequireList := concat(_RequireList, [tokline.Tokens[1].Literal]);
+                AddElement(_RequireList.Count, incRequire);
+                _RequireList.Add(tokline.Tokens[1].Literal);
             end;
             tknClass: begin
                 _CheckLine(tokline, [tknString, tknString], 1);
@@ -1160,9 +1167,7 @@ begin
                 end;
 
                 _CheckForBrace();
-                curElement.index := length(_ClassList);
-                curElement.ElementType := incClass;
-                _ElementList := concat(_ElementList, [curElement]);
+                AddElement(length(_ClassList), incClass);
                 _ClassList := concat(_ClassList, [_GetClass(tokline)]);
             end;
         end;

@@ -39,7 +39,7 @@ begin
     Writeln;
     Writeln('EXTERNALs');
     Writeln('---------');
-    for i := 0 to length(lex.ExternalList) - 1 do
+    for i := 0 to lex.ExternalList.Count - 1 do
     begin
         Writeln(lex.ExternalList[i]);
     end;
@@ -47,7 +47,7 @@ begin
     Writeln;
     Writeln('INCLUDEs');
     Writeln('--------');
-    for i := 0 to length(lex.IncludeList) - 1 do
+    for i := 0 to lex.IncludeList.Count - 1 do
     begin
         Writeln(lex.Includelist[i]);
     end;
@@ -55,7 +55,7 @@ begin
     Writeln;
     Writeln('REQUIREs');
     Writeln('--------');
-    for i := 0 to length(lex.RequireList) - 1 do
+    for i := 0 to lex.RequireList.Count - 1 do
     begin
         Writeln(lex.RequireList[i]);
     end;

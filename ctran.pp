@@ -514,7 +514,7 @@ var
     s : String;
     extfile : String;
 begin
-    if Length(CatParser.ExternalList) > 0 then begin
+    if CatParser.ExternalList.Count > 0 then begin
         for extfile in CatParser.ExternalList do begin
             s := CheckExternalFile(extfile, PathList);
             if s = '' then begin
@@ -621,12 +621,12 @@ begin
                     flgHasMethod := true;
                 end;
                 methodDeclare: begin
-                    WriteLn('MakeEXT: Can''t have a DECLARE in a Category file... What''s happened?');
-                    exit;
+                    // If we hit this, something's gone wrong in the parser
+                    raise Exception.Create('MakeEXT: Can''t have a DECLARE in a Category file... What''s happened?');
                 end;
                 else begin
-                    WriteLn('MakeEXT: Unknown token in a Category file... What''s happened?');
-                    exit;
+                    // The parser has created a token that we don't understand
+                    raise Exception.Create('MakeEXT: Unknown token in a Category file... What''s happened?');
                 end;
             end;
         end;
@@ -693,7 +693,7 @@ begin
             slFile.Add('#ifdef EPOC');
         end;
         slFile.Add('#define CAT_%s_%s 0', [par.ModuleName, par.ModuleName]);
-        for i := 0 to length(par.ExternalList) - 1 do
+        for i := 0 to par.ExternalList.Count - 1 do
         begin
             slFile.Add('#define CAT_%s_%s %d', [par.ModuleName, UpCase(par.ExternalList[i]),  i + 1]);
         end;
@@ -842,7 +842,8 @@ begin
     ForwardRefs := GetMethodForwardRefs(par);
     if ForwardRefs.Count > 0 then begin
         slFile.Add('/* Method function forward references */');
-        for s in ForwardRefs do slFile.Add('GLREF_C VOID %s();', [s])
+        for s in ForwardRefs do slFile.Add('GLREF_C VOID %s();', [s]);
+        // slFile.AddStrings(ForwardRefs.FormatAll('GLREF_C VOID %s();')); // TODO: Might not work - check this
     end;
     FreeAndNil(ForwardRefs);
 
@@ -934,15 +935,15 @@ begin
     slFile.AddStrings(InternalClassList.FormatAll('(P_CLASS *)&c_%s,', '(P_CLASS *)&c_%s'));
     slFile.Add('};');
 
-    if length(par.ExternalList) > 0 then begin
+    if par.ExternalList.Count > 0 then begin
         slFile.Add('/* External Category Name Table */');
         if flgNotSDK then slFile.Add('#ifdef EPOC');
         slFile.Add('GLDEF_D struct');
         slFile.Add('    {');
         slFile.Add('    UWORD number;');
-        slFile.Add('    UBYTE names[%d][14];', [length(par.ExternalList)]);
+        slFile.Add('    UBYTE names[%d][14];', [par.ExternalList.Count]);
         slFile.Add('    } ExtCatTable =');
-        slFile.Add('    {%d,', [length(par.ExternalList)]);
+        slFile.Add('    {%d,', [par.ExternalList.Count]);
         slFile.Add('    {');
 
         sl := TStringList.Create();
@@ -1147,12 +1148,12 @@ begin
 
     slFile.Add(' _TEXT ends');
 
-    if length(par.ExternalList) > 0 then begin
+    if par.ExternalList.Count > 0 then begin
         slFile.Add('; External Category Name Table');
         slFile.Add(' _TEXT segment byte public ''CODE''');
         slFile.Add('GLDEF_C ExtCatTable');
 
-        slFile.Add(' dw   %d', [length(par.ExternalList)]);
+        slFile.Add(' dw   %d', [par.ExternalList.Count]);
         for s in par.ExternalList do
         begin
             slFile.Add(' db "' + s + '.DYL"' + RepeatStr(',0', 10 - length(s)));
@@ -1307,12 +1308,12 @@ begin
         slFile.Add('ENDIF');
     end;
 
-    if ((par.FileType = ooCategory) and (length(par.ExternalList) > 1)) or (length(par.ExternalList) > 0) then begin
+    if ((par.FileType = ooCategory) and (par.ExternalList.Count > 1)) or (par.ExternalList.Count > 0) then begin
         slFile.Add('; Category Numbers');
         if par.FileType = ooCategory then begin
             slFile.Add('CAT_%s_%s equ 0', [par.ModuleName, par.ModuleName]);
         end;
-        for i := 0 to length(par.ExternalList) - 1 do
+        for i := 0 to par.ExternalList.Count - 1 do
         begin;
             slFile.Add('CAT_%s_%s equ %d', [par.ModuleName, UpCase(par.ExternalList[i]), i + 1]);
         end;
@@ -1514,7 +1515,7 @@ begin
 
     WriteLn;
 
-    if length(par.RequireList) > 0 then begin
+    if par.RequireList.Count > 0 then begin
         WriteLn(par.ModuleName, ' asks for REQUIREd sub-category files:');
         for s in par.RequireList do
         begin

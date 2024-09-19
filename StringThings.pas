@@ -22,7 +22,7 @@ function RepeatStr(s: String; c: integer) : String;
 function ExtractFileStem(s : String) : String;
 procedure TrimAfterSemicolon(var s: String);
 function DelimitStr(s : String; delimiter : String; step: Integer = 1) : String;
-
+function ProperCase(s: String) : String;
 implementation
 
 // String
@@ -163,6 +163,14 @@ begin
         Result.Add(fmt_main, [self[self.Count - 1]])
     else
         Result.Add(fmt_final, [self[self.Count - 1]]);
+end;
+
+function ProperCase(s: String) : String;
+begin
+    if length(s) > 0 then
+        Result := UpCase(s[1]) + LowerCase(copy(s, 2))
+    else
+        Result := '';
 end;
 
 end.

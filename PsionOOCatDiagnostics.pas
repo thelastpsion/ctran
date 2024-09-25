@@ -2,7 +2,9 @@
 unit PsionOOCatDiagnostics;
 
 interface
-uses sysutils, PsionOOParser;
+uses
+    sysutils,
+    PsionOOParser;
 
 procedure PrintArray(par: TPsionOOParser);
 procedure ShowTree(par: TPsionOOParser);
@@ -26,7 +28,7 @@ begin
     end;
 
     Writeln;
-    Writeln('Length: ', Length(par.Tokens));
+    Writeln('Length: ', par.Tokens.Count);
 end;
 
 procedure ShowTree(par: TPsionOOParser);

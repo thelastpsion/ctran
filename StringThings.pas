@@ -5,7 +5,8 @@ unit StringThings;
 interface
 
 uses
-    sysutils, classes;
+    sysutils,
+    classes;
 
 type
     TStringListHelper = Class Helper for TStringList

@@ -11,10 +11,12 @@ and internal (.CAT and .CL) types.
 interface
 
 uses
-    sysutils, Classes, StringThings;
+    sysutils,
+    Classes,
+    Generics.Collections,
+    StringThings;
 
 type
-    // TokenType = string;
     TTokenType = (
         tknString,
 
@@ -65,7 +67,7 @@ type
         LinePos : Integer;
     end;
 
-    TTokenArray = array of TToken;
+    TTokenList = specialize TList<TToken>;
 
     TLexerState = (
         stateInitial,
@@ -144,7 +146,7 @@ type
 
     TTokenisedLine = record
         LineNum : Integer;
-        Tokens : array of TToken;
+        Tokens : TTokenList;
     end;
 
     TPsionOOParser = class
@@ -161,7 +163,7 @@ type
             _strCurLine : String;
             _LexerState : TLexerState;
             _BraceLevel : Integer;
-            _TokenArray : TTokenArray;
+            _TokenList : TTokenList;
 
             // Fields: Token Processing
             _CurTokenIndex : Integer;
@@ -219,7 +221,7 @@ type
             property FileLocation : String read _FileLocation;
             property ModuleName : String read _ModuleName;
             property CategoryType : TCategoryType read _CategoryType;
-            property Tokens : TTokenArray read _TokenArray;
+            property Tokens : TTokenList read _TokenList;
 
             property ElementList : TPsionOOFileElementList read _ElementList;
             property RequireList : TStringList read _RequireList;
@@ -261,6 +263,9 @@ begin
     _IncludeList := TStringList.Create();
     If assigned(_RequireList) then FreeAndNil(_RequireList);
     _RequireList := TStringList.Create();
+    If assigned(_TokenList) then FreeAndNil(_TokenList);
+    _TokenList := TTokenList.Create();
+
 end;
 
 procedure TPsionOOParser._ResetTLB();
@@ -284,20 +289,20 @@ end;
 
 function TPsionOOParser._GetNextLine() : TTokenisedLine;
 begin
-    Result.Tokens := nil; // Because it remembers what was here before!
+    Result.Tokens := TTokenList.Create(); // Because it remembers what was here before!
 
-    if _nextTLBTokenIndex >= length(_TokenArray) then begin
-        _nextTLBTokenIndex := length(_TokenArray);
+    if _nextTLBTokenIndex >= _TokenList.Count then begin
+        _nextTLBTokenIndex := _TokenList.Count;
         Result.LineNum := 0;
-        Result.Tokens := [_NewToken(0, tknEOF, '')];
+        Result.Tokens.Add(_NewToken(0, tknEOF, ''));
         exit;
     end;
 
-    Result.LineNum := _TokenArray[_nextTLBTokenIndex].LineNum;
-    while _nextTLBTokenIndex < length(_TokenArray) do
+    Result.LineNum := _TokenList[_nextTLBTokenIndex].LineNum;
+    while _nextTLBTokenIndex < _TokenList.Count do
     begin
-        if _TokenArray[_nextTLBTokenIndex].LineNum <> Result.LineNum then break;
-        Result.Tokens := concat(Result.Tokens, [_TokenArray[_nextTLBTokenIndex]]);
+        if _TokenList[_nextTLBTokenIndex].LineNum <> Result.LineNum then break;
+        Result.Tokens.Add(_TokenList[_nextTLBTokenIndex]);
         inc(_nextTLBTokenIndex);
     end;
 end;
@@ -334,7 +339,7 @@ begin
     tokline := _GetNextLine();
     while tokline.Tokens[0].TType <> tknEOF do
     begin
-        Writeln('Line ', tokline.LineNum, ': (returned ', length(tokline.Tokens), ' tokens)');
+        Writeln('Line ', tokline.LineNum, ': (returned ', tokline.Tokens.Count, ' tokens)');
         for tok in tokline.Tokens do
         begin
             WriteLn('   > ', tok.TType, ' ''', tok.Literal, ''' (', tok.LinePos, ')');
@@ -369,7 +374,7 @@ begin
     // TODO: Add checks here (e.g. valid line number and line position)
     tok := part_tok;
     tok.TType := toktype;
-    _TokenArray := concat(_TokenArray, [tok]);
+    _TokenList.Add(tok);
 end;
 
 procedure TPsionOOParser._AddToken(toktype: TTokenType; tokliteral: String);
@@ -381,7 +386,7 @@ begin
     tok.LineNum := _curLineNum;
     tok.LinePos := _curLinePos;
 
-    _TokenArray := concat(_TokenArray, [tok]);
+    _TokenList.Add(tok);
 end;
 
 //
@@ -513,18 +518,10 @@ begin
     ext := UpCase(ExtractFileExt(strFilename));
 
     case ext of
-        '', '.': begin
-            _FileType := ooCategory;
-        end;
-        '.CAT': begin
-            _FileType := ooCategory;
-        end;
-        '.CL': begin
-            _FileType := ooSubCat;
-        end;
-        '.EXT': begin
-            _FileType := ooExternal;
-        end;
+        '', '.': _FileType := ooCategory;
+        '.CAT':  _FileType := ooCategory;
+        '.CL':   _FileType := ooSubCat;
+        '.EXT':  _FileType := ooExternal;
         else begin
             WriteLn('Error: Unknown file type.');
             halt(-1);
@@ -779,7 +776,7 @@ var
     MaxMandatoryArgs: Integer;
 begin
     ArgCheckCount := length(ATokTypes);
-    tokline_ArgCount := length(tokline.Tokens) - 1;
+    tokline_ArgCount := tokline.Tokens.Count - 1;
 
     if AMandatoryArgs < 0 then // 0 mandatory arguments is valid when all args are optional
         MaxMandatoryArgs := ArgCheckCount // This is the default, but it also just ignores when a negative number is specified
@@ -912,7 +909,7 @@ begin
     _CheckLine(tokline_class, [tknString, tknString], 1);
 
     Result.Name := tokline_class.Tokens[1].Literal;
-    if length(tokline_class.Tokens) = 3 then begin
+    if tokline_class.Tokens.Count = 3 then begin
         Result.Parent := tokline_class.Tokens[2].Literal;
     end else begin
         Result.Parent := '';
@@ -938,7 +935,7 @@ begin
                 _CheckLine(tokline, [tknString, tknEquals, tknString], 1);
                 curMethodEntry.MethodType := methodAdd;
                 curMethodEntry.Name := tokline.Tokens[1].Literal;
-                if length(tokline.Tokens) = 4 then begin
+                if tokline.Tokens.Count = 4 then begin
                     curMethodEntry.ForwardRef := tokline.Tokens[3].Literal;
                 end;
                 Result.Methods := concat(Result.Methods, [curMethodEntry]);
@@ -949,7 +946,7 @@ begin
                 _CheckLine(tokline, [tknString, tknEquals, tknString], 1);
                 curMethodEntry.MethodType := methodReplace;
                 curMethodEntry.Name := tokline.Tokens[1].Literal;
-                if length(tokline.Tokens) = 4 then begin
+                if tokline.Tokens.Count = 4 then begin
                     curMethodEntry.ForwardRef := tokline.Tokens[3].Literal;
                 end;
                 Result.Methods := concat(Result.Methods, [curMethodEntry]);
@@ -983,7 +980,7 @@ begin
                 StopIfEXT();
                 _CheckLine(tokline, [tknString]);
                 if Verbose then WriteLn('Found PROPERTY');
-                if length(tokline.Tokens) = 2 then begin
+                if tokline.Tokens.Count = 2 then begin
                     if not TryStrToInt(tokline.Tokens[1].Literal, Result.PropertyAutodestroyCount) then begin
                         _ErrShowLine(tokline, 2, 'Expected a number, found something else.');
                     end;
@@ -1079,15 +1076,7 @@ begin
         end;
     end;
 
-    if length(tokline.Tokens) = 1 then begin
-        _ErrShowLine(tokline, -1, 'Starter token found, but nothing following it on the line.');
-    end;
-    if length(tokline.Tokens) > 2 then begin
-        _ErrShowLine(tokline, 2, 'Too many tokens on this line.');
-    end;
-    if tokline.Tokens[1].TType <> tknString then begin
-        _ErrShowLine(tokline, 1, format('Incorrect token type. Expected tknString but found %s.', [ tokline.Tokens[1].TType.ToString()]));
-    end;
+    _CheckLine(tokline, [tknString]);
 
     if _ModuleName <> UpCase(tokline.Tokens[1].Literal) then begin
         _ErrShowLine(tokline, 1, format('Token %s doesn''t match module name %s', [tokline.Tokens[1].Literal, _ModuleName]));
@@ -1127,7 +1116,7 @@ begin
                 _CheckLine(tokline, [tknString, tknString], 1);
                 if Verbose then begin
                     Write('Found CLASS with name ', tokline.Tokens[1].Literal);
-                    if length(tokline.Tokens) = 3 then begin
+                    if tokline.Tokens.Count = 3 then begin
                         Writeln(', inheriting ', tokline.Tokens[2].Literal);
                     end else begin
                         Writeln(' (does not inherit)');

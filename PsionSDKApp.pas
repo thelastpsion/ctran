@@ -2,7 +2,8 @@
 unit PsionSDKApp;
 
 interface
-uses sysutils;
+uses
+    sysutils;
 
 type
     TPsionSDKParam = record

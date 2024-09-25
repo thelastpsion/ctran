@@ -2,7 +2,13 @@
 program ctran;
 
 uses
-    sysutils, classes, PsionOOParser, PsionOOCatDiagnostics, PsionSDKApp, Generics.Collections, StringThings;
+    sysutils,
+    classes,
+    PsionOOParser,
+    PsionOOCatDiagnostics,
+    PsionSDKApp,
+    Generics.Collections,
+    StringThings;
 
 type
     TMethodsForCFile = record
@@ -677,8 +683,8 @@ begin
     for inc_file in par.IncludeList do
     begin
         inc_file_def := UpCase(StringReplace(inc_file, '.', '_', [rfReplaceAll]));
-        slFile.Add('#ifndef ' + inc_file_def);
-        slFile.Add('#include <' + inc_file + '>');
+        slFile.Add('#ifndef %s', [inc_file_def]);
+        slFile.Add('#include <%s>', [inc_file]);
         slFile.Add('#endif');
     end;
 

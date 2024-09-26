@@ -79,8 +79,8 @@ var
     cur, tot : Integer;
     thisParam : String;
     flgFoundName: Boolean = false;
-    param : TPsionSDKParam;
-    switch : String[1];
+    // param : TPsionSDKParam;
+    // switch : String[1];
     switch_id : Integer;
 begin
     tot := paramCount();

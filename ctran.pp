@@ -11,7 +11,7 @@ uses
     StringThings;
 
 type
-    TMethodsForCFile = record
+    TMethodsForOutput = record
         Methods : TPsionOOMethodList;
         StartIndex : Integer;
     end;
@@ -64,6 +64,7 @@ begin
          '    t          show table of tokens' + LineEnding +
          '    p          show parser debug output' + LineEnding +
          '    a          show abstract syntax tables' + LineEnding +
+         '    c          extra information when constructing new files (not fully implemented)' + LineEnding +
          '    r          reconstruct all input files from abstract syntax';
     WriteLn(s);
 end;
@@ -234,6 +235,7 @@ var
     ancestor : String;
 begin
     // TODO: Check ancestor classes for circular reference (ancestor TStringList?)
+    If params.InSwitch('V', 'C') then WriteLn('>>>   Checking class ', class_item.Name, 'ancestors with property. (do I need to check circular refs?)');
     Result := TStringList.Create;
     ancestor := LowerCase(class_item.Parent);
     while ancestor <> '' do
@@ -251,6 +253,8 @@ var
 begin
     Result := TStringList.Create();
     ancestor := LowerCase(class_item.Parent);
+
+    If params.InSwitch('V', 'C') then WriteLn('>>> Checking class ', class_item.Name, ' ancestors (and checking for circular refrerences.)');
 
     // TODO: Could this be tidied using TStringList.Reverse() and a separate TStringList?
     while ancestor <> '' do
@@ -281,15 +285,14 @@ var
     ancestor : String;
     ancestor_list : TStringList;
 begin
-    // WriteLn('MakeMetaclass() running...');
-    // WriteLn(class_item.Name);
+    if params.InSwitch('V', 'C') then WriteLn('>>> MakeMetaclass(', class_item.Name, ') running...');
     Result := TStringList.Create();
     ancestor := LowerCase(class_item.Parent);
     ancestor_list := GetAncestors(class_item);
 
     for ancestor in ancestor_list do
     begin
-        // WriteLn('Ancestor being processed: ', ancestor);
+        if params.InSwitch('V', 'C') then WriteLn('>>>   Ancestor being processed: ', ancestor);
         for method in DependencyList[ancestor].Methods do
         begin
             case method.MethodType of
@@ -390,7 +393,7 @@ begin
     // Result := ancestor_list;
 end;
 
-function MakeMethodsForOutput(class_item : TPsionOOClass) : TMethodsForCFile;
+function MakeMethodsForOutput(class_item : TPsionOOClass) : TMethodsForOutput;
 // TODO: Review this!
 var
     method : TPsionOOMethodEntry;
@@ -400,11 +403,11 @@ var
     metaclass_method_id : Integer;
     flgFoundFirst : Boolean;
     flgExists : Boolean;
-    i, j : Integer;
+    i : Integer;
     count_possible_nulls : Integer;
     s : String;
 begin
-    if assigned(Result.Methods) then FreeAndNil(Result.Methods);
+    // if assigned(Result.Methods) then FreeAndNil(Result.Methods); // Causes AccessViolation - is it detecting that it's assigned when it's not?
     Result.Methods := TPsionOOMethodList.Create();
     Result.StartIndex := 0;
 
@@ -418,7 +421,6 @@ begin
             methodAdd:      methodAdd_list.Add(method);
         end;
     end;
-
     count_possible_nulls := 0;
     flgFoundFirst := false;
     metaclass := MakeMetaclass(class_item);
@@ -439,16 +441,14 @@ begin
             begin
                 if s = methodReplace_list[i].Name then begin
                     if flgFoundFirst then begin
-                        if count_possible_nulls > 0 then begin
-                            // TODO: Is there a better way of doing this?
-                            for j := 1 to count_possible_nulls do
-                            begin
-                                Result.Methods.Add(method);
-                            end;
-                            count_possible_nulls := 0;
+                        // TODO: Is there a better way of doing this?
+                        while count_possible_nulls > 0 do
+                        begin
+                            Result.Methods.Add(method);
+                            dec(count_possible_nulls);
                         end;
                     end else begin
-                        // WriteLn('*** ', class_item.Name, ': Earliest replaced method is ', s, ' (', metaclass_method_id, ')');
+                        if params.InSwitch('V', 'C') then WriteLn('*** ', class_item.Name, ': Earliest replaced method is ', s, ' (', metaclass_method_id, ')');
                         Result.StartIndex := metaclass_method_id;
                         flgFoundFirst := true;
                     end;
@@ -465,9 +465,10 @@ begin
 
     if methodAdd_list.Count > 0 then begin
         // TODO: Is there a better way of doing this? (See above)
-        for j := 1 to count_possible_nulls do
+        while count_possible_nulls > 0 do
         begin
             Result.Methods.Add(method);
+            dec(count_possible_nulls);
         end;
         Result.Methods.AddRange(methodAdd_list);
     end;
@@ -830,7 +831,7 @@ var
     method : TPsionOOMethodEntry;
     ForwardRefs : TStringList;
     total_methods : Integer;
-    c_methods : TMethodsForCFile;
+    c_methods : TMethodsForOutput;
     parent_extcat_id : Integer;
     flgNotSDK : Boolean;
 begin
@@ -930,7 +931,7 @@ begin
         sl := TStringList.Create();
         for method in c_methods.Methods do
         begin
-            if (method.Name = '') then begin
+            if (method.MethodType = methodNull) then begin
                 sl.Add('NULL');
             end else if method.ForwardRef = '' then begin
                 sl.Add(class_item.Name + '_' + method.Name);
@@ -1071,7 +1072,7 @@ var
     class_item : TPsionOOClass;
     filepath : String;
     method : TPsionOOMethodEntry;
-    c_methods : TMethodsForCFile;
+    c_methods : TMethodsForOutput;
     method_id : Integer;
     class_name : String;
     parent_extcat_id : Integer;
@@ -1445,14 +1446,15 @@ end;
 function MakeSkeletonFile(class_item : TPsionOOClass) : TStringList;
 var
     module_name : String;
-    c_methods : TMethodsForCFile;
+    c_methods : TMethodsForOutput;
     method : TPsionOOMethodEntry;
 begin
+    if params.InSwitch('V', 'C') then WriteLn('>>> Making Skeleton File for class ', class_item.Name);
     Result := TStringList.Create();
     module_name := DependencyList[class_item.Name].Category;
 
     c_methods := MakeMethodsForOutput(class_item);
-    // if length(c_methods) = 0 then exit; // TODO: Why doesn't this work?
+    if params.InSwitch('V', 'C') then WriteLn(format('>>>   length(c_methods) = %d', [c_methods.Methods.Count]));
 
     Result.Add('/*');
     Result.Add(LowerCase(class_item.Name) + '.c');

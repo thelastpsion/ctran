@@ -80,7 +80,7 @@ begin
         Writeln('  Types (',  class_item.ClassTypes.Count, '):');
         for s in class_item.ClassTypes do Writeln('    ', s);
 
-        Writeln('  Constants (', length(class_item.ClassConstants), '):');
+        Writeln('  Constants (', class_item.ClassConstants.Count, '):');
         for constant_entry in class_item.ClassConstants do
         begin
             Writeln('    ', constant_entry.Name, ' ', constant_entry.Value);
@@ -140,7 +140,7 @@ begin
 
     if cls.HasMethod then WriteLn('HAS_METHOD');
     if cls.HasProperty then WriteLn('HAS_PROPERTY');
-    if length(cls.ClassConstants) > 0 then begin
+    if cls.ClassConstants.Count > 0 then begin
         WriteLn('CONSTANTS');
         Writeln('{');
         for cst in cls.ClassConstants do WriteLn(cst.Name, ' ', cst.Value);

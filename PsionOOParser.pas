@@ -103,6 +103,7 @@ type
     );
 
     TMethodType = (
+        methodNull, // For Null entries when dealing with inheritance
         methodAdd,
         methodReplace,
         methodDefer,
@@ -120,16 +121,17 @@ type
         Value : String;
     end;
 
-    TPsionOOConstants = array of TPsionOOConstantEntry;
+    TPsionOOConstantList = specialize TList<TPsionOOConstantEntry>;
+    TPsionOOMethodList = specialize TList<TPsionOOMethodEntry>;
     TPsionOOCLines = TStringList;
 
     TPsionOOClass = record
         Name : String;
         Parent : String;
-        Methods : array of TPsionOOMethodEntry;
+        Methods : TPsionOOMethodList;
         ClassProperty : TStringList;
         ClassTypes : TStringList;
-        ClassConstants : TPsionOOConstants;
+        ClassConstants : TPsionOOConstantList;
         HasMethod : Boolean;
         HasProperty : Boolean;
         PropertyAutodestroyCount : Integer;
@@ -198,7 +200,7 @@ type
             // Methods: Parser
             procedure _CheckLine(tokline: TTokenisedLine; const ATokTypes: array of TTokenType; const AMandatoryArgs: Integer = -1);
             function _GetClass(tokline_class : TTokenisedLine) : TPsionOOClass;
-            function _GetConstants() : TPsionOOConstants;
+            function _GetConstants() : TPsionOOConstantList;
             function _BuildConstant(tokline : TTokenisedLine) : TPsionOOConstantEntry;
             function _GetCLines() : TStringList;
             procedure _CheckForBrace();
@@ -812,12 +814,12 @@ begin
     Result.Value := tokline.Tokens[1].Literal;
 end;
 
-function TPsionOOParser._GetConstants() : TPsionOOConstants;
+function TPsionOOParser._GetConstants() : TPsionOOConstantList;
 var
     tokline : TTokenisedLine;
 begin
     tokline := _GetNextLine();
-    Result := nil;
+    Result := TPsionOOConstantList.Create();
 
     while tokline.Tokens[0].TType <> tknEOF do
     begin
@@ -827,7 +829,7 @@ begin
             end;
             tknString: begin
                 _CheckLine(tokline, [tknString]);
-                Result := concat(Result, [_BuildConstant(tokline)]);
+                Result.Add(_BuildConstant(tokline));
             end;
             else begin
                 _ErrShowLine(tokline, 0, format('Incorrect token, found %s', [tokline.Tokens[0].TType.ToString()]));
@@ -917,10 +919,10 @@ begin
 
     Result.HasMethod := false;
     Result.HasProperty := false;
-    Result.ClassConstants := nil;
+    Result.ClassConstants := TPsionOOConstantList.Create();
     Result.ClassProperty := TStringList.Create();
     Result.ClassTypes := TStringList.Create();
-    Result.Methods := nil;
+    Result.Methods := TPsionOOMethodList.Create();
     Result.PropertyAutodestroyCount := 0;
 
     tokline := _GetNextLine();
@@ -938,7 +940,7 @@ begin
                 if tokline.Tokens.Count = 4 then begin
                     curMethodEntry.ForwardRef := tokline.Tokens[3].Literal;
                 end;
-                Result.Methods := concat(Result.Methods, [curMethodEntry]);
+                Result.Methods.Add(curMethodEntry);
             end;
 
             tknReplace: begin
@@ -949,7 +951,7 @@ begin
                 if tokline.Tokens.Count = 4 then begin
                     curMethodEntry.ForwardRef := tokline.Tokens[3].Literal;
                 end;
-                Result.Methods := concat(Result.Methods, [curMethodEntry]);
+                Result.Methods.Add(curMethodEntry);
             end;
 
             tknDefer: begin
@@ -957,7 +959,7 @@ begin
                 _CheckLine(tokline, [tknString]);
                 curMethodEntry.MethodType := methodDefer;
                 curMethodEntry.Name := tokline.Tokens[1].Literal;
-                Result.Methods := concat(Result.Methods, [curMethodEntry]);
+                Result.Methods.Add(curMethodEntry);
             end;
 
             tknDeclare: begin
@@ -965,7 +967,7 @@ begin
                 _CheckLine(tokline, [tknString]);
                 curMethodEntry.MethodType := methodDeclare;
                 curMethodEntry.Name := tokline.Tokens[1].Literal;
-                Result.Methods := concat(Result.Methods, [curMethodEntry]);
+                Result.Methods.Add(curMethodEntry);
             end;
 
             tknTypes: begin
@@ -978,7 +980,7 @@ begin
 
             tknProperty: begin
                 StopIfEXT();
-                _CheckLine(tokline, [tknString]);
+                _CheckLine(tokline, [tknString], 0);
                 if Verbose then WriteLn('Found PROPERTY');
                 if tokline.Tokens.Count = 2 then begin
                     if not TryStrToInt(tokline.Tokens[1].Literal, Result.PropertyAutodestroyCount) then begin

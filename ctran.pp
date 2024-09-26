@@ -12,14 +12,14 @@ uses
 
 type
     TMethodsForCFile = record
-        Methods : array of TPsionOOMethodEntry;
+        Methods : TPsionOOMethodList;
         StartIndex : Integer;
     end;
 
     TPsionOOCatClass = record
         Parent : String;
         Category : String;
-        Methods : array of TPsionOOMethodEntry;
+        Methods : TPsionOOMethodList;
         HasProperty : Boolean;
     end;
 
@@ -394,22 +394,28 @@ function MakeMethodsForOutput(class_item : TPsionOOClass) : TMethodsForCFile;
 // TODO: Review this!
 var
     method : TPsionOOMethodEntry;
-    methodAdd_list : array of TPsionOOMethodEntry;
-    methodReplace_list : array of TPsionOOMethodEntry;
+    methodAdd_list : TPsionOOMethodList;
+    methodReplace_list : TPsionOOMethodList;
     metaclass : TStringList;
     metaclass_method_id : Integer;
     flgFoundFirst : Boolean;
     flgExists : Boolean;
-    i : Integer;
+    i, j : Integer;
     count_possible_nulls : Integer;
     s : String;
 begin
-    SetLength(Result.Methods, 0);
+    if assigned(Result.Methods) then FreeAndNil(Result.Methods);
+    Result.Methods := TPsionOOMethodList.Create();
+    Result.StartIndex := 0;
+
+    methodAdd_list := TPsionOOMethodList.Create();
+    methodReplace_list := TPsionOOMethodList.Create();
+
     for method in class_item.Methods do
     begin
         case method.MethodType of
-            methodReplace:  methodReplace_list := concat(methodReplace_list, [method]);
-            methodAdd:      methodAdd_list := concat(methodAdd_list, [method]);
+            methodReplace:  methodReplace_list.Add(method);
+            methodAdd:      methodAdd_list.Add(method);
         end;
     end;
 
@@ -417,18 +423,28 @@ begin
     flgFoundFirst := false;
     metaclass := MakeMetaclass(class_item);
 
+    // Creates an empty menthod for null entries
+    // TODO: This feels dirty - can I create a const or something similar?
+    method.MethodType := methodNull;
+    method.Name := '';
+    method.ForwardRef := '';
+
     Result.StartIndex := metaclass.Count;
-    if length(methodReplace_list) > 0 then begin
+    if methodReplace_list.Count > 0 then begin
         for metaclass_method_id := 0 to metaclass.Count - 1 do
         begin
             s := metaclass[metaclass_method_id];
             flgExists := false;
-            for i := 0 to length(methodReplace_list) - 1 do
+            for i := 0 to methodReplace_list.Count - 1 do
             begin
                 if s = methodReplace_list[i].Name then begin
                     if flgFoundFirst then begin
                         if count_possible_nulls > 0 then begin
-                            SetLength(Result.Methods, length(Result.Methods) + count_possible_nulls); // Adds blank entries
+                            // TODO: Is there a better way of doing this?
+                            for j := 1 to count_possible_nulls do
+                            begin
+                                Result.Methods.Add(method);
+                            end;
                             count_possible_nulls := 0;
                         end;
                     end else begin
@@ -436,7 +452,7 @@ begin
                         Result.StartIndex := metaclass_method_id;
                         flgFoundFirst := true;
                     end;
-                    Result.Methods := concat(Result.Methods, [methodReplace_list[i]]);
+                    Result.Methods.Add(methodReplace_list[i]);
                     flgExists := true;
                     break;
                 end;
@@ -447,11 +463,17 @@ begin
         end;
     end;
 
-    if length(methodAdd_list) > 0 then begin
-        // WriteLn('Adding trailing nulls (', count_possible_nulls, ')');
-        SetLength(Result.Methods, length(Result.Methods) + count_possible_nulls);
-        Result.Methods := concat(Result.Methods, methodAdd_list);
+    if methodAdd_list.Count > 0 then begin
+        // TODO: Is there a better way of doing this? (See above)
+        for j := 1 to count_possible_nulls do
+        begin
+            Result.Methods.Add(method);
+        end;
+        Result.Methods.AddRange(methodAdd_list);
     end;
+
+    FreeAndNil(methodAdd_list);
+    FreeAndNil(methodReplace_list);
 end;
 
 // Finds all the class method forward references across all internal category
@@ -737,7 +759,7 @@ begin
             slFile.Add('/* Class ' + class_item.Name + ' */');
             slFile.Add('/* ------------------------------------------------------ */');
 
-            if length(class_item.ClassConstants) > 0 then begin
+            if class_item.ClassConstants.Count > 0 then begin
                 slFile.Add('/* Constants for ' + class_item.Name + ' */');
                 for constant_item in class_item.ClassConstants do
                 begin
@@ -875,7 +897,7 @@ begin
         slFile.Add('{');
         slFile.Add('P_CLASS c;');
 
-        total_methods := length(c_methods.Methods);
+        total_methods := c_methods.Methods.Count;
         if total_methods > 0 then begin
             slFile.Add('VOID (*v[%d])();', [total_methods]);
         end;
@@ -894,13 +916,13 @@ begin
         end;
 
         s += ',sizeof(PR_' + UpCase(class_item.Name) + '),';
-        if length(c_methods.Methods) = 0 then
+        if c_methods.Methods.Count = 0 then
         begin
             s += '0';
         end else begin
             s += IntToStr(c_methods.StartIndex);
         end;
-        s += format(',0x6b,%d,%d},', [length(c_methods.Methods), class_item.PropertyAutodestroyCount]);
+        s += format(',0x6b,%d,%d},', [c_methods.Methods.Count, class_item.PropertyAutodestroyCount]);
         slFile.Add(s);
 
         // Define the methods
@@ -1114,7 +1136,7 @@ begin
 
         slFile.Add(' dw   (SIZE PR_%s)', [UpCase(class_item.Name)]);
 
-        if length(c_methods.Methods) = 0 then
+        if c_methods.Methods.Count = 0 then
         begin
             slFile.Add(' db   0');
         end else begin
@@ -1122,7 +1144,7 @@ begin
         end;
 
         slFile.Add(' db   06bh');
-        slFile.Add(' db   %d', [length(c_methods.Methods)]);
+        slFile.Add(' db   %d', [c_methods.Methods.Count]);
         slFile.Add(' db   %d', [class_item.PropertyAutodestroyCount]);
 
         method_id := -1; // INFO: I don't know why this works, but it matches the output from classic CTRAN
@@ -1213,12 +1235,12 @@ begin
         asm_type_size := copy(ident, bracket_pos + 1, pos(']', ident) - bracket_pos - 1);
         ident := copy(ident, 1, bracket_pos - 1);
         case c_type of
-            'BYTE', 'UBYTE', 'char': asm_type := '1';
-            'WORD', 'UWORD', 'HANDLE', 'INT', 'UINT', 'int', 'TEXT': asm_type := '2';
+            'BYTE', 'UBYTE', 'char', 'TEXT': asm_type := '1';
+            'WORD', 'UWORD', 'HANDLE', 'INT', 'UINT', 'int': asm_type := '2';
             'LONG', 'ULONG': asm_type := '4';
             else asm_type := 'size ' + c_type;
         end;
-        asm_type := 'db (' + asm_type + ')* ' + asm_type_size + ' dup (?)';
+        asm_type := 'db (' + asm_type + ') * ' + asm_type_size + ' dup (?)';
     end else begin
         case c_type of
             'BYTE', 'UBYTE', 'char': asm_type := ' db ?';
@@ -1351,7 +1373,7 @@ begin
         begin
             slFile.Add('');
             slFile.Add('');
-            if length(class_item.ClassConstants) > 0 then begin
+            if class_item.ClassConstants.Count > 0 then begin
                 slFile.Add('; Constants for ' + class_item.Name);
                 for constant_item in class_item.ClassConstants do
                 begin

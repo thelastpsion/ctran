@@ -193,6 +193,9 @@ type
             function _GrabNextToken() : TToken;
             procedure _SeekStartOfSection(const NextLexerState: TLexerState);
 
+            // Methods: Lexing (State Machine States)
+            procedure _LexStateInitial();
+
             // Methods: Tokenised Line Builder
             function _GetNextLine() : TTokenisedLine;
             procedure _ResetTLB();
@@ -552,6 +555,32 @@ begin
     _FileLocation := ExpandFileName(strFilename);
 end;
 
+
+procedure TPsionOOParser._LexStateInitial();
+var
+    part_tok : TToken;
+    TokLiteral : String;
+    TokType : TTokenType;
+begin
+    part_tok := _GrabNextToken();
+    TokLiteral := UpCase(part_tok.Literal);
+
+    case TokLiteral of
+        'IMAGE':   TokType := tknImage;
+        'LIBRARY': TokType := tknLibrary;
+        'NAME':    TokType := tknName;
+        else exit; // Do nothing, just go back to lexing the next line
+    end;
+
+    if Verbose then Writeln('>>> ', TokLiteral, ' found!');
+    _AddToken(TokType, part_tok);
+    _GrabAndAddStringTokens(1); // There should always be a string token after one of these keywords
+    _SetLexerState(stateSeekKeyword);
+end;
+
+
+
+
 // TODO: Check for braces inside lines?
 procedure TPsionOOParser.Lex();
 var
@@ -591,30 +620,32 @@ begin
         end;
 
         case _LexerState of
-            stateInitial: begin
-                tok := _GrabNextToken();
-                case UpCase(tok.Literal) of
-                    'IMAGE': begin
-                        if Verbose then Writeln('>>> IMAGE found!');
-                        _AddToken(tknImage, tok);
-                        _SetLexerState(stateSeekKeyword);
-                    end;
-                    'LIBRARY': begin
-                        if Verbose then Writeln('>>> LIBRARY found!');
-                        _AddToken(tknLibrary, tok);
-                        _SetLexerState(stateSeekKeyword);
-                    end;
-                    'NAME': begin
-                        if Verbose then Writeln('>>> NAME found!');
-                        _AddToken(tknName, tok);
-                        _SetLexerState(stateSeekKeyword);
-                    end;
-                end;
-                if _LexerState = stateSeekKeyword then
-                begin
-                    _GrabAndAddStringTokens(1);
-                end;
-            end;
+            // stateInitial: begin
+            //     tok := _GrabNextToken();
+            //     case UpCase(tok.Literal) of
+            //         'IMAGE': begin
+            //             if Verbose then Writeln('>>> IMAGE found!');
+            //             _AddToken(tknImage, tok);
+            //             _SetLexerState(stateSeekKeyword);
+            //         end;
+            //         'LIBRARY': begin
+            //             if Verbose then Writeln('>>> LIBRARY found!');
+            //             _AddToken(tknLibrary, tok);
+            //             _SetLexerState(stateSeekKeyword);
+            //         end;
+            //         'NAME': begin
+            //             if Verbose then Writeln('>>> NAME found!');
+            //             _AddToken(tknName, tok);
+            //             _SetLexerState(stateSeekKeyword);
+            //         end;
+            //     end;
+            //     if _LexerState = stateSeekKeyword then
+            //     begin
+            //         _GrabAndAddStringTokens(1);
+            //     end;
+            // end;
+
+            stateInitial: _LexStateInitial();
 
             stateSeekKeyword: begin
                 tok := _GrabNextToken();

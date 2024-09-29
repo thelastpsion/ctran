@@ -195,6 +195,7 @@ type
 
             // Methods: Lexing (State Machine States)
             procedure _LexStateInitial();
+            procedure _LexStateSeekKeyword();
 
             // Methods: Tokenised Line Builder
             function _GetNextLine() : TTokenisedLine;
@@ -495,24 +496,6 @@ begin
     end;
 end;
 
-// _SeekStartOfSection()
-// Looks for a tknBraceLeft. If found, it changes the current lexer state to NextLexerState.
-// It also increments the brace level.
-procedure TPsionOOParser._SeekStartOfSection(const NextLexerState: TLexerState);
-var
-    tok: TToken;
-begin
-    tok := _GrabNextToken();
-
-    if tok.Literal = '{' then begin
-        if Verbose then Writeln('>>> Start of section found!');
-        _AddToken(tknBraceLeft, tok);
-        _SetLexerState(NextLexerState);
-        inc(_BraceLevel);
-        if Verbose then Writeln('>>>   Brace level: ', _BraceLevel);
-    end;
-end;
-
 // _DetectFileType()
 // Identifies the type of category file (regular, sub-category, external) based on the
 // file extension. If no file extension is provided, it assumes a regular category file.
@@ -555,6 +538,9 @@ begin
     _FileLocation := ExpandFileName(strFilename);
 end;
 
+//
+// STATE MACHINE METHODS
+//
 
 procedure TPsionOOParser._LexStateInitial();
 var
@@ -569,7 +555,8 @@ begin
         'IMAGE':   TokType := tknImage;
         'LIBRARY': TokType := tknLibrary;
         'NAME':    TokType := tknName;
-        else exit; // Do nothing, just go back to lexing the next line
+        // If no match is found above, just exit the method and go back to lexing the next line
+        else exit;
     end;
 
     if Verbose then Writeln('>>> ', TokLiteral, ' found!');
@@ -578,8 +565,59 @@ begin
     _SetLexerState(stateSeekKeyword);
 end;
 
+procedure TPsionOOParser._LexStateSeekKeyword();
+var
+    part_tok : TToken;
+    TokLiteral : String;
+    TokType : TTokenType;
+begin
+    part_tok := _GrabNextToken();
+    TokLiteral := UpCase(part_tok.Literal);
 
+    case TokLiteral of
+        'EXTERNAL': TokType := tknExternal;
+        'INCLUDE':  TokType := tknInclude;
+        'CLASS':    TokType := tknClass;
+        'REQUIRE':  TokType := tknRequire;
+        // If no match is found above, we have a problem so we need to halt
+        else begin
+            WriteLn('!!! Invalid string literal found: ', part_tok.Literal);
+            // TODO: Print line number and line here
+            halt(-1);
+        end;
+    end;
 
+    if Verbose then Writeln('>>> ', TokLiteral, ' found!');
+    _AddToken(TokType, part_tok);
+    _GrabAndAddStringTokens(1); // There should always be a string token after one of these keywords
+
+    if TokType = tknClass then begin
+        _GrabAndAddStringTokens(1); // Grab the name of the class's parent, too (if it's there)
+        _SetLexerState(stateClassSeekStart);
+    end;
+end;
+
+// _SeekStartOfSection()
+// Looks for a tknBraceLeft. If found, it changes the current lexer state to NextLexerState.
+// It also increments the brace level.
+procedure TPsionOOParser._SeekStartOfSection(const NextLexerState: TLexerState);
+var
+    tok: TToken;
+begin
+    tok := _GrabNextToken();
+
+    if tok.Literal = '{' then begin
+        if Verbose then Writeln('>>> Start of section found!');
+        _AddToken(tknBraceLeft, tok);
+        _SetLexerState(NextLexerState);
+        inc(_BraceLevel);
+        if Verbose then Writeln('>>>   Brace level: ', _BraceLevel);
+    end;
+end;
+
+//
+// MAIN LEXER STATE MACHINE
+//
 
 // TODO: Check for braces inside lines?
 procedure TPsionOOParser.Lex();
@@ -620,63 +658,10 @@ begin
         end;
 
         case _LexerState of
-            // stateInitial: begin
-            //     tok := _GrabNextToken();
-            //     case UpCase(tok.Literal) of
-            //         'IMAGE': begin
-            //             if Verbose then Writeln('>>> IMAGE found!');
-            //             _AddToken(tknImage, tok);
-            //             _SetLexerState(stateSeekKeyword);
-            //         end;
-            //         'LIBRARY': begin
-            //             if Verbose then Writeln('>>> LIBRARY found!');
-            //             _AddToken(tknLibrary, tok);
-            //             _SetLexerState(stateSeekKeyword);
-            //         end;
-            //         'NAME': begin
-            //             if Verbose then Writeln('>>> NAME found!');
-            //             _AddToken(tknName, tok);
-            //             _SetLexerState(stateSeekKeyword);
-            //         end;
-            //     end;
-            //     if _LexerState = stateSeekKeyword then
-            //     begin
-            //         _GrabAndAddStringTokens(1);
-            //     end;
-            // end;
 
             stateInitial: _LexStateInitial();
 
-            stateSeekKeyword: begin
-                tok := _GrabNextToken();
-                case UpCase(tok.Literal) of
-                    'EXTERNAL': begin
-                        if Verbose then Writeln('>>> EXTERNAL found!');
-                        _AddToken(tknExternal, tok);
-                        _GrabAndAddStringTokens(1);
-                    end;
-                    'INCLUDE': begin
-                        if Verbose then Writeln('>>> INCLUDE found!');
-                        _AddToken(tknInclude, tok);
-                        _GrabAndAddStringTokens(1);
-                    end;
-                    'CLASS': begin
-                        if Verbose then Writeln('>>> CLASS found!');
-                        _AddToken(tknClass, tok);
-                        _GrabAndAddStringTokens(2);
-                        _SetLexerState(stateClassSeekStart);
-                    end;
-                    'REQUIRE': begin
-                        if Verbose then Writeln('>>> REQUIRE found!');
-                        _AddToken(tknRequire, tok);
-                        _GrabAndAddStringTokens(1);
-                    end;
-                    else begin
-                        WriteLn('!!! Invalid string literal found: ', tok.Literal);
-                        halt(-1);
-                    end;
-                end;
-            end;
+            stateSeekKeyword: _LexStateSeekKeyword();
 
             stateClassSeekStart: _SeekStartOfSection(stateClass);
 

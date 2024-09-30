@@ -624,6 +624,16 @@ procedure TPsionOOParser.Lex();
 var
     x : LongInt;
     tok : TToken;
+
+    procedure CheckForForwardRef();
+    begin
+        tok := _GrabNextToken();
+        if tok.Literal = '=' then begin
+            _AddToken(tknEquals, tok);
+            _GrabAndAddStringTokens(1);
+        end;
+    end;
+
 begin
     _LexerState := stateInitial;
     _curLineNum := 0;
@@ -674,27 +684,18 @@ begin
                         dec(_BraceLevel);
                         if Verbose then Writeln('>>>   Brace level: ', _BraceLevel);
                         _SetLexerState(stateSeekKeyword);
-                        // if Verbose then Writeln('>>> Now in stateSeekKeyword');
                     end;
                     'ADD': begin
                         if Verbose then Writeln('>>> ADD found!');
                         _AddToken(tknAdd, tok);
                         _GrabAndAddStringTokens(1);
-                        tok := _GrabNextToken();
-                        if tok.Literal = '=' then begin
-                            _AddToken(tknEquals, tok);
-                            _GrabAndAddStringTokens(1);
-                        end;
+                        CheckForForwardRef();
                     end;
                     'REPLACE': begin
                         if Verbose then Writeln('>>> REPLACE found!');
                         _AddToken(tknReplace, tok);
                         _GrabAndAddStringTokens(1);
-                        tok := _GrabNextToken();
-                        if tok.Literal = '=' then begin
-                            _AddToken(tknEquals, tok);
-                            _GrabAndAddStringTokens(1);
-                        end;
+                        CheckForForwardRef();
                     end;
                     'DEFER': begin
                         if Verbose then Writeln('>>> DEFER found!');

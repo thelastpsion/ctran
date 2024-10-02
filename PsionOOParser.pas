@@ -212,7 +212,8 @@ type
             procedure _CheckForBrace();
 
             // Methods: Misc
-            procedure _ErrShowLine(tokline : TTokenisedLine ; toknum : Integer ; message : String);
+            procedure _ErrShowLine(tok: TToken; message : String);
+            procedure _ErrShowTokLine(tokline : TTokenisedLine ; toknum : Integer ; message : String);
 
         public
             Verbose : boolean;
@@ -315,7 +316,17 @@ begin
     end;
 end;
 
-procedure TPsionOOParser._ErrShowLine(tokline : TTokenisedLine ; toknum : Integer ; message : String);
+procedure TPsionOOParser._ErrShowLine(tok: TToken; message : String);
+begin
+    WriteLn('ERROR: ', message);
+    WriteLn(format('%.3d: %s', [_curLineNum, _strCurLine]));
+    Write('    ', RepeatStr(' ', tok.LinePos), '^');
+    Write(RepeatStr('~', length(tok.Literal) - 1));
+    WriteLn;
+    halt(-1);
+end;
+
+procedure TPsionOOParser._ErrShowTokLine(tokline : TTokenisedLine ; toknum : Integer ; message : String);
 var
     spaces : Integer;
     line : String;
@@ -324,7 +335,7 @@ begin
     line := _slCategoryFile[tokline.LineNum - 1];
 
     Writeln(format('%.3d: %s', [tokline.LineNum, line]));
-    if toknum = -1 then spaces := length(line) else spaces := tokline.Tokens[toknum].LinePos;
+    if toknum = -1 then spaces := length(line) + 1 else spaces := tokline.Tokens[toknum].LinePos;
 
     Write('    ', RepeatStr(' ', spaces), '^');
     if toknum > -1 then Write(RepeatStr('~', length(tokline.Tokens[toknum].Literal) - 1));
@@ -596,9 +607,7 @@ begin
         'REQUIRE':  TokType := tknRequire;
         // If no match is found above, we have a problem so we need to halt
         else begin
-            WriteLn('ERROR: Invalid string literal found: ', part_tok.Literal);
-            // TODO: Print line number and line here
-            halt(-1);
+            _ErrShowLine(part_tok, 'Invalid string literal ''' + part_tok.Literal + '''');
         end;
     end;
 
@@ -751,8 +760,7 @@ begin
                         _AddToken(tknHasProperty, tok);
                     end;
                     else begin
-                        WriteLn('!!! Invalid string literal found: ', tok.Literal);
-                        halt(-1);
+                        _ErrShowLine(tok, 'Invalid string literal ''' + tok.Literal + '''');
                     end;
                 end;
             end;
@@ -769,8 +777,7 @@ begin
                         _SetLexerState(stateClass);
                     end;
                     '{': begin
-                        Writeln('Error: Too many curly braces');
-                        // TODO: Print line number and line here
+                        _ErrShowLine(tok, 'Too many curly braces');
                         exit;
                     end else begin
                         _curLinePos := tok.LinePos;
@@ -790,7 +797,7 @@ begin
     end;
 
     if _BraceLevel <> 0 then begin
-        WriteLn('Error: [Lex] Somehow at brace level ', _BraceLevel);
+        WriteLn('Error: [Lex] Somehow at brace level ', _BraceLevel); // TODO: Should this be an exception?
         exit;
     end;
 
@@ -821,17 +828,17 @@ begin
     end;
 
     if tokline_ArgCount < MaxMandatoryArgs then begin
-        _ErrShowLine(tokline, -1, format('Current line has too few (%d) arguments', [tokline_argcount]));
+        _ErrShowTokLine(tokline, -1, format('Current line has too few (%d) arguments', [tokline_argcount]));
     end;
 
     if tokline_ArgCount - 1 > ArgCheckCount then begin
-        _ErrShowLine(tokline, ArgCheckCount + 1, format('Current line has too many (%d) arguments', [tokline_argcount]))
+        _ErrShowTokLine(tokline, ArgCheckCount + 1, format('Current line has too many (%d) arguments', [tokline_argcount]))
     end;
 
     for i := 1 to tokline_ArgCount - 1 do
     begin
         if (tokline.Tokens[i].TType <> ATokTypes[i-1]) then begin
-            _ErrShowLine(tokline, 1, format('Incorrect token type. Expected %s but found %s', [ATokTypes[i-1], tokline.Tokens[i].TType.ToString()]));
+            _ErrShowTokLine(tokline, 1, format('Incorrect token type. Expected %s but found %s', [ATokTypes[i-1], tokline.Tokens[i].TType.ToString()]));
         end;
     end;
 end;
@@ -860,7 +867,7 @@ begin
                 Result.Add(_BuildConstant(tokline));
             end;
             else begin
-                _ErrShowLine(tokline, 0, format('Incorrect token, found %s', [tokline.Tokens[0].TType.ToString()]));
+                _ErrShowTokLine(tokline, 0, format('Incorrect token, found %s', [tokline.Tokens[0].TType.ToString()]));
             end;
         end;
         tokline := _GetNextLine();
@@ -885,7 +892,7 @@ begin
                 Result.Add(tokline.Tokens[0].Literal);
             end;
             else begin
-                _ErrShowLine(tokline, 0, format('Incorrect token, found %s', [tokline.Tokens[0].TType.ToString()]));
+                _ErrShowTokLine(tokline, 0, format('Incorrect token, found %s', [tokline.Tokens[0].TType.ToString()]));
             end;
         end;
         tokline := _GetNextLine();
@@ -898,7 +905,7 @@ var
 begin
     tokline := _GetNextLine();
     if tokline.Tokens[0].TType <> tknBraceLeft then begin
-        _ErrShowLine(tokline, 0, format('Expected tknBraceLeft, found %s', [tokline.Tokens[0].TType.ToString()]));
+        _ErrShowTokLine(tokline, 0, format('Expected tknBraceLeft, found %s', [tokline.Tokens[0].TType.ToString()]));
     end;
     _CheckLine(tokline, []);
 end;
@@ -920,20 +927,20 @@ var
     procedure StopIfEXT();
     begin
         if _FileType = ooExternal then begin
-            _ErrShowLine(tokline, 0, format('%s not valid in External files', [tokline.Tokens[0].Literal]));
+            _ErrShowTokLine(tokline, 0, format('%s not valid in External files', [tokline.Tokens[0].Literal]));
         end;
     end;
 
     procedure StopIfNotEXT();
     begin
         if _FileType <> ooExternal then begin
-            _ErrShowLine(tokline, 0, format('%s only valid in External files', [tokline.Tokens[0].Literal]));
+            _ErrShowTokLine(tokline, 0, format('%s only valid in External files', [tokline.Tokens[0].Literal]));
         end;
     end;
 
 begin
     if tokline_class.Tokens[0].TType <> tknClass then begin
-        _ErrShowLine(tokline_class, 0, '[_GetClass] Been sent the wrong line.');
+        _ErrShowTokLine(tokline_class, 0, '[_GetClass] Been sent the wrong line.');
     end;
 
     _CheckLine(tokline_class, [tknString, tknString], 1);
@@ -1012,7 +1019,7 @@ begin
                 if Verbose then WriteLn('Found PROPERTY');
                 if tokline.Tokens.Count = 2 then begin
                     if not TryStrToInt(tokline.Tokens[1].Literal, Result.PropertyAutodestroyCount) then begin
-                        _ErrShowLine(tokline, 2, 'Expected a number, found something else.');
+                        _ErrShowTokLine(tokline, 2, 'Expected a number, found something else.');
                     end;
                     if Verbose then WriteLn('>>> Property has Autodestroy Count of ', Result.PropertyAutodestroyCount);
                 end;
@@ -1044,7 +1051,7 @@ begin
                 exit;
             end;
             else begin
-                _ErrShowLine(tokline, 0, format('Invalid token. Found %s', [tokline.Tokens[0].TType.ToString()]));
+                _ErrShowTokLine(tokline, 0, format('Invalid token. Found %s', [tokline.Tokens[0].TType.ToString()]));
             end;
         end;
         tokline := _GetNextLine();
@@ -1080,28 +1087,28 @@ begin
         tknImage:   _CategoryType := catImage;
         tknLibrary: _CategoryType := catLibrary;
         else begin
-            _ErrShowLine(tokline, 0, 'First token isn''t a valid starter token. (Is there a bug in the lexer?)')
+            _ErrShowTokLine(tokline, 0, 'First token isn''t a valid starter token. (Is there a bug in the lexer?)')
         end;
     end;
 
     case _FileType of
         ooCategory: begin
             if tokline.Tokens[0].TType = tknName then begin
-                _ErrShowLine(tokline, 0, 'Category file can''t start with a NAME token');
+                _ErrShowTokLine(tokline, 0, 'Category file can''t start with a NAME token');
             end;
         end;
         ooSubCat: begin
             if tokline.Tokens[0].TType <> tknName then begin
-                _ErrShowLine(tokline, 0, 'Sub-category file can only start with a NAME token');
+                _ErrShowTokLine(tokline, 0, 'Sub-category file can only start with a NAME token');
             end;
         end;
         ooExternal: begin
             if tokline.Tokens[0].TType = tknName then begin
-                _ErrShowLine(tokline, 0, 'External file can''t start with a NAME token');
+                _ErrShowTokLine(tokline, 0, 'External file can''t start with a NAME token');
             end;
         end;
         else begin
-            WriteLn('Error: File type is undefined.');
+            WriteLn('Error: File type is undefined.'); // TODO: Should this be an exception?
             halt(-1);
         end;
     end;
@@ -1109,7 +1116,7 @@ begin
     _CheckLine(tokline, [tknString]);
 
     if _ModuleName <> UpCase(tokline.Tokens[1].Literal) then begin
-        _ErrShowLine(tokline, 1, format('Token %s doesn''t match module name %s', [tokline.Tokens[1].Literal, _ModuleName]));
+        _ErrShowTokLine(tokline, 1, format('Token %s doesn''t match module name %s', [tokline.Tokens[1].Literal, _ModuleName]));
     end;
 
     if Verbose then Writeln('Found ', tokline.Tokens[0].TType, ' in ', _FileType, ' file with name ', _ModuleName);
@@ -1129,7 +1136,7 @@ begin
             end;
             tknExternal: begin
                 if _FileType <> ooCategory then begin
-                    _ErrShowLine(tokline, 1, 'EXTERNAL can only be used in category files (not external or sub-category files)');
+                    _ErrShowTokLine(tokline, 1, 'EXTERNAL can only be used in category files (not external or sub-category files)');
                 end;
                 _CheckLine(tokline, [tknString]);
                 if Verbose then WriteLn('Found EXTERNAL with value ', tokline.Tokens[1].Literal);

@@ -192,6 +192,8 @@ type
             procedure _GrabAndAddStringTokens(const count: Integer);
             function _GrabNextToken() : TToken;
             procedure _SeekStartOfSection(const NextLexerState: TLexerState);
+            procedure _DecBraceLevel();
+            procedure _IncBraceLevel();
 
             // Methods: Lexing (State Machine States)
             procedure _LexStateInitial();
@@ -396,6 +398,22 @@ begin
 end;
 
 //
+// CHANGE BRACE LEVEL
+//
+
+procedure TPsionOOParser._DecBraceLevel();
+begin
+    dec(_BraceLevel);
+    if Verbose then Writeln('>>>   Brace level: ', _BraceLevel);
+end;
+
+procedure TPsionOOParser._IncBraceLevel();
+begin
+    inc(_BraceLevel);
+    if Verbose then Writeln('>>>   Brace level: ', _BraceLevel);
+end;
+
+//
 // LINE PROCESSING
 //
 
@@ -469,13 +487,10 @@ begin
     tok := _GrabNextToken();
 
     case tok.Literal of
-        '{': begin
-            inc(_BraceLevel);
-            if Verbose then Writeln('>>>   Brace level: ', _BraceLevel);
-        end;
+        '{': _IncBraceLevel();
+
         '}': begin
-            dec(_BraceLevel);
-            if Verbose then Writeln('>>>   Brace level: ', _BraceLevel);
+            _DecBraceLevel();
             if _BraceLevel = 1 then begin
                 if Verbose then case _LexerState of
                     stateClassTypes:     Writeln('>>> End of TYPES section found!');
@@ -581,7 +596,7 @@ begin
         'REQUIRE':  TokType := tknRequire;
         // If no match is found above, we have a problem so we need to halt
         else begin
-            WriteLn('!!! Invalid string literal found: ', part_tok.Literal);
+            WriteLn('ERROR: Invalid string literal found: ', part_tok.Literal);
             // TODO: Print line number and line here
             halt(-1);
         end;
@@ -610,8 +625,7 @@ begin
         if Verbose then Writeln('>>> Start of section found!');
         _AddToken(tknBraceLeft, tok);
         _SetLexerState(NextLexerState);
-        inc(_BraceLevel);
-        if Verbose then Writeln('>>>   Brace level: ', _BraceLevel);
+        _IncBraceLevel();
     end;
 end;
 
@@ -679,10 +693,9 @@ begin
                 tok := _GrabNextToken();
                 case UpCase(tok.Literal) of
                     '}': begin
-                        _AddToken(tknBraceRight, tok);
                         if Verbose then Writeln('>>> End of CLASS section found!');
-                        dec(_BraceLevel);
-                        if Verbose then Writeln('>>>   Brace level: ', _BraceLevel);
+                        _AddToken(tknBraceRight, tok);
+                        _DecBraceLevel();
                         _SetLexerState(stateSeekKeyword);
                     end;
                     'ADD': begin
@@ -751,15 +764,13 @@ begin
                 case tok.Literal of
                     '}': begin
                         _AddToken(tknBraceRight, tok);
-                        dec(_BraceLevel);
-                        if Verbose then begin
-                            Writeln('>>> End of CONSTANTS section found!');
-                            Writeln('>>>   Brace level: ', _BraceLevel);
-                        end;
+                        _DecBraceLevel();
+                        if Verbose then Writeln('>>> End of CONSTANTS section found!');
                         _SetLexerState(stateClass);
                     end;
                     '{': begin
-                        Writeln('!!! Too many curly braces');
+                        Writeln('Error: Too many curly braces');
+                        // TODO: Print line number and line here
                         exit;
                     end else begin
                         _curLinePos := tok.LinePos;

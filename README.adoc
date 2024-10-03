@@ -74,6 +74,14 @@ Generate `.C`, `.G` and `.EXT` files from `WARI.CAT` on DOS that can only be use
 ctran wari -ec:\sibosdk\include -c -g -x -s
 ----
 
+An improvement over the original `CTRAN.EXE` is that you can specify a default output path using the `-p` switch.
+You can also override `-p` with individual switches for each file type you are generating.
+So, if you want to generate `.C`, `.G` and `.LIS` files for `DEMO.CAT`, you want the default output path to be `demo/`, but you want the `.LIS` file to go to the current working directory:
+
+[code]
+----
+ctran demo -ec:\sibosdk\include -pdemo/ -c -g -l.
+----
 
 == State of the project
 

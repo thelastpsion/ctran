@@ -49,23 +49,24 @@ var
 begin
     s := 'CTRAN-ng Version 0.0.1 (C) Alex Brown' + LineEnding +
          'Parameters: <name> [-e<dir>] [-x[<dir>] -g[<dir>] -a[<dir>] -i[<dir>] -l[<dir>] -c[<dir>] -s -k -v]' + LineEnding +
-         '<name>       Category source input file' + LineEnding +
-         '-e<dir>      Input externals directory (multiple separated by `;`' + LineEnding +
-         '-x<dir>      Output .EXT file' + LineEnding +
-         '-c<dir>      Output .C code file' + LineEnding +
-         '-g<dir>      Output .G include file' + LineEnding +
-         '-a<dir>      Output .ASM code file' + LineEnding +
-         '-i<dir>      Output .ING code file [currently broken]' + LineEnding +
-         '-l<dir>      Output .LIS file' + LineEnding +
-         '-s           SDK output' + LineEnding +
-         '-k           Output skeleton source files' + LineEnding +
-         '-v           Verbose output, using a compination of:' + LineEnding +
-         '    l          show lexer debug output' + LineEnding +
-         '    t          show table of tokens' + LineEnding +
-         '    p          show parser debug output' + LineEnding +
-         '    a          show abstract syntax tables' + LineEnding +
-         '    c          extra information when constructing new files (not fully implemented)' + LineEnding +
-         '    r          reconstruct all input files from abstract syntax';
+         '<name>     Category source input file' + LineEnding +
+         '-e<dir>    Input externals directory (multiple separated by `;`)' + LineEnding +
+         '-p<dir>    Set default path for all output files' + LineEnding +
+         '-x<dir>    Output .EXT file' + LineEnding +
+         '-c<dir>    Output .C code file' + LineEnding +
+         '-g<dir>    Output .G include file' + LineEnding +
+         '-a<dir>    Output .ASM code file (EXPERIMENTAL)' + LineEnding +
+         '-i<dir>    Output .ING code file (EXPERIMENTAL)' + LineEnding +
+         '-l<dir>    Output .LIS file' + LineEnding +
+         '-s         SDK output' + LineEnding +
+         '-k         Output skeleton source files' + LineEnding +
+         '-v         Verbose output, using a compination of:' + LineEnding +
+         '    l        show lexer debug output' + LineEnding +
+         '    t        show table of tokens' + LineEnding +
+         '    p        show parser debug output' + LineEnding +
+         '    a        show abstract syntax tables' + LineEnding +
+         '    c        extra information when constructing new files' + LineEnding +
+         '    r        reconstruct all input files from abstract syntax';
     WriteLn(s);
 end;
 
@@ -89,6 +90,16 @@ begin
 
         if RightStr(pathitemexpand, 1) <> DirectorySeparator then pathitemexpand += DirectorySeparator;
         Result.Add(pathitemexpand);
+    end;
+end;
+
+// Returns the output path for a file, based on the "default output path" switch and the provided switch
+function GetPathFromParams(sw: String) : String;
+begin
+    if params.SwitchExists('P') and (params.SwitchVal('P') <> '') and (params.SwitchVal(LeftStr(sw, 1)) = '') then begin
+        Result := CheckPath(params.SwitchVal('P'))[0];
+    end else begin
+        Result := CheckPath(params.SwitchVal(LeftStr(sw, 1)))[0];
     end;
 end;
 
@@ -668,7 +679,7 @@ begin
         slFile.Add('}');
     end;
 
-    filepath := CheckPath(params.SwitchVal('X'))[0];
+    filepath := GetPathFromParams('X');
     slFile.LineBreak := #13#10;
     try
         slFile.SaveToFile(filepath + par.ModuleName + '.EXT');
@@ -797,7 +808,7 @@ begin
         end;
     end;
 
-    filepath := CheckPath(params.SwitchVal('G'))[0];
+    filepath := GetPathFromParams('G');
     slFile.LineBreak := #13#10;
     try
         slFile.SaveToFile(filepath + par.ModuleName + '.G');
@@ -988,7 +999,7 @@ begin
         if flgNotSDK then slFile.Add('#endif');
     end;
 
-    filepath := CheckPath(params.SwitchVal('C'))[0];
+    filepath := GetPathFromParams('C');
     slFile.LineBreak := #13#10;
     try
         slFile.SaveToFile(filepath + par.ModuleName + '.C');
@@ -1049,7 +1060,7 @@ begin
         end;
     end;
 
-    filepath := CheckPath(params.SwitchVal('L'))[0];
+    filepath := GetPathFromParams('L');
     slFile.LineBreak := #13#10;
     try
         slFile.SaveToFile(filepath + par.ModuleName + '.LIS');
@@ -1194,7 +1205,7 @@ begin
 
     slFile.Add(' end');
 
-    filepath := CheckPath(params.SwitchVal('A'))[0];
+    filepath := GetPathFromParams('A');
     slFile.LineBreak := #13#10;
     try
         slFile.SaveToFile(filepath + par.ModuleName + '.ASM');
@@ -1420,7 +1431,7 @@ begin
         end;
     end;
 
-    filepath := CheckPath(params.SwitchVal('I'))[0];
+    filepath := GetPathFromParams('I');
     slFile.LineBreak := #13#10;
     try
         slFile.SaveToFile(filepath + par.ModuleName + '.ING');
@@ -1488,7 +1499,7 @@ var
     class_item : TPsionOOClass;
     filepath: String;
 begin
-    filepath := CheckPath(params.SwitchVal('K'))[0];
+    filepath := GetPathFromParams('K');
 
     // Generate Class Files
     for class_name in InternalClassList do

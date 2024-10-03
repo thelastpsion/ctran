@@ -7,3 +7,9 @@
 **/fp.*
 **/*.ppu
 **/*.bak
+
+bin/
+samples/
+samples
+out/
+out

@@ -43,12 +43,16 @@ var
     ExternalModuleList : TStringList;
     parsers : TParserDictionary;
 
+procedure VerText();
+begin
+    WriteLn('CTRAN-ng Version 0.0.1 (C) Alex Brown');
+end;
+
 procedure HelpText();
 var
     s : String;
 begin
-    s := 'CTRAN-ng Version 0.0.1 (C) Alex Brown' + LineEnding +
-         'Parameters: <name> [-e<dir>] [-x[<dir>] -g[<dir>] -a[<dir>] -i[<dir>] -l[<dir>] -c[<dir>] -s -k -v]' + LineEnding +
+    s := 'Parameters: [<name>] [-e<dir>] [-p[<dir>] -x[<dir>] -g[<dir>] -a[<dir>] -i[<dir>] -l[<dir>] -c[<dir>] -s -k -v]' + LineEnding +
          '<name>     Category source input file' + LineEnding +
          '-e<dir>    Input externals directory (multiple separated by `;`)' + LineEnding +
          '-p<dir>    Set default path for all output files' + LineEnding +
@@ -562,14 +566,11 @@ begin
                 halt(-1);
             end;
             ExternalModuleList.Add(UpCase(extfile));
-            WriteLn(extfile, ': ', s);
+            if params.SwitchExists('V') then WriteLn(' Reading ', s);
 
             LoadDependencies(s);
         end;
     end;
-
-    // WriteLn('List of external modules');
-    // for s in ExternalModuleList do WriteLn(s);
 end;
 
 procedure CheckMethodInheritance();
@@ -1534,9 +1535,11 @@ end;
 function WalkParsers(filename: String) : String;
 var
     par : TPsionOOParser;
+    fullpath : String;
     s : String;
 begin
-    WriteLn('>>> Parsing ', filename);
+    // TODO: Check file exists by walking through PathList
+    if params.SwitchExists('V') then WriteLn(' Reading ', filename);
 
     par := TPsionOOParser.Create();
     par.LoadFile(filename);
@@ -1555,8 +1558,6 @@ begin
     if params.InSwitch('V', 'R') then Reconstruct(par);
 
     parsers.Add(par.ModuleName, par);
-
-    WriteLn;
 
     if par.RequireList.Count > 0 then begin
         WriteLn(par.ModuleName, ' asks for REQUIREd sub-category files:');
@@ -1579,20 +1580,17 @@ end;
 //
 
 begin
+    params := TPsionSDKAppParams.Create;
+    params.Grab;
+
+    if params.SwitchExists('V') or (length(params.Filename) = 0) then VerText();
+
     WriteLn('WARNING: This is alpha quality software.');
     WriteLn('         It has had limited testing.');
     WriteLn('         Use it at your own risk.');
     WriteLn;
 
-    params := TPsionSDKAppParams.Create;
-    params.Grab;
-
     if length(params.Filename) = 0 then begin
-        HelpText();
-        exit;
-    end;
-
-    if params.Filename = '' then begin
         HelpText();
         exit;
     end;

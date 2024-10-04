@@ -1243,6 +1243,7 @@ begin
 
     Result := '';
     bracket_pos := pos('[', ident);
+    // TODO: Check that TEXT types are definitely only ever single byte sized
     if bracket_pos > 0 then begin
         asm_type_size := copy(ident, bracket_pos + 1, pos(']', ident) - bracket_pos - 1);
         ident := copy(ident, 1, bracket_pos - 1);
@@ -1255,8 +1256,8 @@ begin
         asm_type := 'db (' + asm_type + ') * ' + asm_type_size + ' dup (?)';
     end else begin
         case c_type of
-            'BYTE', 'UBYTE', 'char': asm_type := ' db ?';
-            'WORD', 'UWORD', 'HANDLE', 'INT', 'UINT', 'int', 'TEXT': asm_type := ' dw ?';
+            'BYTE', 'UBYTE', 'char', 'TEXT': asm_type := ' db ?';
+            'WORD', 'UWORD', 'HANDLE', 'INT', 'UINT', 'int': asm_type := ' dw ?';
             'LONG', 'ULONG': asm_type := ' dd ?';
             'DOUBLE': asm_type := ' db 8 dup (?)';
         end;

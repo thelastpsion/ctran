@@ -198,6 +198,8 @@ type
             // Methods: Lexing (State Machine States)
             procedure _LexStateInitial();
             procedure _LexStateSeekKeyword();
+            procedure _LexStateClass();
+            procedure _LexStateClassConstants();
 
             // Methods: Tokenised Line Builder
             function _GetNextLine() : TTokenisedLine;
@@ -274,7 +276,6 @@ begin
     _RequireList := TStringList.Create();
     If assigned(_TokenList) then FreeAndNil(_TokenList);
     _TokenList := TTokenList.Create();
-
 end;
 
 procedure TPsionOOParser._ResetTLB();
@@ -626,15 +627,119 @@ end;
 // It also increments the brace level.
 procedure TPsionOOParser._SeekStartOfSection(const NextLexerState: TLexerState);
 var
-    tok: TToken;
+    part_tok: TToken;
 begin
-    tok := _GrabNextToken();
+    part_tok := _GrabNextToken();
 
-    if tok.Literal = '{' then begin
+    if part_tok.Literal = '{' then begin
         if Verbose then Writeln('>>> Start of section found!');
-        _AddToken(tknBraceLeft, tok);
+        _AddToken(tknBraceLeft, part_tok);
         _SetLexerState(NextLexerState);
         _IncBraceLevel();
+    end;
+end;
+
+procedure TPsionOOParser._LexStateClass();
+var
+    part_tok : TToken;
+    x : LongInt; // Only used for TryStrToInt()
+
+    procedure CheckForForwardRef();
+    begin
+        part_tok := _GrabNextToken();
+        if part_tok.Literal = '=' then begin
+            _AddToken(tknEquals, part_tok);
+            _GrabAndAddStringTokens(1);
+        end;
+    end;
+
+begin
+    part_tok := _GrabNextToken();
+    case UpCase(part_tok.Literal) of
+        '}': begin
+            if Verbose then Writeln('>>> End of CLASS section found!');
+            _AddToken(tknBraceRight, part_tok);
+            _DecBraceLevel();
+            _SetLexerState(stateSeekKeyword);
+        end;
+        'ADD': begin
+            if Verbose then Writeln('>>> ADD found!');
+            _AddToken(tknAdd, part_tok);
+            _GrabAndAddStringTokens(1);
+            CheckForForwardRef();
+        end;
+        'REPLACE': begin
+            if Verbose then Writeln('>>> REPLACE found!');
+            _AddToken(tknReplace, part_tok);
+            _GrabAndAddStringTokens(1);
+            CheckForForwardRef();
+        end;
+        'DEFER': begin
+            if Verbose then Writeln('>>> DEFER found!');
+            _AddToken(tknDefer, part_tok);
+            _GrabAndAddStringTokens(1);
+        end;
+        'CONSTANTS': begin
+            if Verbose then Writeln('>>> CONSTANTS found!');
+            _AddToken(tknConstants, part_tok);
+            _SetLexerState(stateClassConstantsSeekStart);
+        end;
+        'TYPES': begin
+            if Verbose then Writeln('>>> TYPES found!');
+            _AddToken(tknTypes, part_tok);
+            _SetLexerState(stateClassTypesSeekStart);
+        end;
+        'PROPERTY': begin
+            if Verbose then Writeln('>>> PROPERTY found!');
+            _AddToken(tknProperty, part_tok);
+            part_tok := _GrabNextToken();
+            if Verbose then Writeln('>>> Literal grabbed: ', part_tok.Literal);
+            if TryStrToInt(part_tok.Literal, x) then begin
+                if Verbose then Writeln('>>> Number found!');
+                _AddToken(tknString, part_tok);
+            end;
+            _SetLexerState(stateClassPropertySeekStart);
+        end;
+        // External reference (.EXT) keywords
+        'DECLARE': begin
+            if Verbose then Writeln('>>> DECLARE found!');
+            _AddToken(tknDeclare, part_tok);
+            _GrabAndAddStringTokens(1);
+        end;
+        'HAS_METHOD': begin
+            if Verbose then Writeln('>>> HAS_METHOD found!');
+            _AddToken(tknHasMethod, part_tok);
+        end;
+        'HAS_PROPERTY': begin
+            if Verbose then Writeln('>>> HAS_PROPERTY found!');
+            _AddToken(tknHasProperty, part_tok);
+        end;
+        else begin
+            _ErrShowLine(part_tok, 'Invalid string literal ''' + part_tok.Literal + '''');
+        end;
+    end;
+end;
+
+
+procedure TPsionOOParser._LexStateClassConstants();
+var
+    part_tok : TToken;
+begin
+    part_tok := _GrabNextToken();
+    case part_tok.Literal of
+        '}': begin
+            _AddToken(tknBraceRight, part_tok);
+            _DecBraceLevel();
+            if Verbose then Writeln('>>> End of CONSTANTS section found!');
+            _SetLexerState(stateClass);
+        end;
+        '{': begin
+            _ErrShowLine(part_tok, 'Too many curly braces');
+            exit;
+        end else begin
+            _curLinePos := part_tok.LinePos;
+            _GrabAndAddStringTokens(2);
+        end;
     end;
 end;
 
@@ -644,29 +749,18 @@ end;
 
 // TODO: Check for braces inside lines?
 procedure TPsionOOParser.Lex();
-var
-    x : LongInt;
-    tok : TToken;
-
-    procedure CheckForForwardRef();
-    begin
-        tok := _GrabNextToken();
-        if tok.Literal = '=' then begin
-            _AddToken(tknEquals, tok);
-            _GrabAndAddStringTokens(1);
-        end;
-    end;
-
+// var
+//     tok : TToken;
 begin
     _LexerState := stateInitial;
     _curLineNum := 0;
 
     while _CurLineNum < _slCategoryFile.Count do
     begin
-        tok.Literal := '';
-        tok.TType := tknEOF;
-        tok.LineNum := _curLineNum;
-        tok.LinePos := 0;
+        // tok.Literal := '';
+        // tok.TType := tknEOF;
+        // tok.LineNum := _curLineNum;
+        // tok.LinePos := 0;
 
         inc(_curLineNum);
         _curLinePos := 1;
@@ -691,108 +785,16 @@ begin
         end;
 
         case _LexerState of
-
-            stateInitial: _LexStateInitial();
-
-            stateSeekKeyword: _LexStateSeekKeyword();
-
-            stateClassSeekStart: _SeekStartOfSection(stateClass);
-
-            stateClass: begin
-                tok := _GrabNextToken();
-                case UpCase(tok.Literal) of
-                    '}': begin
-                        if Verbose then Writeln('>>> End of CLASS section found!');
-                        _AddToken(tknBraceRight, tok);
-                        _DecBraceLevel();
-                        _SetLexerState(stateSeekKeyword);
-                    end;
-                    'ADD': begin
-                        if Verbose then Writeln('>>> ADD found!');
-                        _AddToken(tknAdd, tok);
-                        _GrabAndAddStringTokens(1);
-                        CheckForForwardRef();
-                    end;
-                    'REPLACE': begin
-                        if Verbose then Writeln('>>> REPLACE found!');
-                        _AddToken(tknReplace, tok);
-                        _GrabAndAddStringTokens(1);
-                        CheckForForwardRef();
-                    end;
-                    'DEFER': begin
-                        if Verbose then Writeln('>>> DEFER found!');
-                        _AddToken(tknDefer, tok);
-                        _GrabAndAddStringTokens(1);
-                    end;
-                    'CONSTANTS': begin
-                        if Verbose then Writeln('>>> CONSTANTS found!');
-                        _AddToken(tknConstants, tok);
-                        _SetLexerState(stateClassConstantsSeekStart);
-                    end;
-                    'TYPES': begin
-                        if Verbose then Writeln('>>> TYPES found!');
-                        _AddToken(tknTypes, tok);
-                        _SetLexerState(stateClassTypesSeekStart);
-                    end;
-                    'PROPERTY': begin
-                        if Verbose then Writeln('>>> PROPERTY found!');
-                        _AddToken(tknProperty, tok);
-                        tok := _GrabNextToken();
-                        if Verbose then Writeln('>>> Literal grabbed: ', tok.Literal);
-                        if TryStrToInt(tok.Literal, x) then begin
-                            if Verbose then Writeln('>>> Number found!');
-                            _AddToken(tknString, tok);
-                        end;
-                        _SetLexerState(stateClassPropertySeekStart);
-                    end;
-                    // External reference (.EXT) keywords
-                    'DECLARE': begin
-                        if Verbose then Writeln('>>> DECLARE found!');
-                        _AddToken(tknDeclare, tok);
-                        _GrabAndAddStringTokens(1);
-                    end;
-                    'HAS_METHOD': begin
-                        if Verbose then Writeln('>>> HAS_METHOD found!');
-                        _AddToken(tknHasMethod, tok);
-                    end;
-                    'HAS_PROPERTY': begin
-                        if Verbose then Writeln('>>> HAS_PROPERTY found!');
-                        _AddToken(tknHasProperty, tok);
-                    end;
-                    else begin
-                        _ErrShowLine(tok, 'Invalid string literal ''' + tok.Literal + '''');
-                    end;
-                end;
-            end;
-
+            stateInitial:                 _LexStateInitial();
+            stateSeekKeyword:             _LexStateSeekKeyword();
+            stateClassSeekStart:          _SeekStartOfSection(stateClass);
+            stateClass:                   _LexStateClass(); 
             stateClassConstantsSeekStart: _SeekStartOfSection(stateClassConstants);
-
-            stateClassConstants: begin
-                tok := _GrabNextToken();
-                case tok.Literal of
-                    '}': begin
-                        _AddToken(tknBraceRight, tok);
-                        _DecBraceLevel();
-                        if Verbose then Writeln('>>> End of CONSTANTS section found!');
-                        _SetLexerState(stateClass);
-                    end;
-                    '{': begin
-                        _ErrShowLine(tok, 'Too many curly braces');
-                        exit;
-                    end else begin
-                        _curLinePos := tok.LinePos;
-                        _GrabAndAddStringTokens(2);
-                    end;
-                end;
-            end;
-
-            stateClassTypesSeekStart: _SeekStartOfSection(stateClassTypes);
-
-            stateClassTypes: _ProcessCLine;
-
-            stateClassPropertySeekStart: _SeekStartOfSection(stateClassProperty);
-
-            stateClassProperty: _ProcessCLine;
+            stateClassConstants:          _LexStateClassConstants();
+            stateClassTypesSeekStart:     _SeekStartOfSection(stateClassTypes);
+            stateClassTypes:              _ProcessCLine;
+            stateClassPropertySeekStart:  _SeekStartOfSection(stateClassProperty);
+            stateClassProperty:           _ProcessCLine;
         end;
     end;
 

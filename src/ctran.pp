@@ -45,7 +45,7 @@ var
 
 procedure VerText();
 begin
-    WriteLn('CTRAN-ng Version 0.0.1 (C) Alex Brown');
+    WriteLn('CTRAN-ng Version 0.0.2 (C) Alex Brown');
 end;
 
 procedure HelpText();

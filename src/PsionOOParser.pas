@@ -152,7 +152,7 @@ type
     end;
 
     TPsionOOParser = class
-        strict private
+        strict protected
             // Fields: File Information
             _slCategoryFile : TStringList;
             _FileType : TFileType;

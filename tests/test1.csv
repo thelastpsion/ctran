@@ -1,2 +1,3 @@
-tknString,"Hello"
-tknEOF,""
+tknImage,IMAGE
+tknString,Hello
+tknEOF,

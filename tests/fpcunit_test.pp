@@ -2,9 +2,9 @@ program fpcunit_test;
 {$mode objfpc}{$H+}{$J-}
 
 uses
-    consoletestrunner,
-    PsionOOParser,
-    fpcunit_parser;
+  consoletestrunner,
+  PsionOOParser,
+  fpcunit_parser;
 
 var
   App: TTestRunner;

@@ -4,25 +4,25 @@ unit fptest_parser;
 interface
 
 uses
-    TestFramework,
-    PsionOOParser,
-    SysUtils;
+  TestFramework,
+  PsionOOParser,
+  SysUtils;
 
 type
-    TTestParser = class(TTestCase)
-    published
-        procedure TestHookUp;
-    end;
+  TTestParser = class(TTestCase)
+  published
+    procedure TestHookUp;
+  end;
 
-    TPsionOOParserWrap = class(TPsionOOParser)
-        private
-            procedure _AddToken(toktype: TTokenType; tokliteral: String);
-    end;
+  TPsionOOParserWrap = class(TPsionOOParser)
+    private
+      procedure _AddToken(toktype: TTokenType; tokliteral: String);
+  end;
 
 procedure RegisterTests;
 
 var
-    par : TPsionOOParserWrap;
+  par: TPsionOOParserWrap;
 
 
 
@@ -32,18 +32,18 @@ implementation
 
 procedure TTestParser.TestHookUp;
 begin
-    par := TPsionOOParserWrap.Create();
-    par._AddToken(tknString, 'Hello');
-    par._AddToken(tknEOF, '');
+  par := TPsionOOParserWrap.Create();
+  par._AddToken(tknString, 'Hello');
+  par._AddToken(tknEOF, '');
 
-    Check(par.Tokens[0].TType = tknString, 'Incorrect token found.');
-    CheckEquals(par.Tokens.Count, 2, 'Incorrect number of tokens.');
-    FreeAndNil(par);
+  Check(par.Tokens[0].TType = tknString, 'Incorrect token found.');
+  CheckEquals(par.Tokens.Count, 2, 'Incorrect number of tokens.');
+  FreeAndNil(par);
 end;
 
 procedure RegisterTests;
 begin
-    RegisterTest(TTestParser.Suite);
+  RegisterTest(TTestParser.Suite);
 end;
 
 //
@@ -52,7 +52,7 @@ end;
 
 procedure TPsionOOParserWrap._AddToken(toktype: TTokenType; tokliteral: String);
 begin
-    Inherited;
+  Inherited;
 end;
 
 end.

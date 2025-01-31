@@ -11,337 +11,337 @@ and internal (.CAT and .CL) types.
 interface
 
 uses
-    sysutils,
-    Classes,
-    Generics.Collections,
-    StringThings;
+  sysutils,
+  Classes,
+  Generics.Collections,
+  StringThings;
 
 type
-    TTokenType = (
-        tknString,
+  TTokenType = (
+    tknString,
 
-        // Symbols
-        tknBraceLeft,
-        tknBraceRight,
-        tknEquals,
+    // Symbols
+    tknBraceLeft,
+    tknBraceRight,
+    tknEquals,
 
-        // Category type keywords
-        tknImage,
-        tknLibrary,
-        tknName,
+    // Category type keywords
+    tknImage,
+    tknLibrary,
+    tknName,
 
-        // External file inclusion keywords
-        tknExternal,
-        tknInclude,
-        tknRequire,
+    // External file inclusion keywords
+    tknExternal,
+    tknInclude,
+    tknRequire,
 
-        // Class keyword
-        tknClass,
+    // Class keyword
+    tknClass,
 
-        // Method declaration keywords
-        tknAdd,
-        tknReplace,
-        tknDefer,
+    // Method declaration keywords
+    tknAdd,
+    tknReplace,
+    tknDefer,
 
-        // Other class-related keywords
-        tknProperty,
-        tknTypes,
-        tknConstants,
+    // Other class-related keywords
+    tknProperty,
+    tknTypes,
+    tknConstants,
 
-        // External reference file (.EXT) keywords
-        tknHasMethod,
-        tknHasProperty,
-        tknDeclare,
+    // External reference file (.EXT) keywords
+    tknHasMethod,
+    tknHasProperty,
+    tknDeclare,
 
-        tknEOF
-    );
+    tknEOF
+  );
 
-    TTokenTypeHelper = Type Helper for TTokenType
-        function ToString() : String;
-    end;
+  TTokenTypeHelper = Type Helper for TTokenType
+    function ToString(): String;
+  end;
 
-    TToken = record
-        TType : TTokenType;
-        Literal : string;
-        LineNum : Integer;
-        LinePos : Integer;
-    end;
+  TToken = record
+    TType: TTokenType;
+    Literal: String;
+    LineNum: Integer;
+    LinePos: Integer;
+  end;
 
-    TTokenList = specialize TList<TToken>;
+  TTokenList = specialize TList<TToken>;
 
-    TLexerState = (
-        stateInitial,
-        stateSeekKeyword,
-        stateClassSeekStart,
-        stateClass,
-        stateClassProperty,
-        stateClassTypes,
-        stateClassConstants,
-        stateClassConstantsSeekStart,
-        stateClassTypesSeekStart,
-        stateClassPropertySeekStart
-    );
+  TLexerState = (
+    stateInitial,
+    stateSeekKeyword,
+    stateClassSeekStart,
+    stateClass,
+    stateClassProperty,
+    stateClassTypes,
+    stateClassConstants,
+    stateClassConstantsSeekStart,
+    stateClassTypesSeekStart,
+    stateClassPropertySeekStart
+  );
 
-    // Parser-specific types
-    TFileType = (
-        ooCategory,
-        ooSubCat,
-        ooExternal
-    );
+  // Parser-specific types
+  TFileType = (
+    ooCategory,
+    ooSubCat,
+    ooExternal
+  );
 
-    TCategoryType = (
-        catImage,
-        catLibrary,
-        catName
-    );
+  TCategoryType = (
+    catImage,
+    catLibrary,
+    catName
+  );
 
-    TElementType = (
-        incInclude,
-        incExternal,
-        incRequire,
-        incClass
-    );
+  TElementType = (
+    incInclude,
+    incExternal,
+    incRequire,
+    incClass
+  );
 
-    TMethodType = (
-        methodNull, // For Null entries when dealing with inheritance
-        methodAdd,
-        methodReplace,
-        methodDefer,
-        methodDeclare
-    );
+  TMethodType = (
+    methodNull, // For Null entries when dealing with inheritance
+    methodAdd,
+    methodReplace,
+    methodDefer,
+    methodDeclare
+  );
 
-    TPsionOOMethodEntry = record
-        MethodType : TMethodType;
-        Name : String;
-        ForwardRef : String;
-    end;
+  TPsionOOMethodEntry = record
+    MethodType: TMethodType;
+    Name: String;
+    ForwardRef: String;
+  end;
 
-    TPsionOOConstantEntry = record
-        Name : String;
-        Value : String;
-    end;
+  TPsionOOConstantEntry = record
+    Name: String;
+    Value: String;
+  end;
 
-    TPsionOOConstantList = specialize TList<TPsionOOConstantEntry>;
-    TPsionOOMethodList = specialize TList<TPsionOOMethodEntry>;
-    TPsionOOCLines = TStringList;
+  TPsionOOConstantList = specialize TList<TPsionOOConstantEntry>;
+  TPsionOOMethodList = specialize TList<TPsionOOMethodEntry>;
+  TPsionOOCLines = TStringList;
 
-    TPsionOOClass = record
-        Name : String;
-        Parent : String;
-        Methods : TPsionOOMethodList;
-        ClassProperty : TStringList;
-        ClassTypes : TStringList;
-        ClassConstants : TPsionOOConstantList;
-        HasMethod : Boolean;
-        HasProperty : Boolean;
-        PropertyAutodestroyCount : Integer;
-    end;
+  TPsionOOClass = record
+    Name: String;
+    Parent: String;
+    Methods: TPsionOOMethodList;
+    ClassProperty: TStringList;
+    ClassTypes: TStringList;
+    ClassConstants: TPsionOOConstantList;
+    HasMethod: Boolean;
+    HasProperty: Boolean;
+    PropertyAutodestroyCount: Integer;
+  end;
 
-    TPsionOOClassList = array of TPsionOOClass;
+  TPsionOOClassList = array of TPsionOOClass;
 
-    TPsionOOFileElement = record
-        ElementType : TElementType;
-        index : integer;
-    end;
+  TPsionOOFileElement = record
+    ElementType: TElementType;
+    index: integer;
+  end;
 
-    TPsionOOFileElementList = array of TPsionOOFileElement;
+  TPsionOOFileElementList = array of TPsionOOFileElement;
 
-    TTokenisedLine = record
-        LineNum : Integer;
-        Tokens : TTokenList;
-    end;
+  TTokenisedLine = record
+    LineNum: Integer;
+    Tokens: TTokenList;
+  end;
 
-    TPsionOOParser = class
-        strict protected
-            // Fields: File Information
-            _slCategoryFile : TStringList;
-            _FileType : TFileType;
-            _FileLocation : String;
-            _ModuleName : String;
+  TPsionOOParser = class
+    strict protected
+      // Fields: File Information
+      _slCategoryFile: TStringList;
+      _FileType: TFileType;
+      _FileLocation: String;
+      _ModuleName: String;
 
-            // Fields: Lexing
-            _curLineNum, _curLinePos : Integer;
-            _strFilename : String;
-            _strCurLine : String;
-            _LexerState : TLexerState;
-            _BraceLevel : Integer;
-            _TokenList : TTokenList;
+      // Fields: Lexing
+      _curLineNum, _curLinePos: Integer;
+      _strFilename: String;
+      _strCurLine: String;
+      _LexerState: TLexerState;
+      _BraceLevel: Integer;
+      _TokenList: TTokenList;
 
-            // Fields: Token Processing
-            _CurTokenIndex : Integer;
+      // Fields: Token Processing
+      _CurTokenIndex: Integer;
 
-            // Fields: Tokenised Line Builder
-            _nextTLBTokenIndex : Integer;
+      // Fields: Tokenised Line Builder
+      _nextTLBTokenIndex: Integer;
 
-            // Fields: Parser
-            _CategoryType : TCategoryType;
-            _ElementList : array of TPsionOOFileElement;
-            _ExternalList : TStringList;
-            _IncludeList : TStringList;
-            _ClassList : array of TPsionOOClass;
-            _RequireList : TStringList;
+      // Fields: Parser
+      _CategoryType: TCategoryType;
+      _ElementList: array of TPsionOOFileElement;
+      _ExternalList: TStringList;
+      _IncludeList: TStringList;
+      _ClassList: array of TPsionOOClass;
+      _RequireList: TStringList;
 
-            // Methods: Lexing
-            procedure _SetLexerState(NewLexerState: TLexerState);
-            procedure _DetectFileType(strFilename : String);
-            procedure _DetectModuleName(strFilename : String);
-            function _NewToken(newTokenLineNum: Integer; newTokenType: TTokenType; newTokenLiteral: String): TToken;
-            procedure _AddToken(toktype: TTokenType; tokliteral: String);
-            procedure _AddToken(toktype: TTokenType; part_tok : TToken);
-            procedure _ProcessCLine();
-            procedure _GrabAndAddStringTokens(const count: Integer);
-            function _GrabNextToken() : TToken;
-            procedure _SeekStartOfSection(const NextLexerState: TLexerState);
-            procedure _DecBraceLevel();
-            procedure _IncBraceLevel();
+      // Methods: Lexing
+      procedure _SetLexerState(NewLexerState: TLexerState);
+      procedure _DetectFileType(strFilename: String);
+      procedure _DetectModuleName(strFilename: String);
+      function _NewToken(newTokenLineNum: Integer; newTokenType: TTokenType; newTokenLiteral: String): TToken;
+      procedure _AddToken(toktype: TTokenType; tokliteral: String);
+      procedure _AddToken(toktype: TTokenType; part_tok: TToken);
+      procedure _ProcessCLine();
+      procedure _GrabAndAddStringTokens(const count: Integer);
+      function _GrabNextToken(): TToken;
+      procedure _SeekStartOfSection(const NextLexerState: TLexerState);
+      procedure _DecBraceLevel();
+      procedure _IncBraceLevel();
 
-            // Methods: Lexing (State Machine States)
-            procedure _LexStateInitial();
-            procedure _LexStateSeekKeyword();
-            procedure _LexStateClass();
-            procedure _LexStateClassConstants();
+      // Methods: Lexing (State Machine States)
+      procedure _LexStateInitial();
+      procedure _LexStateSeekKeyword();
+      procedure _LexStateClass();
+      procedure _LexStateClassConstants();
 
-            // Methods: Tokenised Line Builder
-            function _GetNextLine() : TTokenisedLine;
-            procedure _ResetTLB();
+      // Methods: Tokenised Line Builder
+      function _GetNextLine(): TTokenisedLine;
+      procedure _ResetTLB();
 
-            // Methods: Parser
-            procedure _CheckLine(tokline: TTokenisedLine; const ATokTypes: array of TTokenType; const AMandatoryArgs: Integer = -1);
-            function _GetClass(tokline_class : TTokenisedLine) : TPsionOOClass;
-            function _GetConstants() : TPsionOOConstantList;
-            function _BuildConstant(tokline : TTokenisedLine) : TPsionOOConstantEntry;
-            function _GetCLines() : TStringList;
-            procedure _CheckForBrace();
+      // Methods: Parser
+      procedure _CheckLine(tokline: TTokenisedLine; const ATokTypes: array of TTokenType; const AMandatoryArgs: Integer = -1);
+      function _GetClass(tokline_class: TTokenisedLine): TPsionOOClass;
+      function _GetConstants(): TPsionOOConstantList;
+      function _BuildConstant(tokline: TTokenisedLine): TPsionOOConstantEntry;
+      function _GetCLines(): TStringList;
+      procedure _CheckForBrace();
 
-            // Methods: Misc
-            procedure _ErrShowLine(tok: TToken; message : String);
-            procedure _ErrShowTokLine(tokline : TTokenisedLine ; toknum : Integer ; message : String);
+      // Methods: Misc
+      procedure _ErrShowLine(tok: TToken; message: String);
+      procedure _ErrShowTokLine(tokline: TTokenisedLine ; toknum: Integer ; message: String);
 
-        public
-            Verbose : boolean;
-            constructor Create();
-            procedure LoadFile(strFilename : String);
-            procedure Lex();
-            procedure Reset();
-            procedure PrintTokenisedLines();
+    public
+      Verbose: boolean;
+      constructor Create();
+      procedure LoadFile(strFilename: String);
+      procedure Lex();
+      procedure Reset();
+      procedure PrintTokenisedLines();
 
-            // Methods: Parser
-            procedure Parse();
+      // Methods: Parser
+      procedure Parse();
 
-            property FileType : TFileType read _FileType;
-            property FileLocation : String read _FileLocation;
-            property ModuleName : String read _ModuleName;
-            property CategoryType : TCategoryType read _CategoryType;
-            property Tokens : TTokenList read _TokenList;
+      property FileType: TFileType read _FileType;
+      property FileLocation: String read _FileLocation;
+      property ModuleName: String read _ModuleName;
+      property CategoryType: TCategoryType read _CategoryType;
+      property Tokens: TTokenList read _TokenList;
 
-            property ElementList : TPsionOOFileElementList read _ElementList;
-            property RequireList : TStringList read _RequireList;
-            property IncludeList : TStringList read _IncludeList;
-            property ClassList : TPsionOOClassList read _ClassList;
-            property ExternalList : TStringList read _ExternalList;
-    end;
+      property ElementList: TPsionOOFileElementList read _ElementList;
+      property RequireList: TStringList read _RequireList;
+      property IncludeList: TStringList read _IncludeList;
+      property ClassList: TPsionOOClassList read _ClassList;
+      property ExternalList: TStringList read _ExternalList;
+  end;
 
 implementation
 
-function TTokenTypeHelper.ToString() : String;
+function TTokenTypeHelper.ToString(): String;
 begin
-    WriteStr(Result, self);
+  WriteStr(Result, self);
 end;
 
 constructor TPsionOOParser.Create();
 begin
-    inherited Create;
-    _slCategoryFile := TStringList.Create;
+  inherited Create;
+  _slCategoryFile := TStringList.Create;
 
-    Reset();
+  Reset();
 
-    // Tokenised Line Builder
-    _resetTLB();
+  // Tokenised Line Builder
+  _resetTLB();
 end;
 
 procedure TPsionOOParser.Reset();
 begin
-    _LexerState := stateInitial;
-    _curLineNum := 0;
-    _curLinePos := 0;
-    _strCurLine := '';
-    _strFilename := '';
-    _CurTokenIndex := -1;
-    _BraceLevel := 0;
-    if assigned(_ExternalList) then FreeAndNil(_ExternalList);
-    _ExternalList := TStringList.Create();
-    If assigned(_IncludeList) then FreeAndNil(_IncludeList);
-    _IncludeList := TStringList.Create();
-    If assigned(_RequireList) then FreeAndNil(_RequireList);
-    _RequireList := TStringList.Create();
-    If assigned(_TokenList) then FreeAndNil(_TokenList);
-    _TokenList := TTokenList.Create();
+  _LexerState := stateInitial;
+  _curLineNum := 0;
+  _curLinePos := 0;
+  _strCurLine := '';
+  _strFilename := '';
+  _CurTokenIndex := -1;
+  _BraceLevel := 0;
+  if assigned(_ExternalList) then FreeAndNil(_ExternalList);
+  _ExternalList := TStringList.Create();
+  If assigned(_IncludeList) then FreeAndNil(_IncludeList);
+  _IncludeList := TStringList.Create();
+  If assigned(_RequireList) then FreeAndNil(_RequireList);
+  _RequireList := TStringList.Create();
+  If assigned(_TokenList) then FreeAndNil(_TokenList);
+  _TokenList := TTokenList.Create();
 end;
 
 procedure TPsionOOParser._ResetTLB();
 begin
-    _nextTLBTokenIndex := 0;
+  _nextTLBTokenIndex := 0;
 end;
 
 procedure TPsionOOParser._SetLexerState(NewLexerState: TLexerState);
 begin
-    _LexerState := NewLexerState;
-    if Verbose then begin
-        Writeln('>>> Now in ', _LexerState);
-        if _LexerState in [stateClassSeekStart, stateClassTypesSeekStart, stateClassPropertySeekStart, stateClassConstantsSeekStart] then
-            WriteLn('>>>   (looking for brace)');
-    end;
+  _LexerState := NewLexerState;
+  if Verbose then begin
+    Writeln('>>> Now in ', _LexerState);
+    if _LexerState in [stateClassSeekStart, stateClassTypesSeekStart, stateClassPropertySeekStart, stateClassConstantsSeekStart] then
+      WriteLn('>>>   (looking for brace)');
+  end;
 end;
 
 //
 // TOKENISED LINE BUILDER
 //
 
-function TPsionOOParser._GetNextLine() : TTokenisedLine;
+function TPsionOOParser._GetNextLine(): TTokenisedLine;
 begin
-    Result.Tokens := TTokenList.Create(); // Because it remembers what was here before!
+  Result.Tokens := TTokenList.Create(); // Because it remembers what was here before!
 
-    if _nextTLBTokenIndex >= _TokenList.Count then begin
-        _nextTLBTokenIndex := _TokenList.Count;
-        Result.LineNum := 0;
-        Result.Tokens.Add(_NewToken(0, tknEOF, ''));
-        exit;
-    end;
+  if _nextTLBTokenIndex >= _TokenList.Count then begin
+    _nextTLBTokenIndex := _TokenList.Count;
+    Result.LineNum := 0;
+    Result.Tokens.Add(_NewToken(0, tknEOF, ''));
+    exit;
+  end;
 
-    Result.LineNum := _TokenList[_nextTLBTokenIndex].LineNum;
-    while _nextTLBTokenIndex < _TokenList.Count do
-    begin
-        if _TokenList[_nextTLBTokenIndex].LineNum <> Result.LineNum then break;
-        Result.Tokens.Add(_TokenList[_nextTLBTokenIndex]);
-        inc(_nextTLBTokenIndex);
-    end;
+  Result.LineNum := _TokenList[_nextTLBTokenIndex].LineNum;
+  while _nextTLBTokenIndex < _TokenList.Count do
+  begin
+    if _TokenList[_nextTLBTokenIndex].LineNum <> Result.LineNum then break;
+    Result.Tokens.Add(_TokenList[_nextTLBTokenIndex]);
+    inc(_nextTLBTokenIndex);
+  end;
 end;
 
-procedure TPsionOOParser._ErrShowLine(tok: TToken; message : String);
+procedure TPsionOOParser._ErrShowLine(tok: TToken; message: String);
 begin
-    WriteLn('ERROR: ', message);
-    WriteLn(format('%.3d: %s', [_curLineNum, _strCurLine]));
-    Write('    ', RepeatStr(' ', tok.LinePos), '^');
-    Write(RepeatStr('~', length(tok.Literal) - 1));
-    WriteLn;
-    halt(-1);
+  WriteLn('ERROR: ', message);
+  WriteLn(format('%.3d: %s', [_curLineNum, _strCurLine]));
+  Write('    ', RepeatStr(' ', tok.LinePos), '^');
+  Write(RepeatStr('~', length(tok.Literal) - 1));
+  WriteLn;
+  halt(-1);
 end;
 
-procedure TPsionOOParser._ErrShowTokLine(tokline : TTokenisedLine ; toknum : Integer ; message : String);
+procedure TPsionOOParser._ErrShowTokLine(tokline: TTokenisedLine ; toknum: Integer ; message: String);
 var
-    spaces : Integer;
-    line : String;
+  spaces: Integer;
+  line: String;
 begin
-    WriteLn('ERROR: ', message);
-    line := _slCategoryFile[tokline.LineNum - 1];
+  WriteLn('ERROR: ', message);
+  line := _slCategoryFile[tokline.LineNum - 1];
 
-    Writeln(format('%.3d: %s', [tokline.LineNum, line]));
-    if toknum = -1 then spaces := length(line) + 1 else spaces := tokline.Tokens[toknum].LinePos;
+  Writeln(format('%.3d: %s', [tokline.LineNum, line]));
+  if toknum = -1 then spaces := length(line) + 1 else spaces := tokline.Tokens[toknum].LinePos;
 
-    Write('    ', RepeatStr(' ', spaces), '^');
-    if toknum > -1 then Write(RepeatStr('~', length(tokline.Tokens[toknum].Literal) - 1));
-    WriteLn;
-    halt(-1);
+  Write('    ', RepeatStr(' ', spaces), '^');
+  if toknum > -1 then Write(RepeatStr('~', length(tokline.Tokens[toknum].Literal) - 1));
+  WriteLn;
+  halt(-1);
 end;
 
 //
@@ -350,29 +350,29 @@ end;
 
 procedure TPsionOOParser.PrintTokenisedLines();
 var
-    tokline : TTokenisedLine;
-    tok : TToken;
+  tokline: TTokenisedLine;
+  tok: TToken;
 begin
-    WriteLn;
-    WriteLn('Tokenised Line Parser!');
+  WriteLn;
+  WriteLn('Tokenised Line Parser!');
 
-    tokline := _GetNextLine();
-    while tokline.Tokens[0].TType <> tknEOF do
+  tokline := _GetNextLine();
+  while tokline.Tokens[0].TType <> tknEOF do
+  begin
+    Writeln('Line ', tokline.LineNum, ': (returned ', tokline.Tokens.Count, ' tokens)');
+    for tok in tokline.Tokens do
     begin
-        Writeln('Line ', tokline.LineNum, ': (returned ', tokline.Tokens.Count, ' tokens)');
-        for tok in tokline.Tokens do
-        begin
-            WriteLn('   > ', tok.TType, ' ''', tok.Literal, ''' (', tok.LinePos, ')');
-        end;
-        Writeln('   O: ', _slCategoryFile[tokline.LineNum - 1]);
-        Write('   G:');
-        for tok in tokline.Tokens do
-        begin
-            Write(' ', tok.Literal);
-        end;
-        Writeln;
-        tokline := _GetNextLine();
+      WriteLn('   > ', tok.TType, ' ''', tok.Literal, ''' (', tok.LinePos, ')');
     end;
+    Writeln('   O: ', _slCategoryFile[tokline.LineNum - 1]);
+    Write('   G:');
+    for tok in tokline.Tokens do
+    begin
+      Write(' ', tok.Literal);
+    end;
+    Writeln;
+    tokline := _GetNextLine();
+  end;
 end;
 
 //
@@ -382,31 +382,31 @@ end;
 // Takes a TokenType and a String and puts it into a Token record
 function TPsionOOParser._NewToken(newTokenLineNum: Integer; newTokenType: TTokenType; newTokenLiteral: String): TToken;
 begin
-    Result.TType := newTokenType;
-    Result.Literal := newTokenLiteral;
-    Result.LineNum := newTokenLineNum;
+  Result.TType := newTokenType;
+  Result.Literal := newTokenLiteral;
+  Result.LineNum := newTokenLineNum;
 end;
 
 procedure TPsionOOParser._AddToken(toktype: TTokenType; part_tok: TToken);
 var
-    tok: TToken;
+  tok: TToken;
 begin
-    // TODO: Add checks here (e.g. valid line number and line position)
-    tok := part_tok;
-    tok.TType := toktype;
-    _TokenList.Add(tok);
+  // TODO: Add checks here (e.g. valid line number and line position)
+  tok := part_tok;
+  tok.TType := toktype;
+  _TokenList.Add(tok);
 end;
 
 procedure TPsionOOParser._AddToken(toktype: TTokenType; tokliteral: String);
 var
-    tok: TToken;
+  tok: TToken;
 begin
-    tok.TType := toktype;
-    tok.Literal := tokliteral;
-    tok.LineNum := _curLineNum;
-    tok.LinePos := _curLinePos;
+  tok.TType := toktype;
+  tok.Literal := tokliteral;
+  tok.LineNum := _curLineNum;
+  tok.LinePos := _curLinePos;
 
-    _TokenList.Add(tok);
+  _TokenList.Add(tok);
 end;
 
 //
@@ -415,154 +415,154 @@ end;
 
 procedure TPsionOOParser._DecBraceLevel();
 begin
-    dec(_BraceLevel);
-    if Verbose then Writeln('>>>   Brace level: ', _BraceLevel);
+  dec(_BraceLevel);
+  if Verbose then Writeln('>>>   Brace level: ', _BraceLevel);
 end;
 
 procedure TPsionOOParser._IncBraceLevel();
 begin
-    inc(_BraceLevel);
-    if Verbose then Writeln('>>>   Brace level: ', _BraceLevel);
+  inc(_BraceLevel);
+  if Verbose then Writeln('>>>   Brace level: ', _BraceLevel);
 end;
 
 //
 // LINE PROCESSING
 //
 
-function TPsionOOParser._GrabNextToken() : TToken;
+function TPsionOOParser._GrabNextToken(): TToken;
 var
-    pos : Integer;
-    flgFoundText : Boolean = false;
-    curChar : Char;
+  pos: Integer;
+  flgFoundText: Boolean = false;
+  curChar: Char;
 begin
-    Result.Literal := '';
-    Result.TType := tknEOF;
-    Result.LineNum := 0;
-    Result.LinePos := 0;
+  Result.Literal := '';
+  Result.TType := tknEOF;
+  Result.LineNum := 0;
+  Result.LinePos := 0;
 
-    for pos := _curLinePos to length(_strCurLine) do
-    begin
-        curChar := _strCurLine[pos];
-        if trim(curChar) = '' then begin
-            if flgFoundText then begin
-                _curLinePos := pos + 1;
-                exit;
-            end;
-        end else if curChar in ['=', '{', '}'] then begin
-            if flgFoundText then begin
-                _curLinePos := pos;
-            end else begin
-                Result.Literal := curChar;
-                Result.LineNum := _curLineNum;
-                Result.LinePos := pos;
-                _curLinePos := pos + 1;
-            end;
-            exit;
-        end else begin
-            Result.Literal += curChar;
-            if not(flgFoundText) then begin
-                Result.LineNum := _curLineNum;
-                Result.LinePos := pos;
-                flgFoundText := true;
-            end;
-        end;
+  for pos := _curLinePos to length(_strCurLine) do
+  begin
+    curChar := _strCurLine[pos];
+    if trim(curChar) = '' then begin
+      if flgFoundText then begin
+        _curLinePos := pos + 1;
+        exit;
+      end;
+    end else if curChar in ['=', '{', '}'] then begin
+      if flgFoundText then begin
+        _curLinePos := pos;
+      end else begin
+        Result.Literal := curChar;
+        Result.LineNum := _curLineNum;
+        Result.LinePos := pos;
+        _curLinePos := pos + 1;
+      end;
+      exit;
+    end else begin
+      Result.Literal += curChar;
+      if not(flgFoundText) then begin
+        Result.LineNum := _curLineNum;
+        Result.LinePos := pos;
+        flgFoundText := true;
+      end;
     end;
-    _curLinePos += length(Result.Literal);
+  end;
+  _curLinePos += length(Result.Literal);
 end;
 
 procedure TPsionOOParser._GrabAndAddStringTokens(const count: Integer);
 var
-    i : Integer;
-    tok : TToken;
+  i: Integer;
+  tok: TToken;
 begin
-    if Verbose then WriteLn('>>> Fetching up to ', count, ' token(s)');
-    for i := 1 to count do
-    begin
-        tok := _GrabNextToken();
-        if tok.Literal = '' then begin
-            if Verbose then Writeln('>>>   No more tokens on line ', _curLineNum);
-            exit;
-        end;
-        if Verbose then Writeln(format('>>>   String token %d grabbed: %s', [i, tok.Literal]));
-        _AddToken(tknString, tok);
+  if Verbose then WriteLn('>>> Fetching up to ', count, ' token(s)');
+  for i := 1 to count do
+  begin
+    tok := _GrabNextToken();
+    if tok.Literal = '' then begin
+      if Verbose then Writeln('>>>   No more tokens on line ', _curLineNum);
+      exit;
     end;
+    if Verbose then Writeln(format('>>>   String token %d grabbed: %s', [i, tok.Literal]));
+    _AddToken(tknString, tok);
+  end;
 end;
 
 procedure TPsionOOParser._ProcessCLine();
 var
-    tok: TToken;
+  tok: TToken;
 begin
-    if not (_LexerState in [stateClassTypes, stateClassProperty]) then begin
-        raise Exception.Create('_ProcessCLine called when not processing a TYPES or PROPERTY block');
-    end;
+  if not (_LexerState in [stateClassTypes, stateClassProperty]) then begin
+    raise Exception.Create('_ProcessCLine called when not processing a TYPES or PROPERTY block');
+  end;
 
-    tok := _GrabNextToken();
+  tok := _GrabNextToken();
 
-    case tok.Literal of
-        '{': _IncBraceLevel();
+  case tok.Literal of
+    '{': _IncBraceLevel();
 
-        '}': begin
-            _DecBraceLevel();
-            if _BraceLevel = 1 then begin
-                if Verbose then case _LexerState of
-                    stateClassTypes:     Writeln('>>> End of TYPES section found!');
-                    stateClassProperty:  Writeln('>>> End of PROPERTY section found!');
-                end;
-                _AddToken(tknBraceRight, tok);
-                _SetLexerState(stateClass);
-            end;
+    '}': begin
+      _DecBraceLevel();
+      if _BraceLevel = 1 then begin
+        if Verbose then case _LexerState of
+          stateClassTypes:     Writeln('>>> End of TYPES section found!');
+          stateClassProperty:  Writeln('>>> End of PROPERTY section found!');
         end;
+        _AddToken(tknBraceRight, tok);
+        _SetLexerState(stateClass);
+      end;
     end;
+  end;
 
-    _curLinePos := tok.LinePos;
+  _curLinePos := tok.LinePos;
 
-    if _BraceLevel > 1 then begin
-        TrimAfterSemicolon(_strCurLine);
-        if Verbose then Writeln ('>>> Found string: ', _strCurLine);
-        _AddToken(tknString, _StrCurLine);
-    end;
+  if _BraceLevel > 1 then begin
+      TrimAfterSemicolon(_strCurLine);
+      if Verbose then Writeln ('>>> Found string: ', _strCurLine);
+      _AddToken(tknString, _StrCurLine);
+  end;
 end;
 
 // _DetectFileType()
 // Identifies the type of category file (regular, sub-category, external) based on the
 // file extension. If no file extension is provided, it assumes a regular category file.
-procedure TPsionOOParser._DetectFileType(strFilename : String);
+procedure TPsionOOParser._DetectFileType(strFilename: String);
 var
-    ext : String;
+  ext: String;
 begin
-    ext := UpCase(ExtractFileExt(strFilename));
+  ext := UpCase(ExtractFileExt(strFilename));
 
-    case ext of
-        '', '.': _FileType := ooCategory;
-        '.CAT':  _FileType := ooCategory;
-        '.CL':   _FileType := ooSubCat;
-        '.EXT':  _FileType := ooExternal;
-        else begin
-            WriteLn('Error: Unknown file type.');
-            halt(-1);
-        end;
+  case ext of
+    '', '.': _FileType := ooCategory;
+    '.CAT':  _FileType := ooCategory;
+    '.CL':   _FileType := ooSubCat;
+    '.EXT':  _FileType := ooExternal;
+    else begin
+      WriteLn('Error: Unknown file type.');
+      halt(-1);
     end;
-    if Verbose then WriteLn('File is ', _FileType);
+  end;
+  if Verbose then WriteLn('File is ', _FileType);
 end;
 
-procedure TPsionOOParser._DetectModuleName(strFilename : String);
+procedure TPsionOOParser._DetectModuleName(strFilename: String);
 var
-    s : String;
+  s: String;
 begin
-    s := ExtractFileName(strFilename);
-    _ModuleName := Copy(UpCase(s), 1, Length(s) - length(ExtractFileExt(s)));
+  s := ExtractFileName(strFilename);
+  _ModuleName := Copy(UpCase(s), 1, Length(s) - length(ExtractFileExt(s)));
 
-    if Verbose then Writeln('Module name: ', _ModuleName);
+  if Verbose then Writeln('Module name: ', _ModuleName);
 end;
 
-procedure TPsionOOParser.LoadFile(strFilename : String);
+procedure TPsionOOParser.LoadFile(strFilename: String);
 begin
-    _slCategoryFile := TStringList.Create;
+  _slCategoryFile := TStringList.Create;
 
-    _slCategoryFile.LoadFromFile(strFilename);
-    _DetectFileType(strFilename);
-    _DetectModuleName(strFilename);
-    _FileLocation := ExpandFileName(strFilename);
+  _slCategoryFile.LoadFromFile(strFilename);
+  _DetectFileType(strFilename);
+  _DetectModuleName(strFilename);
+  _FileLocation := ExpandFileName(strFilename);
 end;
 
 //
@@ -571,55 +571,55 @@ end;
 
 procedure TPsionOOParser._LexStateInitial();
 var
-    part_tok : TToken;
-    TokLiteral : String;
-    TokType : TTokenType;
+  part_tok: TToken;
+  TokLiteral: String;
+  TokType: TTokenType;
 begin
-    part_tok := _GrabNextToken();
-    TokLiteral := UpCase(part_tok.Literal);
+  part_tok := _GrabNextToken();
+  TokLiteral := UpCase(part_tok.Literal);
 
-    case TokLiteral of
-        'IMAGE':   TokType := tknImage;
-        'LIBRARY': TokType := tknLibrary;
-        'NAME':    TokType := tknName;
-        // If no match is found above, just exit the method and go back to lexing the next line
-        else exit;
-    end;
+  case TokLiteral of
+    'IMAGE':   TokType := tknImage;
+    'LIBRARY': TokType := tknLibrary;
+    'NAME':    TokType := tknName;
+    // If no match is found above, just exit the method and go back to lexing the next line
+    else exit;
+  end;
 
-    if Verbose then Writeln('>>> ', TokLiteral, ' found!');
-    _AddToken(TokType, part_tok);
-    _GrabAndAddStringTokens(1); // There should always be a string token after one of these keywords
-    _SetLexerState(stateSeekKeyword);
+  if Verbose then Writeln('>>> ', TokLiteral, ' found!');
+  _AddToken(TokType, part_tok);
+  _GrabAndAddStringTokens(1); // There should always be a string token after one of these keywords
+  _SetLexerState(stateSeekKeyword);
 end;
 
 procedure TPsionOOParser._LexStateSeekKeyword();
 var
-    part_tok : TToken;
-    TokLiteral : String;
-    TokType : TTokenType;
+  part_tok: TToken;
+  TokLiteral: String;
+  TokType: TTokenType;
 begin
-    part_tok := _GrabNextToken();
-    TokLiteral := UpCase(part_tok.Literal);
+  part_tok := _GrabNextToken();
+  TokLiteral := UpCase(part_tok.Literal);
 
-    case TokLiteral of
-        'EXTERNAL': TokType := tknExternal;
-        'INCLUDE':  TokType := tknInclude;
-        'CLASS':    TokType := tknClass;
-        'REQUIRE':  TokType := tknRequire;
-        // If no match is found above, we have a problem so we need to halt
-        else begin
-            _ErrShowLine(part_tok, 'Invalid string literal ''' + part_tok.Literal + '''');
-        end;
+  case TokLiteral of
+    'EXTERNAL': TokType := tknExternal;
+    'INCLUDE':  TokType := tknInclude;
+    'CLASS':    TokType := tknClass;
+    'REQUIRE':  TokType := tknRequire;
+    // If no match is found above, we have a problem so we need to halt
+    else begin
+      _ErrShowLine(part_tok, 'Invalid string literal ''' + part_tok.Literal + '''');
     end;
+  end;
 
-    if Verbose then Writeln('>>> ', TokLiteral, ' found!');
-    _AddToken(TokType, part_tok);
-    _GrabAndAddStringTokens(1); // There should always be a string token after one of these keywords
+  if Verbose then Writeln('>>> ', TokLiteral, ' found!');
+  _AddToken(TokType, part_tok);
+  _GrabAndAddStringTokens(1); // There should always be a string token after one of these keywords
 
-    if TokType = tknClass then begin
-        _GrabAndAddStringTokens(1); // Grab the name of the class's parent, too (if it's there)
-        _SetLexerState(stateClassSeekStart);
-    end;
+  if TokType = tknClass then begin
+    _GrabAndAddStringTokens(1); // Grab the name of the class's parent, too (if it's there)
+    _SetLexerState(stateClassSeekStart);
+  end;
 end;
 
 // _SeekStartOfSection()
@@ -627,120 +627,120 @@ end;
 // It also increments the brace level.
 procedure TPsionOOParser._SeekStartOfSection(const NextLexerState: TLexerState);
 var
-    part_tok: TToken;
+  part_tok: TToken;
 begin
-    part_tok := _GrabNextToken();
+  part_tok := _GrabNextToken();
 
-    if part_tok.Literal = '{' then begin
-        if Verbose then Writeln('>>> Start of section found!');
-        _AddToken(tknBraceLeft, part_tok);
-        _SetLexerState(NextLexerState);
-        _IncBraceLevel();
-    end;
+  if part_tok.Literal = '{' then begin
+    if Verbose then Writeln('>>> Start of section found!');
+    _AddToken(tknBraceLeft, part_tok);
+    _SetLexerState(NextLexerState);
+    _IncBraceLevel();
+  end;
 end;
 
 procedure TPsionOOParser._LexStateClass();
 var
-    part_tok : TToken;
-    x : LongInt; // Only used for TryStrToInt()
+  part_tok: TToken;
+  x: LongInt; // Only used for TryStrToInt()
 
-    procedure CheckForForwardRef();
-    begin
-        part_tok := _GrabNextToken();
-        if part_tok.Literal = '=' then begin
-            _AddToken(tknEquals, part_tok);
-            _GrabAndAddStringTokens(1);
-        end;
+  procedure CheckForForwardRef();
+  begin
+    part_tok := _GrabNextToken();
+    if part_tok.Literal = '=' then begin
+      _AddToken(tknEquals, part_tok);
+      _GrabAndAddStringTokens(1);
     end;
+  end;
 
 begin
-    part_tok := _GrabNextToken();
-    case UpCase(part_tok.Literal) of
-        '}': begin
-            if Verbose then Writeln('>>> End of CLASS section found!');
-            _AddToken(tknBraceRight, part_tok);
-            _DecBraceLevel();
-            _SetLexerState(stateSeekKeyword);
-        end;
-        'ADD': begin
-            if Verbose then Writeln('>>> ADD found!');
-            _AddToken(tknAdd, part_tok);
-            _GrabAndAddStringTokens(1);
-            CheckForForwardRef();
-        end;
-        'REPLACE': begin
-            if Verbose then Writeln('>>> REPLACE found!');
-            _AddToken(tknReplace, part_tok);
-            _GrabAndAddStringTokens(1);
-            CheckForForwardRef();
-        end;
-        'DEFER': begin
-            if Verbose then Writeln('>>> DEFER found!');
-            _AddToken(tknDefer, part_tok);
-            _GrabAndAddStringTokens(1);
-        end;
-        'CONSTANTS': begin
-            if Verbose then Writeln('>>> CONSTANTS found!');
-            _AddToken(tknConstants, part_tok);
-            _SetLexerState(stateClassConstantsSeekStart);
-        end;
-        'TYPES': begin
-            if Verbose then Writeln('>>> TYPES found!');
-            _AddToken(tknTypes, part_tok);
-            _SetLexerState(stateClassTypesSeekStart);
-        end;
-        'PROPERTY': begin
-            if Verbose then Writeln('>>> PROPERTY found!');
-            _AddToken(tknProperty, part_tok);
-            part_tok := _GrabNextToken();
-            if Verbose then Writeln('>>> Literal grabbed: ', part_tok.Literal);
-            if TryStrToInt(part_tok.Literal, x) then begin
-                if Verbose then Writeln('>>> Number found!');
-                _AddToken(tknString, part_tok);
-            end;
-            _SetLexerState(stateClassPropertySeekStart);
-        end;
-        // External reference (.EXT) keywords
-        'DECLARE': begin
-            if Verbose then Writeln('>>> DECLARE found!');
-            _AddToken(tknDeclare, part_tok);
-            _GrabAndAddStringTokens(1);
-        end;
-        'HAS_METHOD': begin
-            if Verbose then Writeln('>>> HAS_METHOD found!');
-            _AddToken(tknHasMethod, part_tok);
-        end;
-        'HAS_PROPERTY': begin
-            if Verbose then Writeln('>>> HAS_PROPERTY found!');
-            _AddToken(tknHasProperty, part_tok);
-        end;
-        else begin
-            _ErrShowLine(part_tok, 'Invalid string literal ''' + part_tok.Literal + '''');
-        end;
+  part_tok := _GrabNextToken();
+  case UpCase(part_tok.Literal) of
+    '}': begin
+      if Verbose then Writeln('>>> End of CLASS section found!');
+      _AddToken(tknBraceRight, part_tok);
+      _DecBraceLevel();
+      _SetLexerState(stateSeekKeyword);
     end;
+    'ADD': begin
+      if Verbose then Writeln('>>> ADD found!');
+      _AddToken(tknAdd, part_tok);
+      _GrabAndAddStringTokens(1);
+      CheckForForwardRef();
+    end;
+    'REPLACE': begin
+      if Verbose then Writeln('>>> REPLACE found!');
+      _AddToken(tknReplace, part_tok);
+      _GrabAndAddStringTokens(1);
+      CheckForForwardRef();
+    end;
+    'DEFER': begin
+      if Verbose then Writeln('>>> DEFER found!');
+      _AddToken(tknDefer, part_tok);
+      _GrabAndAddStringTokens(1);
+    end;
+    'CONSTANTS': begin
+      if Verbose then Writeln('>>> CONSTANTS found!');
+      _AddToken(tknConstants, part_tok);
+      _SetLexerState(stateClassConstantsSeekStart);
+    end;
+    'TYPES': begin
+      if Verbose then Writeln('>>> TYPES found!');
+      _AddToken(tknTypes, part_tok);
+      _SetLexerState(stateClassTypesSeekStart);
+    end;
+    'PROPERTY': begin
+      if Verbose then Writeln('>>> PROPERTY found!');
+      _AddToken(tknProperty, part_tok);
+      part_tok := _GrabNextToken();
+      if Verbose then Writeln('>>> Literal grabbed: ', part_tok.Literal);
+      if TryStrToInt(part_tok.Literal, x) then begin
+        if Verbose then Writeln('>>> Number found!');
+        _AddToken(tknString, part_tok);
+      end;
+      _SetLexerState(stateClassPropertySeekStart);
+    end;
+    // External reference (.EXT) keywords
+    'DECLARE': begin
+      if Verbose then Writeln('>>> DECLARE found!');
+      _AddToken(tknDeclare, part_tok);
+      _GrabAndAddStringTokens(1);
+    end;
+    'HAS_METHOD': begin
+      if Verbose then Writeln('>>> HAS_METHOD found!');
+      _AddToken(tknHasMethod, part_tok);
+    end;
+    'HAS_PROPERTY': begin
+      if Verbose then Writeln('>>> HAS_PROPERTY found!');
+      _AddToken(tknHasProperty, part_tok);
+    end;
+    else begin
+      _ErrShowLine(part_tok, 'Invalid string literal ''' + part_tok.Literal + '''');
+    end;
+  end;
 end;
 
 
 procedure TPsionOOParser._LexStateClassConstants();
 var
-    part_tok : TToken;
+  part_tok: TToken;
 begin
-    part_tok := _GrabNextToken();
-    case part_tok.Literal of
-        '}': begin
-            _AddToken(tknBraceRight, part_tok);
-            _DecBraceLevel();
-            if Verbose then Writeln('>>> End of CONSTANTS section found!');
-            _SetLexerState(stateClass);
-        end;
-        '{': begin
-            _ErrShowLine(part_tok, 'Too many curly braces');
-            exit;
-        end else begin
-            _curLinePos := part_tok.LinePos;
-            _GrabAndAddStringTokens(2);
-        end;
+  part_tok := _GrabNextToken();
+  case part_tok.Literal of
+    '}': begin
+      _AddToken(tknBraceRight, part_tok);
+      _DecBraceLevel();
+      if Verbose then Writeln('>>> End of CONSTANTS section found!');
+      _SetLexerState(stateClass);
     end;
+    '{': begin
+      _ErrShowLine(part_tok, 'Too many curly braces');
+      exit;
+    end else begin
+      _curLinePos := part_tok.LinePos;
+      _GrabAndAddStringTokens(2);
+    end;
+  end;
 end;
 
 //
@@ -750,425 +750,425 @@ end;
 // TODO: Check for braces inside lines?
 procedure TPsionOOParser.Lex();
 // var
-//     tok : TToken;
+//   tok: TToken;
 begin
-    _LexerState := stateInitial;
-    _curLineNum := 0;
+  _LexerState := stateInitial;
+  _curLineNum := 0;
 
-    while _CurLineNum < _slCategoryFile.Count do
-    begin
-        // tok.Literal := '';
-        // tok.TType := tknEOF;
-        // tok.LineNum := _curLineNum;
-        // tok.LinePos := 0;
+  while _CurLineNum < _slCategoryFile.Count do
+  begin
+    // tok.Literal := '';
+    // tok.TType := tknEOF;
+    // tok.LineNum := _curLineNum;
+    // tok.LinePos := 0;
 
-        inc(_curLineNum);
-        _curLinePos := 1;
+    inc(_curLineNum);
+    _curLinePos := 1;
 
-        if Verbose then WriteLn;
+    if Verbose then WriteLn;
 
-        while LeftStr(_slCategoryFile[_curLineNum - 1], 1) = #12 do
-            _slCategoryFile[_curLineNum - 1] := copy(_slCategoryFile[_curLineNum - 1], 2);
+    while LeftStr(_slCategoryFile[_curLineNum - 1], 1) = #12 do
+      _slCategoryFile[_curLineNum - 1] := copy(_slCategoryFile[_curLineNum - 1], 2);
 
-        _strCurLine := _slCategoryFile[_curLineNum - 1];
+    _strCurLine := _slCategoryFile[_curLineNum - 1];
 
-        if Verbose then WriteLn(format('%.3d:%s', [_curLineNum, _strCurLine]));
+    if Verbose then WriteLn(format('%.3d:%s', [_curLineNum, _strCurLine]));
 
-        if length(_strCurLine.Trim) = 0 then begin
-            if Verbose then Writeln('>>> Empty line');
-            continue;
-        end;
-
-        if _strCurLine.Trim[1] = '!' then begin
-            if Verbose then Writeln('>>> Explicit comment, line skipped');
-            continue;
-        end;
-
-        case _LexerState of
-            stateInitial:                 _LexStateInitial();
-            stateSeekKeyword:             _LexStateSeekKeyword();
-            stateClassSeekStart:          _SeekStartOfSection(stateClass);
-            stateClass:                   _LexStateClass(); 
-            stateClassConstantsSeekStart: _SeekStartOfSection(stateClassConstants);
-            stateClassConstants:          _LexStateClassConstants();
-            stateClassTypesSeekStart:     _SeekStartOfSection(stateClassTypes);
-            stateClassTypes:              _ProcessCLine;
-            stateClassPropertySeekStart:  _SeekStartOfSection(stateClassProperty);
-            stateClassProperty:           _ProcessCLine;
-        end;
+    if length(_strCurLine.Trim) = 0 then begin
+      if Verbose then Writeln('>>> Empty line');
+      continue;
     end;
 
-    if _BraceLevel <> 0 then begin
-        WriteLn('Error: [Lex] Somehow at brace level ', _BraceLevel); // TODO: Should this be an exception?
+    if _strCurLine.Trim[1] = '!' then begin
+      if Verbose then Writeln('>>> Explicit comment, line skipped');
+      continue;
+    end;
+
+    case _LexerState of
+      stateInitial:                 _LexStateInitial();
+      stateSeekKeyword:             _LexStateSeekKeyword();
+      stateClassSeekStart:          _SeekStartOfSection(stateClass);
+      stateClass:                   _LexStateClass(); 
+      stateClassConstantsSeekStart: _SeekStartOfSection(stateClassConstants);
+      stateClassConstants:          _LexStateClassConstants();
+      stateClassTypesSeekStart:     _SeekStartOfSection(stateClassTypes);
+      stateClassTypes:              _ProcessCLine;
+      stateClassPropertySeekStart:  _SeekStartOfSection(stateClassProperty);
+      stateClassProperty:           _ProcessCLine;
+    end;
+  end;
+
+  if _BraceLevel <> 0 then begin
+    WriteLn('Error: [Lex] Somehow at brace level ', _BraceLevel); // TODO: Should this be an exception?
+    exit;
+end;
+
+_curLinePos := 0;
+_AddToken(tkneof, '');
+end;
+
+procedure TPsionOOParser._CheckLine(tokline: TTokenisedLine; const ATokTypes: array of TTokenType; const AMandatoryArgs: Integer = -1);
+var
+  i: Integer;
+  tokline_argcount: Integer;
+  ArgCheckCount: Integer;
+  MaxMandatoryArgs: Integer;
+begin
+  ArgCheckCount := length(ATokTypes);
+  tokline_ArgCount := tokline.Tokens.Count - 1;
+
+  if AMandatoryArgs < 0 then // 0 mandatory arguments is valid when all args are optional
+    MaxMandatoryArgs := ArgCheckCount // This is the default, but it also just ignores when a negative number is specified
+  else
+    MaxMandatoryArgs := AMandatoryArgs;
+
+  // Make sure that, if the last token is tknEOF, it isn't classed as an argument
+  if tokline.Tokens[tokline_argcount].TType = tknEOF then dec(tokline_argcount);
+
+  if ArgCheckCount < MaxMandatoryArgs then begin
+    raise Exception.Create('_CheckLine: The number of mandatory arguments requested is higher than the number of tokens given in toktypes');
+  end;
+
+  if tokline_ArgCount < MaxMandatoryArgs then begin
+    _ErrShowTokLine(tokline, -1, format('Current line has too few (%d) arguments', [tokline_argcount]));
+  end;
+
+  if tokline_ArgCount - 1 > ArgCheckCount then begin
+    _ErrShowTokLine(tokline, ArgCheckCount + 1, format('Current line has too many (%d) arguments', [tokline_argcount]))
+  end;
+
+  for i := 1 to tokline_ArgCount - 1 do
+  begin
+    if (tokline.Tokens[i].TType <> ATokTypes[i-1]) then begin
+      _ErrShowTokLine(tokline, 1, format('Incorrect token type. Expected %s but found %s', [ATokTypes[i-1], tokline.Tokens[i].TType.ToString()]));
+    end;
+  end;
+end;
+
+function TPsionOOParser._BuildConstant(tokline: TTokenisedLine): TPsionOOConstantEntry;
+begin
+  Result.Name := tokline.Tokens[0].Literal;
+  Result.Value := tokline.Tokens[1].Literal;
+end;
+
+function TPsionOOParser._GetConstants(): TPsionOOConstantList;
+var
+  tokline: TTokenisedLine;
+begin
+  tokline := _GetNextLine();
+  Result := TPsionOOConstantList.Create();
+
+  while tokline.Tokens[0].TType <> tknEOF do
+  begin
+    case tokline.Tokens[0].TType of
+      tknBraceRight: begin
         exit;
+      end;
+      tknString: begin
+        _CheckLine(tokline, [tknString]);
+        Result.Add(_BuildConstant(tokline));
+      end;
+      else begin
+        _ErrShowTokLine(tokline, 0, format('Incorrect token, found %s', [tokline.Tokens[0].TType.ToString()]));
+      end;
     end;
-
-    _curLinePos := 0;
-    _AddToken(tknEOF, '');
-end;
-
-procedure TPsionOOParser._CheckLine(tokline : TTokenisedLine; const ATokTypes: array of TTokenType; const AMandatoryArgs: Integer = -1);
-var
-    i: Integer;
-    tokline_ArgCount: Integer;
-    ArgCheckCount: Integer;
-    MaxMandatoryArgs: Integer;
-begin
-    ArgCheckCount := length(ATokTypes);
-    tokline_ArgCount := tokline.Tokens.Count - 1;
-
-    if AMandatoryArgs < 0 then // 0 mandatory arguments is valid when all args are optional
-        MaxMandatoryArgs := ArgCheckCount // This is the default, but it also just ignores when a negative number is specified
-    else
-        MaxMandatoryArgs := AMandatoryArgs;
-
-    // Make sure that, if the last token is tknEOF, it isn't classed as an argument
-    if tokline.Tokens[tokline_argcount].TType = tknEOF then dec(tokline_argcount);
-
-    if ArgCheckCount < MaxMandatoryArgs then begin
-        raise Exception.Create('_CheckLine: The number of mandatory arguments requested is higher than the number of tokens given in toktypes');
-    end;
-
-    if tokline_ArgCount < MaxMandatoryArgs then begin
-        _ErrShowTokLine(tokline, -1, format('Current line has too few (%d) arguments', [tokline_argcount]));
-    end;
-
-    if tokline_ArgCount - 1 > ArgCheckCount then begin
-        _ErrShowTokLine(tokline, ArgCheckCount + 1, format('Current line has too many (%d) arguments', [tokline_argcount]))
-    end;
-
-    for i := 1 to tokline_ArgCount - 1 do
-    begin
-        if (tokline.Tokens[i].TType <> ATokTypes[i-1]) then begin
-            _ErrShowTokLine(tokline, 1, format('Incorrect token type. Expected %s but found %s', [ATokTypes[i-1], tokline.Tokens[i].TType.ToString()]));
-        end;
-    end;
-end;
-
-function TPsionOOParser._BuildConstant(tokline : TTokenisedLine) : TPsionOOConstantEntry;
-begin
-    Result.Name := tokline.Tokens[0].Literal;
-    Result.Value := tokline.Tokens[1].Literal;
-end;
-
-function TPsionOOParser._GetConstants() : TPsionOOConstantList;
-var
-    tokline : TTokenisedLine;
-begin
     tokline := _GetNextLine();
-    Result := TPsionOOConstantList.Create();
-
-    while tokline.Tokens[0].TType <> tknEOF do
-    begin
-        case tokline.Tokens[0].TType of
-            tknBraceRight: begin
-                exit;
-            end;
-            tknString: begin
-                _CheckLine(tokline, [tknString]);
-                Result.Add(_BuildConstant(tokline));
-            end;
-            else begin
-                _ErrShowTokLine(tokline, 0, format('Incorrect token, found %s', [tokline.Tokens[0].TType.ToString()]));
-            end;
-        end;
-        tokline := _GetNextLine();
-    end;
+  end;
 end;
 
-function TPsionOOParser._GetCLines() : TStringList;
+function TPsionOOParser._GetCLines(): TStringList;
 var
-    tokline : TTokenisedLine;
+  tokline: TTokenisedLine;
 begin
-    tokline := _GetNextLine();
-    Result := TStringList.Create();
+  tokline := _GetNextLine();
+  Result := TStringList.Create();
 
-    while tokline.Tokens[0].TType <> tknEOF do
-    begin
-        case tokline.Tokens[0].TType of
-            tknBraceRight: begin
-                exit;
-            end;
-            tknString: begin
-                _CheckLine(tokline, []);
-                Result.Add(tokline.Tokens[0].Literal);
-            end;
-            else begin
-                _ErrShowTokLine(tokline, 0, format('Incorrect token, found %s', [tokline.Tokens[0].TType.ToString()]));
-            end;
-        end;
-        tokline := _GetNextLine();
+  while tokline.Tokens[0].TType <> tknEOF do
+  begin
+    case tokline.Tokens[0].TType of
+      tknBraceRight: begin
+        exit;
+      end;
+      tknString: begin
+        _CheckLine(tokline, []);
+        Result.Add(tokline.Tokens[0].Literal);
+      end;
+      else begin
+        _ErrShowTokLine(tokline, 0, format('Incorrect token, found %s', [tokline.Tokens[0].TType.ToString()]));
+      end;
     end;
+    tokline := _GetNextLine();
+  end;
 end;
 
 procedure TPsionOOParser._CheckForBrace();
 var
-    tokline : TTokenisedLine;
+  tokline: TTokenisedLine;
 begin
-    tokline := _GetNextLine();
-    if tokline.Tokens[0].TType <> tknBraceLeft then begin
-        _ErrShowTokLine(tokline, 0, format('Expected tknBraceLeft, found %s', [tokline.Tokens[0].TType.ToString()]));
-    end;
-    _CheckLine(tokline, []);
+  tokline := _GetNextLine();
+  if tokline.Tokens[0].TType <> tknBraceLeft then begin
+    _ErrShowTokLine(tokline, 0, format('Expected tknBraceLeft, found %s', [tokline.Tokens[0].TType.ToString()]));
+  end;
+  _CheckLine(tokline, []);
 end;
 
 // procedure TPsionOOParser._AddMethodEntry(method_type: TMethodType, s: String);
 // var
-//     curMethodEntry : TPsionOOMethodEntry;
+//   curMethodEntry: TPsionOOMethodEntry;
 // begin
-//     curMethodEntry.MethodType := method_type;
-//     curMethodEntry.Name := s;
-//     Result.Methods := concat(Result.Methods, [curMethodEntry]);
+//   curMethodEntry.MethodType := method_type;
+//   curMethodEntry.Name := s;
+//   Result.Methods := concat(Result.Methods, [curMethodEntry]);
 // end;
 
-function TPsionOOParser._GetClass(tokline_class : TTokenisedLine) : TPsionOOClass;
+function TPsionOOParser._GetClass(tokline_class: TTokenisedLine): TPsionOOClass;
 var
-    tokline : TTokenisedLine;
-    curMethodEntry : TPsionOOMethodEntry;
+  tokline: TTokenisedLine;
+  curMethodEntry: TPsionOOMethodEntry;
 
-    procedure StopIfEXT();
-    begin
-        if _FileType = ooExternal then begin
-            _ErrShowTokLine(tokline, 0, format('%s not valid in External files', [tokline.Tokens[0].Literal]));
-        end;
+  procedure StopIfEXT();
+  begin
+    if _FileType = ooExternal then begin
+      _ErrShowTokLine(tokline, 0, format('%s not valid in External files', [tokline.Tokens[0].Literal]));
     end;
+  end;
 
-    procedure StopIfNotEXT();
-    begin
-        if _FileType <> ooExternal then begin
-            _ErrShowTokLine(tokline, 0, format('%s only valid in External files', [tokline.Tokens[0].Literal]));
-        end;
+  procedure StopIfNotEXT();
+  begin
+    if _FileType <> ooExternal then begin
+      _ErrShowTokLine(tokline, 0, format('%s only valid in External files', [tokline.Tokens[0].Literal]));
     end;
+  end;
 
 begin
-    if tokline_class.Tokens[0].TType <> tknClass then begin
-        _ErrShowTokLine(tokline_class, 0, '[_GetClass] Been sent the wrong line.');
-    end;
+  if tokline_class.Tokens[0].TType <> tknClass then begin
+      _ErrShowTokLine(tokline_class, 0, '[_GetClass] Been sent the wrong line.');
+  end;
 
-    _CheckLine(tokline_class, [tknString, tknString], 1);
+  _CheckLine(tokline_class, [tknString, tknString], 1);
 
-    Result.Name := tokline_class.Tokens[1].Literal;
-    if tokline_class.Tokens.Count = 3 then begin
-        Result.Parent := tokline_class.Tokens[2].Literal;
-    end else begin
-        Result.Parent := '';
-    end;
+  Result.Name := tokline_class.Tokens[1].Literal;
+  if tokline_class.Tokens.Count = 3 then begin
+      Result.Parent := tokline_class.Tokens[2].Literal;
+  end else begin
+      Result.Parent := '';
+  end;
 
-    Result.HasMethod := false;
-    Result.HasProperty := false;
-    Result.ClassConstants := TPsionOOConstantList.Create();
-    Result.ClassProperty := TStringList.Create();
-    Result.ClassTypes := TStringList.Create();
-    Result.Methods := TPsionOOMethodList.Create();
-    Result.PropertyAutodestroyCount := 0;
+  Result.HasMethod := false;
+  Result.HasProperty := false;
+  Result.ClassConstants := TPsionOOConstantList.Create();
+  Result.ClassProperty := TStringList.Create();
+  Result.ClassTypes := TStringList.Create();
+  Result.Methods := TPsionOOMethodList.Create();
+  Result.PropertyAutodestroyCount := 0;
 
-    tokline := _GetNextLine();
+  tokline := _GetNextLine();
 
-    while tokline.Tokens[0].TType <> tknEOF do
-    begin
-        curMethodEntry.ForwardRef := '';
+  while tokline.Tokens[0].TType <> tknEOF do
+  begin
+    curMethodEntry.ForwardRef := '';
 
-        case tokline.Tokens[0].TType of
-            tknAdd: begin
-                StopIfEXT();
-                _CheckLine(tokline, [tknString, tknEquals, tknString], 1);
-                curMethodEntry.MethodType := methodAdd;
-                curMethodEntry.Name := tokline.Tokens[1].Literal;
-                if tokline.Tokens.Count = 4 then begin
-                    curMethodEntry.ForwardRef := tokline.Tokens[3].Literal;
-                end;
-                Result.Methods.Add(curMethodEntry);
-            end;
-
-            tknReplace: begin
-                StopIfEXT();
-                _CheckLine(tokline, [tknString, tknEquals, tknString], 1);
-                curMethodEntry.MethodType := methodReplace;
-                curMethodEntry.Name := tokline.Tokens[1].Literal;
-                if tokline.Tokens.Count = 4 then begin
-                    curMethodEntry.ForwardRef := tokline.Tokens[3].Literal;
-                end;
-                Result.Methods.Add(curMethodEntry);
-            end;
-
-            tknDefer: begin
-                StopIfEXT();
-                _CheckLine(tokline, [tknString]);
-                curMethodEntry.MethodType := methodDefer;
-                curMethodEntry.Name := tokline.Tokens[1].Literal;
-                Result.Methods.Add(curMethodEntry);
-            end;
-
-            tknDeclare: begin
-                StopIfNotEXT();
-                _CheckLine(tokline, [tknString]);
-                curMethodEntry.MethodType := methodDeclare;
-                curMethodEntry.Name := tokline.Tokens[1].Literal;
-                Result.Methods.Add(curMethodEntry);
-            end;
-
-            tknTypes: begin
-                StopIfEXT();
-                _CheckLine(tokline, []);
-                if Verbose then WriteLn('Found TYPES');
-                _CheckForBrace();
-                Result.ClassTypes := _GetCLines();
-            end;
-
-            tknProperty: begin
-                StopIfEXT();
-                _CheckLine(tokline, [tknString], 0);
-                if Verbose then WriteLn('Found PROPERTY');
-                if tokline.Tokens.Count = 2 then begin
-                    if not TryStrToInt(tokline.Tokens[1].Literal, Result.PropertyAutodestroyCount) then begin
-                        _ErrShowTokLine(tokline, 2, 'Expected a number, found something else.');
-                    end;
-                    if Verbose then WriteLn('>>> Property has Autodestroy Count of ', Result.PropertyAutodestroyCount);
-                end;
-                _CheckForBrace();
-                Result.ClassProperty := _GetCLines();
-            end;
-
-            tknConstants: begin
-                StopIfEXT();
-                _CheckLine(tokline, []);
-                if Verbose then WriteLn('Found CONSTANTS');
-                _CheckForBrace();
-                Result.ClassConstants := _GetConstants();
-            end;
-
-            tknHasMethod: begin
-                StopIfNotEXT();
-                if Verbose then WriteLn('Found HAS_METHOD');
-                Result.HasMethod := true;
-            end;
-
-            tknHasProperty : begin
-                StopIfNotEXT();
-                if Verbose then WriteLn('Found HAS_PROPERTY');
-                Result.HasProperty := true;
-            end;
-
-            tknBraceRight: begin
-                exit;
-            end;
-            else begin
-                _ErrShowTokLine(tokline, 0, format('Invalid token. Found %s', [tokline.Tokens[0].TType.ToString()]));
-            end;
+    case tokline.Tokens[0].TType of
+      tknAdd: begin
+        StopIfEXT();
+        _CheckLine(tokline, [tknString, tknEquals, tknString], 1);
+        curMethodEntry.MethodType := methodAdd;
+        curMethodEntry.Name := tokline.Tokens[1].Literal;
+        if tokline.Tokens.Count = 4 then begin
+          curMethodEntry.ForwardRef := tokline.Tokens[3].Literal;
         end;
-        tokline := _GetNextLine();
+        Result.Methods.Add(curMethodEntry);
+      end;
+
+      tknReplace: begin
+        StopIfEXT();
+        _CheckLine(tokline, [tknString, tknEquals, tknString], 1);
+        curMethodEntry.MethodType := methodReplace;
+        curMethodEntry.Name := tokline.Tokens[1].Literal;
+        if tokline.Tokens.Count = 4 then begin
+          curMethodEntry.ForwardRef := tokline.Tokens[3].Literal;
+        end;
+        Result.Methods.Add(curMethodEntry);
+      end;
+
+      tknDefer: begin
+        StopIfEXT();
+        _CheckLine(tokline, [tknString]);
+        curMethodEntry.MethodType := methodDefer;
+        curMethodEntry.Name := tokline.Tokens[1].Literal;
+        Result.Methods.Add(curMethodEntry);
+      end;
+
+      tknDeclare: begin
+        StopIfNotEXT();
+        _CheckLine(tokline, [tknString]);
+        curMethodEntry.MethodType := methodDeclare;
+        curMethodEntry.Name := tokline.Tokens[1].Literal;
+        Result.Methods.Add(curMethodEntry);
+      end;
+
+      tknTypes: begin
+        StopIfEXT();
+        _CheckLine(tokline, []);
+        if Verbose then WriteLn('Found TYPES');
+        _CheckForBrace();
+        Result.ClassTypes := _GetCLines();
+      end;
+
+      tknProperty: begin
+        StopIfEXT();
+        _CheckLine(tokline, [tknString], 0);
+        if Verbose then WriteLn('Found PROPERTY');
+        if tokline.Tokens.Count = 2 then begin
+          if not TryStrToInt(tokline.Tokens[1].Literal, Result.PropertyAutodestroyCount) then begin
+            _ErrShowTokLine(tokline, 2, 'Expected a number, found something else.');
+          end;
+          if Verbose then WriteLn('>>> Property has Autodestroy Count of ', Result.PropertyAutodestroyCount);
+        end;
+        _CheckForBrace();
+        Result.ClassProperty := _GetCLines();
+      end;
+
+      tknConstants: begin
+        StopIfEXT();
+        _CheckLine(tokline, []);
+        if Verbose then WriteLn('Found CONSTANTS');
+        _CheckForBrace();
+        Result.ClassConstants := _GetConstants();
+      end;
+
+      tknHasMethod: begin
+        StopIfNotEXT();
+        if Verbose then WriteLn('Found HAS_METHOD');
+        Result.HasMethod := true;
+      end;
+
+      tknHasProperty: begin
+        StopIfNotEXT();
+        if Verbose then WriteLn('Found HAS_PROPERTY');
+        Result.HasProperty := true;
+      end;
+
+      tknBraceRight: begin
+        exit;
+      end;
+      else begin
+        _ErrShowTokLine(tokline, 0, format('Invalid token. Found %s', [tokline.Tokens[0].TType.ToString()]));
+      end;
     end;
+    tokline := _GetNextLine();
+  end;
 end;
 
 procedure TPsionOOParser.Parse();
 var
-    tokline : TTokenisedLine;
+  tokline: TTokenisedLine;
 
-    procedure AddElement(AElementIndex: Integer; AElementType: TElementType);
-    var
-        curElement : TPsionOOFileElement;
-    begin
-        curElement.index := AElementIndex;
-        curElement.ElementType := AElementType;
-        _ElementList := concat(_ElementList, [curElement]);
-    end;
+  procedure AddElement(AElementIndex: Integer; AElementType: TElementType);
+  var
+    curElement: TPsionOOFileElement;
+  begin
+    curElement.index := AElementIndex;
+    curElement.ElementType := AElementType;
+    _ElementList := concat(_ElementList, [curElement]);
+  end;
 
 begin
-    _ResetTLB();
+  _ResetTLB();
 
-    // First line check
+  // First line check
 
-    tokline := _GetNextLine();
+  tokline := _GetNextLine();
 
+  case tokline.Tokens[0].TType of
+    tknEOF: begin
+      Writeln('INFO: EOF found in initial parser state. (Empty file, or no starter token?)');
+      halt(-1);
+    end;
+    tknName:    _CategoryType := catName;
+    tknImage:   _CategoryType := catImage;
+    tknLibrary: _CategoryType := catLibrary;
+    else begin
+      _ErrShowTokLine(tokline, 0, 'First token isn''t a valid starter token. (Is there a bug in the lexer?)')
+    end;
+  end;
+
+  case _FileType of
+    ooCategory: begin
+      if tokline.Tokens[0].TType = tknName then begin
+        _ErrShowTokLine(tokline, 0, 'Category file can''t start with a NAME token');
+      end;
+    end;
+    ooSubCat: begin
+      if tokline.Tokens[0].TType <> tknName then begin
+        _ErrShowTokLine(tokline, 0, 'Sub-category file can only start with a NAME token');
+      end;
+    end;
+    ooExternal: begin
+      if tokline.Tokens[0].TType = tknName then begin
+        _ErrShowTokLine(tokline, 0, 'External file can''t start with a NAME token');
+      end;
+    end;
+    else begin
+      WriteLn('Error: File type is undefined.'); // TODO: Should this be an exception?
+      halt(-1);
+    end;
+  end;
+
+  _CheckLine(tokline, [tknString]);
+
+  if _ModuleName <> UpCase(tokline.Tokens[1].Literal) then begin
+      _ErrShowTokLine(tokline, 1, format('Token %s doesn''t match module name %s', [tokline.Tokens[1].Literal, _ModuleName]));
+  end;
+
+  if Verbose then Writeln('Found ', tokline.Tokens[0].TType, ' in ', _FileType, ' file with name ', _ModuleName);
+
+  // Check the rest of the file
+
+  tokline := _GetNextLine();
+
+  while tokline.Tokens[0].TType <> tknEOF do
+  begin
     case tokline.Tokens[0].TType of
-        tknEOF: begin
-            Writeln('INFO: EOF found in initial parser state. (Empty file, or no starter token?)');
-            halt(-1);
+      tknInclude: begin
+        _CheckLine(tokline, [tknString]);
+        if Verbose then WriteLn('Found INCLUDE with value ', tokline.Tokens[1].Literal);
+        AddElement(_IncludeList.Count, incInclude);
+        _IncludeList.Add(tokline.Tokens[1].Literal);
+      end;
+      tknExternal: begin
+        if _FileType <> ooCategory then begin
+          _ErrShowTokLine(tokline, 1, 'EXTERNAL can only be used in category files (not external or sub-category files)');
         end;
-        tknName:    _CategoryType := catName;
-        tknImage:   _CategoryType := catImage;
-        tknLibrary: _CategoryType := catLibrary;
-        else begin
-            _ErrShowTokLine(tokline, 0, 'First token isn''t a valid starter token. (Is there a bug in the lexer?)')
+        _CheckLine(tokline, [tknString]);
+        if Verbose then WriteLn('Found EXTERNAL with value ', tokline.Tokens[1].Literal);
+        AddElement(_ExternalList.Count, incExternal);
+        _ExternalList.Add(tokline.Tokens[1].Literal);
+      end;
+      tknRequire: begin
+        _CheckLine(tokline, [tknString]);
+        if Verbose then WriteLn('Found REQUIRE with value ', tokline.Tokens[1].Literal);
+        AddElement(_RequireList.Count, incRequire);
+        _RequireList.Add(tokline.Tokens[1].Literal);
+      end;
+      tknClass: begin
+        _CheckLine(tokline, [tknString, tknString], 1);
+        if Verbose then begin
+          Write('Found CLASS with name ', tokline.Tokens[1].Literal);
+          if tokline.Tokens.Count = 3 then begin
+            Writeln(', inheriting ', tokline.Tokens[2].Literal);
+          end else begin
+            Writeln(' (does not inherit)');
+          end;
         end;
+
+        _CheckForBrace();
+        AddElement(length(_ClassList), incClass);
+        _ClassList := concat(_ClassList, [_GetClass(tokline)]);
+      end;
     end;
-
-    case _FileType of
-        ooCategory: begin
-            if tokline.Tokens[0].TType = tknName then begin
-                _ErrShowTokLine(tokline, 0, 'Category file can''t start with a NAME token');
-            end;
-        end;
-        ooSubCat: begin
-            if tokline.Tokens[0].TType <> tknName then begin
-                _ErrShowTokLine(tokline, 0, 'Sub-category file can only start with a NAME token');
-            end;
-        end;
-        ooExternal: begin
-            if tokline.Tokens[0].TType = tknName then begin
-                _ErrShowTokLine(tokline, 0, 'External file can''t start with a NAME token');
-            end;
-        end;
-        else begin
-            WriteLn('Error: File type is undefined.'); // TODO: Should this be an exception?
-            halt(-1);
-        end;
-    end;
-
-    _CheckLine(tokline, [tknString]);
-
-    if _ModuleName <> UpCase(tokline.Tokens[1].Literal) then begin
-        _ErrShowTokLine(tokline, 1, format('Token %s doesn''t match module name %s', [tokline.Tokens[1].Literal, _ModuleName]));
-    end;
-
-    if Verbose then Writeln('Found ', tokline.Tokens[0].TType, ' in ', _FileType, ' file with name ', _ModuleName);
-
-    // Check the rest of the file
-
     tokline := _GetNextLine();
-
-    while tokline.Tokens[0].TType <> tknEOF do
-    begin
-        case tokline.Tokens[0].TType of
-            tknInclude: begin
-                _CheckLine(tokline, [tknString]);
-                if Verbose then WriteLn('Found INCLUDE with value ', tokline.Tokens[1].Literal);
-                AddElement(_IncludeList.Count, incInclude);
-                _IncludeList.Add(tokline.Tokens[1].Literal);
-            end;
-            tknExternal: begin
-                if _FileType <> ooCategory then begin
-                    _ErrShowTokLine(tokline, 1, 'EXTERNAL can only be used in category files (not external or sub-category files)');
-                end;
-                _CheckLine(tokline, [tknString]);
-                if Verbose then WriteLn('Found EXTERNAL with value ', tokline.Tokens[1].Literal);
-                AddElement(_ExternalList.Count, incExternal);
-                _ExternalList.Add(tokline.Tokens[1].Literal);
-            end;
-            tknRequire: begin
-                _CheckLine(tokline, [tknString]);
-                if Verbose then WriteLn('Found REQUIRE with value ', tokline.Tokens[1].Literal);
-                AddElement(_RequireList.Count, incRequire);
-                _RequireList.Add(tokline.Tokens[1].Literal);
-            end;
-            tknClass: begin
-                _CheckLine(tokline, [tknString, tknString], 1);
-                if Verbose then begin
-                    Write('Found CLASS with name ', tokline.Tokens[1].Literal);
-                    if tokline.Tokens.Count = 3 then begin
-                        Writeln(', inheriting ', tokline.Tokens[2].Literal);
-                    end else begin
-                        Writeln(' (does not inherit)');
-                    end;
-                end;
-
-                _CheckForBrace();
-                AddElement(length(_ClassList), incClass);
-                _ClassList := concat(_ClassList, [_GetClass(tokline)]);
-            end;
-        end;
-        tokline := _GetNextLine();
-    end;
+  end;
 end;
 
 end.

@@ -24,7 +24,7 @@ begin
     for tok in par.Tokens do
     begin
         Str(tok.TType, s); // Because you can't simply use an enum in format()
-        Writeln(format(' %4d | %3d | %-14s | %s', [tok.LineNum, tok.LinePos, s, tok.Literal]));
+        Writeln(format(' %4d | %3d | %-14s | %s', [tok.Position.Line, tok.Position.Column, s, tok.Literal]));
     end;
 
     Writeln;

@@ -60,11 +60,15 @@ type
     function ToString(): String;
   end;
 
+  TFilePosition = record
+    Line: Integer;
+    Column: Integer;
+  end;
+
   TToken = record
     TType: TTokenType;
     Literal: String;
-    LineNum: Integer;
-    LinePos: Integer;
+    Position: TFilePosition;
   end;
 
   TTokenList = specialize TList<TToken>;
@@ -160,18 +164,14 @@ type
       _ModuleName: String;
 
       // Fields: Lexing
-      _curLineNum, _curLinePos: Integer;
-      _strFilename: String;
+      _Position: TFilePosition;
       _strCurLine: String;
       _LexerState: TLexerState;
       _BraceLevel: Integer;
       _TokenList: TTokenList;
 
-      // Fields: Token Processing
-      _CurTokenIndex: Integer;
-
       // Fields: Tokenised Line Builder
-      _nextTLBTokenIndex: Integer;
+      _NextTLBTokenIndex: Integer;
 
       // Fields: Parser
       _CategoryType: TCategoryType;
@@ -183,8 +183,8 @@ type
 
       // Methods: Lexing
       procedure _SetLexerState(NewLexerState: TLexerState);
-      procedure _DetectFileType(strFilename: String);
-      procedure _DetectModuleName(strFilename: String);
+      procedure _DetectFileType(const Filename: String);
+      procedure _DetectModuleName(const Filename: String);
       function _NewToken(newTokenLineNum: Integer; newTokenType: TTokenType; newTokenLiteral: String): TToken;
       procedure _AddToken(toktype: TTokenType; tokliteral: String);
       procedure _AddToken(toktype: TTokenType; part_tok: TToken);
@@ -220,7 +220,7 @@ type
     public
       Verbose: boolean;
       constructor Create();
-      procedure LoadFile(strFilename: String);
+      procedure LoadFile(const Filename: String);
       procedure Lex();
       procedure Reset();
       procedure PrintTokenisedLines();
@@ -262,11 +262,9 @@ end;
 procedure TPsionOOParser.Reset();
 begin
   _LexerState := stateInitial;
-  _curLineNum := 0;
-  _curLinePos := 0;
+  _Position.Line := 0;
+  _Position.Column := 0;
   _strCurLine := '';
-  _strFilename := '';
-  _CurTokenIndex := -1;
   _BraceLevel := 0;
   if assigned(_ExternalList) then FreeAndNil(_ExternalList);
   _ExternalList := TStringList.Create();
@@ -280,7 +278,7 @@ end;
 
 procedure TPsionOOParser._ResetTLB();
 begin
-  _nextTLBTokenIndex := 0;
+  _NextTLBTokenIndex := 0;
 end;
 
 procedure TPsionOOParser._SetLexerState(NewLexerState: TLexerState);
@@ -301,27 +299,27 @@ function TPsionOOParser._GetNextLine(): TTokenisedLine;
 begin
   Result.Tokens := TTokenList.Create(); // Because it remembers what was here before!
 
-  if _nextTLBTokenIndex >= _TokenList.Count then begin
-    _nextTLBTokenIndex := _TokenList.Count;
+  if _NextTLBTokenIndex >= _TokenList.Count then begin
+    _NextTLBTokenIndex := _TokenList.Count;
     Result.LineNum := 0;
     Result.Tokens.Add(_NewToken(0, tknEOF, ''));
     exit;
   end;
 
-  Result.LineNum := _TokenList[_nextTLBTokenIndex].LineNum;
-  while _nextTLBTokenIndex < _TokenList.Count do
+  Result.LineNum := _TokenList[_NextTLBTokenIndex].Position.Line;
+  while _NextTLBTokenIndex < _TokenList.Count do
   begin
-    if _TokenList[_nextTLBTokenIndex].LineNum <> Result.LineNum then break;
-    Result.Tokens.Add(_TokenList[_nextTLBTokenIndex]);
-    inc(_nextTLBTokenIndex);
+    if _TokenList[_NextTLBTokenIndex].Position.Line <> Result.LineNum then break;
+    Result.Tokens.Add(_TokenList[_NextTLBTokenIndex]);
+    inc(_NextTLBTokenIndex);
   end;
 end;
 
 procedure TPsionOOParser._ErrShowLine(tok: TToken; message: String);
 begin
   WriteLn('ERROR: ', message);
-  WriteLn(format('%.3d: %s', [_curLineNum, _strCurLine]));
-  Write('    ', RepeatStr(' ', tok.LinePos), '^');
+  WriteLn(format('%.3d: %s', [_Position.Line, _strCurLine]));
+  Write('    ', RepeatStr(' ', tok.Position.Column), '^');
   Write(RepeatStr('~', length(tok.Literal) - 1));
   WriteLn;
   halt(-1);
@@ -336,7 +334,7 @@ begin
   line := _slCategoryFile[tokline.LineNum - 1];
 
   Writeln(format('%.3d: %s', [tokline.LineNum, line]));
-  if toknum = -1 then spaces := length(line) + 1 else spaces := tokline.Tokens[toknum].LinePos;
+  if toknum = -1 then spaces := length(line) + 1 else spaces := tokline.Tokens[toknum].Position.Line;
 
   Write('    ', RepeatStr(' ', spaces), '^');
   if toknum > -1 then Write(RepeatStr('~', length(tokline.Tokens[toknum].Literal) - 1));
@@ -362,7 +360,7 @@ begin
     Writeln('Line ', tokline.LineNum, ': (returned ', tokline.Tokens.Count, ' tokens)');
     for tok in tokline.Tokens do
     begin
-      WriteLn('   > ', tok.TType, ' ''', tok.Literal, ''' (', tok.LinePos, ')');
+      WriteLn('   > ', tok.TType, ' ''', tok.Literal, ''' (', tok.Position.Column, ')');
     end;
     Writeln('   O: ', _slCategoryFile[tokline.LineNum - 1]);
     Write('   G:');
@@ -384,7 +382,8 @@ function TPsionOOParser._NewToken(newTokenLineNum: Integer; newTokenType: TToken
 begin
   Result.TType := newTokenType;
   Result.Literal := newTokenLiteral;
-  Result.LineNum := newTokenLineNum;
+  Result.Position.Line := newTokenLineNum;
+  Result.Position.Column := 0; // TODO: I don't think this is right - it wasn't being set before!
 end;
 
 procedure TPsionOOParser._AddToken(toktype: TTokenType; part_tok: TToken);
@@ -403,8 +402,7 @@ var
 begin
   tok.TType := toktype;
   tok.Literal := tokliteral;
-  tok.LineNum := _curLineNum;
-  tok.LinePos := _curLinePos;
+  tok.Position := _Position;
 
   _TokenList.Add(tok);
 end;
@@ -415,13 +413,13 @@ end;
 
 procedure TPsionOOParser._DecBraceLevel();
 begin
-  dec(_BraceLevel);
+  Dec(_BraceLevel);
   if Verbose then Writeln('>>>   Brace level: ', _BraceLevel);
 end;
 
 procedure TPsionOOParser._IncBraceLevel();
 begin
-  inc(_BraceLevel);
+  Inc(_BraceLevel);
   if Verbose then Writeln('>>>   Brace level: ', _BraceLevel);
 end;
 
@@ -431,43 +429,43 @@ end;
 
 function TPsionOOParser._GrabNextToken(): TToken;
 var
-  pos: Integer;
+  column: Integer;
   flgFoundText: Boolean = false;
   curChar: Char;
 begin
   Result.Literal := '';
   Result.TType := tknEOF;
-  Result.LineNum := 0;
-  Result.LinePos := 0;
+  Result.Position.Line := 0;
+  Result.Position.Column := 0;
 
-  for pos := _curLinePos to length(_strCurLine) do
+  for column := _Position.Column to length(_strCurLine) do
   begin
-    curChar := _strCurLine[pos];
-    if trim(curChar) = '' then begin
+    curChar := _strCurLine[column];
+    if Trim(curChar) = '' then begin
       if flgFoundText then begin
-        _curLinePos := pos + 1;
+        _Position.Column := column + 1;
         exit;
       end;
     end else if curChar in ['=', '{', '}'] then begin
       if flgFoundText then begin
-        _curLinePos := pos;
+        _Position.Column := column;
       end else begin
         Result.Literal := curChar;
-        Result.LineNum := _curLineNum;
-        Result.LinePos := pos;
-        _curLinePos := pos + 1;
+        Result.Position.Line := _Position.Line;
+        Result.Position.Column := column;
+        _Position.Column := column + 1;
       end;
       exit;
     end else begin
       Result.Literal += curChar;
       if not(flgFoundText) then begin
-        Result.LineNum := _curLineNum;
-        Result.LinePos := pos;
+        Result.Position.Line := _Position.Line;
+        Result.Position.Column := column;
         flgFoundText := true;
       end;
     end;
   end;
-  _curLinePos += length(Result.Literal);
+  _Position.Column += Length(Result.Literal);
 end;
 
 procedure TPsionOOParser._GrabAndAddStringTokens(const count: Integer);
@@ -480,7 +478,7 @@ begin
   begin
     tok := _GrabNextToken();
     if tok.Literal = '' then begin
-      if Verbose then Writeln('>>>   No more tokens on line ', _curLineNum);
+      if Verbose then Writeln('>>>   No more tokens on line ', _Position.Line);
       exit;
     end;
     if Verbose then Writeln(format('>>>   String token %d grabbed: %s', [i, tok.Literal]));
@@ -514,7 +512,7 @@ begin
     end;
   end;
 
-  _curLinePos := tok.LinePos;
+  _Position.Column := tok.Position.Line;
 
   if _BraceLevel > 1 then begin
       TrimAfterSemicolon(_strCurLine);
@@ -526,11 +524,11 @@ end;
 // _DetectFileType()
 // Identifies the type of category file (regular, sub-category, external) based on the
 // file extension. If no file extension is provided, it assumes a regular category file.
-procedure TPsionOOParser._DetectFileType(strFilename: String);
+procedure TPsionOOParser._DetectFileType(const Filename: String);
 var
   ext: String;
 begin
-  ext := UpCase(ExtractFileExt(strFilename));
+  ext := UpCase(ExtractFileExt(Filename));
 
   case ext of
     '', '.': _FileType := ooCategory;
@@ -545,24 +543,24 @@ begin
   if Verbose then WriteLn('File is ', _FileType);
 end;
 
-procedure TPsionOOParser._DetectModuleName(strFilename: String);
+procedure TPsionOOParser._DetectModuleName(const Filename: String);
 var
   s: String;
 begin
-  s := ExtractFileName(strFilename);
-  _ModuleName := Copy(UpCase(s), 1, Length(s) - length(ExtractFileExt(s)));
+  s := ExtractFileName(Filename);
+  _ModuleName := Copy(UpCase(s), 1, Length(s) - Length(ExtractFileExt(s)));
 
   if Verbose then Writeln('Module name: ', _ModuleName);
 end;
 
-procedure TPsionOOParser.LoadFile(strFilename: String);
+procedure TPsionOOParser.LoadFile(const Filename: String);
 begin
   _slCategoryFile := TStringList.Create;
 
-  _slCategoryFile.LoadFromFile(strFilename);
-  _DetectFileType(strFilename);
-  _DetectModuleName(strFilename);
-  _FileLocation := ExpandFileName(strFilename);
+  _slCategoryFile.LoadFromFile(Filename);
+  _DetectFileType(Filename);
+  _DetectModuleName(Filename);
+  _FileLocation := ExpandFileName(Filename);
 end;
 
 //
@@ -737,7 +735,7 @@ begin
       _ErrShowLine(part_tok, 'Too many curly braces');
       exit;
     end else begin
-      _curLinePos := part_tok.LinePos;
+      _Position.Column := part_tok.Position.Line;
       _GrabAndAddStringTokens(2);
     end;
   end;
@@ -749,32 +747,25 @@ end;
 
 // TODO: Check for braces inside lines?
 procedure TPsionOOParser.Lex();
-// var
-//   tok: TToken;
 begin
   _LexerState := stateInitial;
-  _curLineNum := 0;
+  _Position.Line := 0;
 
-  while _CurLineNum < _slCategoryFile.Count do
+  while _Position.Line < _slCategoryFile.Count do
   begin
-    // tok.Literal := '';
-    // tok.TType := tknEOF;
-    // tok.LineNum := _curLineNum;
-    // tok.LinePos := 0;
+    Inc(_Position.Line);
+    _Position.Column := 1;
 
-    inc(_curLineNum);
-    _curLinePos := 1;
+    if Verbose then WriteLn();
 
-    if Verbose then WriteLn;
+    while LeftStr(_slCategoryFile[_Position.Line - 1], 1) = #12 do
+      _slCategoryFile[_Position.Line - 1] := Copy(_slCategoryFile[_Position.Line - 1], 2);
 
-    while LeftStr(_slCategoryFile[_curLineNum - 1], 1) = #12 do
-      _slCategoryFile[_curLineNum - 1] := copy(_slCategoryFile[_curLineNum - 1], 2);
+    _strCurLine := _slCategoryFile[_Position.Line - 1];
 
-    _strCurLine := _slCategoryFile[_curLineNum - 1];
+    if Verbose then WriteLn(format('%.3d:%s', [_Position.Line, _strCurLine]));
 
-    if Verbose then WriteLn(format('%.3d:%s', [_curLineNum, _strCurLine]));
-
-    if length(_strCurLine.Trim) = 0 then begin
+    if Length(_strCurLine.Trim) = 0 then begin
       if Verbose then Writeln('>>> Empty line');
       continue;
     end;
@@ -803,18 +794,18 @@ begin
     exit;
 end;
 
-_curLinePos := 0;
-_AddToken(tkneof, '');
+_Position.Column := 0;
+_AddToken(tknEOF, '');
 end;
 
 procedure TPsionOOParser._CheckLine(tokline: TTokenisedLine; const ATokTypes: array of TTokenType; const AMandatoryArgs: Integer = -1);
 var
   i: Integer;
-  tokline_argcount: Integer;
+  tokline_ArgCount: Integer;
   ArgCheckCount: Integer;
   MaxMandatoryArgs: Integer;
 begin
-  ArgCheckCount := length(ATokTypes);
+  ArgCheckCount := Length(ATokTypes);
   tokline_ArgCount := tokline.Tokens.Count - 1;
 
   if AMandatoryArgs < 0 then // 0 mandatory arguments is valid when all args are optional
@@ -942,16 +933,16 @@ var
 
 begin
   if tokline_class.Tokens[0].TType <> tknClass then begin
-      _ErrShowTokLine(tokline_class, 0, '[_GetClass] Been sent the wrong line.');
+    _ErrShowTokLine(tokline_class, 0, '[_GetClass] Been sent the wrong line.');
   end;
 
   _CheckLine(tokline_class, [tknString, tknString], 1);
 
   Result.Name := tokline_class.Tokens[1].Literal;
   if tokline_class.Tokens.Count = 3 then begin
-      Result.Parent := tokline_class.Tokens[2].Literal;
+    Result.Parent := tokline_class.Tokens[2].Literal;
   end else begin
-      Result.Parent := '';
+    Result.Parent := '';
   end;
 
   Result.HasMethod := false;

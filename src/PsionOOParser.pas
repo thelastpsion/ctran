@@ -189,7 +189,7 @@ type
       procedure _AddToken(toktype: TTokenType; tokliteral: String);
       procedure _AddToken(toktype: TTokenType; part_tok: TToken);
       procedure _ProcessCLine();
-      procedure _GrabAndAddStringTokens(const count: Integer);
+      procedure _GrabAndAddStringTokens(const ACount: Integer);
       function _GrabNextToken(): TToken;
       procedure _SeekStartOfSection(const NextLexerState: TLexerState);
       procedure _DecBraceLevel();
@@ -325,7 +325,7 @@ begin
   halt(-1);
 end;
 
-procedure TPsionOOParser._ErrShowTokLine(tokline: TTokenisedLine ; toknum: Integer ; message: String);
+procedure TPsionOOParser._ErrShowTokLine(tokline: TTokenisedLine; toknum: Integer; message: String);
 var
   spaces: Integer;
   line: String;
@@ -346,6 +346,9 @@ end;
 // OUTPUT (should really be in testing)
 //
 
+// TODO: Move this into CatDiagnostics (might need to expose _GetNextLine()?)
+
+// Uses _GetNextLine() to display tokenised lines one at a time, showing the original line compared to the next line
 procedure TPsionOOParser.PrintTokenisedLines();
 var
   tokline: TTokenisedLine;
@@ -377,6 +380,8 @@ end;
 // TOKEN CREATION
 //
 
+// TODO: Is _NewToken() still needed? It's only used to create EOF tokens for adding to tokenised lines.
+
 // Takes a TokenType and a String and puts it into a Token record
 function TPsionOOParser._NewToken(newTokenLineNum: Integer; newTokenType: TTokenType; newTokenLiteral: String): TToken;
 begin
@@ -386,6 +391,8 @@ begin
   Result.Position.Column := 0; // TODO: I don't think this is right - it wasn't being set before!
 end;
 
+// Takes a part-constructed token (with literal, line and column) and adds the provided token type. It then
+// adds the finished token to the main token list.
 procedure TPsionOOParser._AddToken(toktype: TTokenType; part_tok: TToken);
 var
   tok: TToken;
@@ -427,6 +434,7 @@ end;
 // LINE PROCESSING
 //
 
+// The actual tokeniser. Not very complicated, but it doesn't need to be.
 function TPsionOOParser._GrabNextToken(): TToken;
 var
   column: Integer;
@@ -468,20 +476,22 @@ begin
   _Position.Column += Length(Result.Literal);
 end;
 
-procedure TPsionOOParser._GrabAndAddStringTokens(const count: Integer);
+// For the rest of the line, find up to `ACount` string tokens and add them to the token list. Note "up to" - the tokens
+// do not have to be there, as it just adds as many as it can find.
+procedure TPsionOOParser._GrabAndAddStringTokens(const ACount: Integer);
 var
   i: Integer;
   tok: TToken;
 begin
-  if Verbose then WriteLn('>>> Fetching up to ', count, ' token(s)');
-  for i := 1 to count do
+  if Verbose then WriteLn('>>> Fetching up to ', ACount, ' token(s)');
+  for i := 1 to ACount do
   begin
     tok := _GrabNextToken();
     if tok.Literal = '' then begin
-      if Verbose then Writeln('>>>   No more tokens on line ', _Position.Line);
+      if Verbose then WriteLn('>>>   No more tokens on line ', _Position.Line);
       exit;
     end;
-    if Verbose then Writeln(format('>>>   String token %d grabbed: %s', [i, tok.Literal]));
+    if Verbose then WriteLn(format('>>>   String token %d grabbed: %s', [i, tok.Literal]));
     _AddToken(tknString, tok);
   end;
 end;
@@ -494,6 +504,8 @@ begin
     raise Exception.Create('_ProcessCLine called when not processing a TYPES or PROPERTY block');
   end;
 
+  // This only checks the first token on the line
+  // TODO: Check for curly braces in the middle of lines.
   tok := _GrabNextToken();
 
   case tok.Literal of
@@ -512,7 +524,7 @@ begin
     end;
   end;
 
-  _Position.Column := tok.Position.Line;
+  _Position.Column := tok.Position.Column;
 
   if _BraceLevel > 1 then begin
       TrimAfterSemicolon(_strCurLine);
@@ -735,7 +747,7 @@ begin
       _ErrShowLine(part_tok, 'Too many curly braces');
       exit;
     end else begin
-      _Position.Column := part_tok.Position.Line;
+      _Position.Column := part_tok.Position.Column;
       _GrabAndAddStringTokens(2);
     end;
   end;
@@ -792,10 +804,10 @@ begin
   if _BraceLevel <> 0 then begin
     WriteLn('Error: [Lex] Somehow at brace level ', _BraceLevel); // TODO: Should this be an exception?
     exit;
-end;
+  end;
 
-_Position.Column := 0;
-_AddToken(tknEOF, '');
+  _Position.Column := 0;
+  _AddToken(tknEOF, '');
 end;
 
 procedure TPsionOOParser._CheckLine(tokline: TTokenisedLine; const ATokTypes: array of TTokenType; const AMandatoryArgs: Integer = -1);
@@ -903,7 +915,7 @@ begin
   _CheckLine(tokline, []);
 end;
 
-// procedure TPsionOOParser._AddMethodEntry(method_type: TMethodType, s: String);
+// procedure TPsionOOParser._AddMethodEntry(method_type: TMethodType; s: String);
 // var
 //   curMethodEntry: TPsionOOMethodEntry;
 // begin

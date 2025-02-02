@@ -215,27 +215,27 @@ var
   // class_item: TPsionOOClass;
 begin
   if filename = '' then begin
-      raise Exception.Create('LoadDependencies: filename is empty');
+    raise Exception.Create('LoadDependencies: filename is empty');
   end;
 
   try
-      begin
-        par := TPsionOOParser.Create;
-        // WriteLn('Loading ', filename);
-        par.LoadFile(filename);
+    begin
+    par := TPsionOOParser.Create;
+    // WriteLn('Loading ', filename);
+    par.LoadFile(filename);
 
-        par.Verbose := params.InSwitch('V', 'L');
-        par.Lex();
+    par.Verbose := params.InSwitch('V', 'L');
+    par.Lex();
 
-        par.Verbose := params.InSwitch('V', 'P');
-        par.Parse();
+    par.Verbose := params.InSwitch('V', 'P');
+    par.Parse();
 
-        LoadDependencies(par);
-        // for class_item in par.ClassList do
-        // begin
-        //     AllExtClasses.Add(class_item.Name);
-        // end;
-      end
+    LoadDependencies(par);
+    // for class_item in par.ClassList do
+    // begin
+    //   AllExtClasses.Add(class_item.Name);
+    // end;
+    end
   finally
     begin
       FreeAndNil(par);
@@ -444,7 +444,7 @@ begin
   flgFoundFirst := false;
   metaclass := MakeMetaclass(class_item);
 
-  // Creates an empty menthod for null entries
+  // Creates an empty method for null entries
   // TODO: This feels dirty - can I create a const or something similar?
   method.MethodType := methodNull;
   method.Name := '';
@@ -617,6 +617,7 @@ begin
     end;
   end;
 end;
+
 //
 // MAKE FILES
 //
@@ -738,7 +739,7 @@ begin
     if flgNotSDK then begin
       slFile.Add('#ifndef EPOC');
       slFile.Add('GLREF_D P_CLASS *ct_' + LowerCase(par.ModuleName) + '[];');
-      slFile.AddStrings(par.ExternalList.FormatAll('GLREF_D P_CLASS *ct_%s[];'));
+      slFile.AddStringsFormat(par.ExternalList, 'GLREF_D P_CLASS *ct_%s[];');
       slFile.Add('#endif /* EPOC */');
       slFile.Add('#ifdef EPOC');
     end;
@@ -771,7 +772,7 @@ begin
     method_list := BuildMethodNumbers(par);
     if method_list.Count > 0 then begin
       slFile.Add('/* Method Numbers */');
-      slFile.AddStrings(method_list.FormatAll('#define O_%s'));
+      slFile.AddStringsFormat(method_list, '#define O_%s');
     end;
 
     for class_item in par.ClassList do
@@ -892,8 +893,8 @@ begin
   ForwardRefs := GetMethodForwardRefs(par);
   if ForwardRefs.Count > 0 then begin
     slFile.Add('/* Method function forward references */');
-    for s in ForwardRefs do slFile.Add('GLREF_C VOID %s();', [s]);
-    // slFile.AddStrings(ForwardRefs.FormatAll('GLREF_C VOID %s();')); // TODO: Might not work - check this
+    // for s in ForwardRefs do slFile.Add('GLREF_C VOID %s();', [s]);
+    slFile.AddStringsFormat(ForwardRefs, 'GLREF_C VOID %s();');
   end;
   FreeAndNil(ForwardRefs);
 
@@ -964,7 +965,8 @@ begin
     if sl.Count > 0 then
     begin
       slFile.Add('{');
-      slFile.AddStrings(sl.FormatAll('%s,', '%s'));
+      // slFile.AddStrings(sl.FormatAll('%s,', '%s'));
+      slFile.AddStringsFormat(sl, '%s,', '%s');
       slFile.Add('}');
     end;
     FreeAndNil(sl);
@@ -982,7 +984,8 @@ begin
   end;
 
   slFile.Add('{');
-  slFile.AddStrings(InternalClassList.FormatAll('(P_CLASS *)&c_%s,', '(P_CLASS *)&c_%s'));
+  // slFile.AddStrings(InternalClassList.FormatAll('(P_CLASS *)&c_%s,', '(P_CLASS *)&c_%s'));
+  slFile.AddStringsFormat(InternalClassList, '(P_CLASS *)&c_%s,', '(P_CLASS *)&c_%s');
   slFile.Add('};');
 
   if par.ExternalList.Count > 0 then begin
@@ -1001,7 +1004,8 @@ begin
     begin
       sl.Add('    {''%s''%s}', [DelimitStr(s + '.DYL', ''','''), RepeatStr(',0', 10 - length(s))]);
     end;
-    slFile.AddStrings(sl.FormatAll('%s,', '%s'));
+    // slFile.AddStrings(sl.FormatAll('%s,', '%s'));
+    slFile.AddStringsFormat(sl, '%s,', '%s');
     FreeAndNil(sl);
 
     slFile.Add('    }');
@@ -1119,7 +1123,8 @@ begin
     slFile.Add('; Method function forward references');
     slFile.Add(' _TEXT segment byte public ''CODE''');
     slFile.Add(' ASSUME CS:_TEXT');
-    slFile.AddStrings(sl.FormatAll('GLREF_C %s'));
+    // slFile.AddStrings(sl.FormatAll('GLREF_C %s'));
+    slFile.AddStringsFormat(sl, 'GLREF_C %s');
     slFile.Add(' _TEXT ends');
   end;
   FreeAndNil(sl);
@@ -1193,7 +1198,8 @@ begin
   slFile.Add('; Class Lookup Table');
   slFile.Add(' _TEXT segment byte public ''CODE''');
   slFile.Add('GLDEF_C ClassTable');
-  slFile.AddStrings(InternalClassList.FormatAll(' dw   c_%s'));
+  // slFile.AddStrings(InternalClassList.FormatAll(' dw   c_%s'));
+  slFile.AddStringsFormat(InternalClassList, ' dw   c_%s');
   slFile.Add(' EEND');
 
   slFile.Add(' _TEXT ends');
@@ -1544,7 +1550,7 @@ end;
 function WalkParsers(filename: String): String;
 var
   par: TPsionOOParser;
-  fullpath: String;
+  // fullpath: String;
   s: String;
 begin
   // TODO: Check file exists by walking through PathList
@@ -1559,6 +1565,7 @@ begin
   InternalModuleList.Add(par.ModuleName);
 
   if params.InSwitch('V', 'T') then PrintArray(par);
+  if params.InSwitch('V', 'K') then par.PrintTokenisedLines();
 
   par.Verbose := params.InSwitch('V', 'P');
   par.Parse();
@@ -1568,6 +1575,7 @@ begin
 
   parsers.Add(par.ModuleName, par);
 
+  // TODO: Why are the two `for` loops below separate?
   if par.RequireList.Count > 0 then begin
     WriteLn(par.ModuleName, ' asks for REQUIREd sub-category files:');
     for s in par.RequireList do

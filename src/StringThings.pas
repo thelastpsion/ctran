@@ -13,6 +13,7 @@ type
         Public
             Function Reverse : TStringList;
             function FormatAll(fmt_main : String ; fmt_final : String = '') : TStringList;
+            procedure AddStringsFormat(sl: TStringList; fmt_main: String; fmt_final: String = '');
     end;
     TStringArrayHelper = Type Helper for TStringArray
         Public
@@ -165,6 +166,23 @@ begin
     else
         Result.Add(fmt_final, [self[self.Count - 1]]);
 end;
+
+procedure TStringListHelper.AddStringsFormat(sl: TStringList; fmt_main: String; fmt_final: String = '');
+var
+  i: Integer;
+begin
+  if Self.Count + sl.Count > Self.Capacity then
+    Self.Capacity := Self.Count + sl.Count;
+  for i := 0 to sl.Count - 2 do
+    Self.AddObject(format(fmt_main, [sl[i]]), sl.Objects[i]);
+  if fmt_final = '' then
+    Self.AddObject(format(fmt_main, [sl[sl.Count - 1]]), sl.Objects[sl.Count - 1])
+  else
+    Self.AddObject(format(fmt_final, [sl[sl.Count - 1]]), sl.Objects[sl.Count - 1]);
+end;
+
+    
+    
 
 function ProperCase(s: String) : String;
 begin

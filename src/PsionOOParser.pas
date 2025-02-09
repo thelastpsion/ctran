@@ -504,8 +504,8 @@ begin
     raise Exception.Create('_ProcessCLine called when not processing a TYPES or PROPERTY block');
   end;
 
-  // This only checks the first token on the line
-  // TODO: Check for curly braces in the middle of lines.
+  // This only checks the first token on the line, just like the original CTRAN
+  // TODO: Check for curly braces in the middle of lines (e.g. `typedef struct {`)
   tok := _GrabNextToken();
 
   case tok.Literal of

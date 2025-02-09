@@ -220,21 +220,21 @@ begin
 
   try
     begin
-    par := TPsionOOParser.Create;
-    // WriteLn('Loading ', filename);
-    par.LoadFile(filename);
+      par := TPsionOOParser.Create;
+      // WriteLn('Loading ', filename);
+      par.LoadFile(filename);
 
-    par.Verbose := params.InSwitch('V', 'L');
-    par.Lex();
+      par.Verbose := params.InSwitch('V', 'L');
+      par.Lex();
 
-    par.Verbose := params.InSwitch('V', 'P');
-    par.Parse();
+      par.Verbose := params.InSwitch('V', 'P');
+      par.Parse();
 
-    LoadDependencies(par);
-    // for class_item in par.ClassList do
-    // begin
-    //   AllExtClasses.Add(class_item.Name);
-    // end;
+      LoadDependencies(par);
+      // for class_item in par.ClassList do
+      // begin
+      //   AllExtClasses.Add(class_item.Name);
+      // end;
     end
   finally
     begin
@@ -1592,6 +1592,18 @@ begin
   Result := par.ModuleName;
 end;
 
+// TODO: Add external classes (this currently only does internal ones)
+function GetCountClasses(): Integer;
+var
+  par: TPsionOOParser;
+begin
+  Result := 0;
+  for par in parsers.Values do
+  begin
+    Result := Result + Length(par.ClassList);
+  end;
+end;
+
 //
 // MAIN
 //
@@ -1690,6 +1702,10 @@ begin
     end;
     if params.SwitchExists('K') then begin
       MakeAllSkeletonFiles(CatParser);
+    end;
+
+    if params.SwitchExists('V') then begin
+      WriteLn(Format('Classes (internal): %d', [GetCountClasses()]));
     end;
 
   end

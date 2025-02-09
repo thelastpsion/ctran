@@ -328,7 +328,7 @@ begin
 end;
 
 // Return all the first-generation children of a class
-function GetChildren(par: TPsionOOParser ; parent: String): TStringList;
+function GetChildren(par: TPsionOOParser; parent: String): TStringList;
 // TODO: Make the order of children match classic CTRAN's .LIS files
 var
   class_item: TPsionOOClass;

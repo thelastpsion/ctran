@@ -51,7 +51,7 @@ procedure TPsionOOParserWrap._AddTokensFromFile(filename : String);
 var
   csv: TStringList;
   s: String;
-  STokType, STokLteral: String;
+  STokType, STokLiteral: String;
   toktype: TTokenType;
   toktypenum: Integer;
   commapos: Integer;
@@ -71,7 +71,7 @@ begin
     end;
 
     toktype := TTokenType(toktypenum);
-    literal := Copy(s, commapos + 1);
+    STokLiteral := Copy(s, commapos + 1);
     self._AddToken(toktype, STokLiteral);
   end;
 end;

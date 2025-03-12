@@ -280,7 +280,7 @@ begin
   _TokenList := TTokenList.Create();
 end;
 
-{
+{ _ResetTLB()
   Reset the tokenised line builder. it just points the tokeniser to the start of the current line.
   TODO: Check this definition!
 }
@@ -475,8 +475,7 @@ end;
 {%region}
 // *** CHANGE BRACE LEVEL ***
 
-{
-  _DecBraceLevel()
+{ _DecBraceLevel()
   Decreases the brace level. If Verbose is true, say what's happened.
 }
 procedure TPsionOOParser._DecBraceLevel();
@@ -485,8 +484,7 @@ begin
   if Verbose then Writeln('>>>   Brace level: ', _BraceLevel);
 end;
 
-{
-  _IncBraceLevel()
+{ _IncBraceLevel()
   Increases the brace level. If Verbose is true, say what's happened.
 }
 procedure TPsionOOParser._IncBraceLevel();

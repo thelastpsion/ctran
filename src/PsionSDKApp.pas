@@ -18,15 +18,15 @@ type
     strict private
       _Filename: string;
       _ParamList: TPsionSDKParamList;
-      function _EncodeParamID(s: String): Integer;
-      function _DecodeParamID(id: Integer): String;
+      function _EncodeParamID(const s: String): Integer;
+      function _DecodeParamID(const id: Integer): String;
     public
       constructor Create();
       procedure Grab();
-      function SwitchExists(sw: String): Boolean;
-      function InSwitch(sw: String; val: String): Boolean;
-      function SwitchVal(sw: String): String;
-      property Filename: string read _Filename;
+      function SwitchExists(const sw: String): Boolean;
+      function InSwitch(const sw: String; const val: String): Boolean;
+      function SwitchVal(const sw: String): String;
+      property Filename: String read _Filename;
       property Params: TPsionSDKParamList read _ParamList;
   end;
 
@@ -37,7 +37,7 @@ begin
   inherited Create;
 end;
 
-function TPsionSDKAppParams._EncodeParamID(s: String): Integer;
+function TPsionSDKAppParams._EncodeParamID(const s: String): Integer;
 begin
   case Ord(s[1]) of
     65..90:  Result := Ord(s[1]) - 64;
@@ -47,7 +47,7 @@ begin
   end;
 end;
 
-function TPsionSDKAppParams._DecodeParamID(id: Integer): String;
+function TPsionSDKAppParams._DecodeParamID(const id: Integer): String;
 begin
   case id of
     1..26:  Result := Chr(id + 64);
@@ -56,12 +56,12 @@ begin
   end;
 end;
 
-function TPsionSDKAppParams.SwitchExists(sw: String): Boolean;
+function TPsionSDKAppParams.SwitchExists(const sw: String): Boolean;
 begin
   Result := _ParamList[_EncodeParamID(LeftStr(sw, 1))].Exists;
 end;
 
-function TPsionSDKAppParams.InSwitch(sw: String; val: String): Boolean;
+function TPsionSDKAppParams.InSwitch(const sw: String; const val: String): Boolean;
 var
   Param: TPsionSDKParam;
 begin
@@ -69,7 +69,7 @@ begin
   Result := (Param.Exists and (Pos(LeftStr(val, 1), UpCase(Param.Value)) > 0));
 end;
 
-function TPsionSDKAppParams.SwitchVal(sw: String): String;
+function TPsionSDKAppParams.SwitchVal(const sw: String): String;
 begin
   Result := _ParamList[_EncodeParamID(LeftStr(sw, 1))].Value;
 end;

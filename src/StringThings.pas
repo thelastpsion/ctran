@@ -12,25 +12,25 @@ type
   TStringListHelper = Class Helper for TStringList
     Public
       Function Reverse: TStringList;
-      function FormatAll(fmt_main: String; fmt_final: String = ''): TStringList;
-      procedure AddStringsFormat(sl: TStringList; fmt_main: String; fmt_final: String = '');
+      function FormatAll(const fmt_main: String; const fmt_final: String = ''): TStringList;
+      procedure AddStringsFormat(const sl: TStringList; const fmt_main: String; const fmt_final: String = '');
   end;
   TStringArrayHelper = Type Helper for TStringArray
     Public
-      function FormatAll(fmt_main: String; fmt_final: String = ''): TStringArray;
+      function FormatAll(const fmt_main: String; const fmt_final: String = ''): TStringArray;
   end;
 
-function RepeatStr(s: String; c: integer): String;
-function ExtractFileStem(s: String): String;
+function RepeatStr(const s: String; const c: integer): String;
+function ExtractFileStem(const s: String): String;
 procedure TrimAfterSemicolon(var s: String);
-function DelimitStr(s: String; delimiter: String; step: Integer = 1): String;
-function ProperCase(s: String): String;
+function DelimitStr(const s: String; const delimiter: String; const step: Integer = 1): String;
+function ProperCase(const s: String): String;
 implementation
 
 // String
 
 // Creates a string where s is repeated c times.
-function RepeatStr(s: String; c: integer): String;
+function RepeatStr(const s: String; const c: integer): String;
 var
   i: Integer;
   l: Integer;
@@ -50,7 +50,7 @@ end;
 
 // Gets the stem of a filename (i.e. without the extension). If it has no
 // extension, it just returns the filename.
-function ExtractFileStem(s: String): String;
+function ExtractFileStem(const s: String): String;
 var
   file_ext: String;
   file_name: String;
@@ -64,7 +64,7 @@ begin
   end;
 end;
 
-function DelimitStr(s: String; delimiter: String; step: Integer = 1): String;
+function DelimitStr(const s: String; const delimiter: String; const step: Integer = 1): String;
 var
   i: Integer;
 begin
@@ -104,7 +104,7 @@ end;
 // with it instead.
 // Useful for generating output for a file where the last line needs to be
 // different, such as a comma separated list.
-function TStringArrayHelper.FormatAll(fmt_main: String; fmt_final: String = ''): TStringArray;
+function TStringArrayHelper.FormatAll(const fmt_main: String; const fmt_final: String = ''): TStringArray;
 var
   i: Integer;
 begin
@@ -138,7 +138,7 @@ end;
 // with it instead.
 // Useful for generating output for a file where the last line needs to be
 // different, such as a comma separated list.
-function TStringListHelper.FormatAll(fmt_main: String; fmt_final: String = ''): TStringList;
+function TStringListHelper.FormatAll(const fmt_main: String; const fmt_final: String = ''): TStringList;
 var
   i: Integer;
 begin
@@ -167,7 +167,7 @@ begin
     Result.Add(fmt_final, [Self[Self.Count - 1]]);
 end;
 
-procedure TStringListHelper.AddStringsFormat(sl: TStringList; fmt_main: String; fmt_final: String = '');
+procedure TStringListHelper.AddStringsFormat(const sl: TStringList; const fmt_main: String; const fmt_final: String = '');
 var
   i: Integer;
 begin
@@ -183,7 +183,7 @@ end;
 
 // General Functions
 
-function ProperCase(s: String): String;
+function ProperCase(const s: String): String;
 begin
   if length(s) > 0 then
     Result := UpCase(s[1]) + LowerCase(Copy(s, 2))

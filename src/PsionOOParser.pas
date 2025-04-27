@@ -182,12 +182,12 @@ type
       _RequireList: TStringList;
 
       // Methods: Lexing
-      procedure _SetLexerState(NewLexerState: TLexerState);
+      procedure _SetLexerState(const NewLexerState: TLexerState);
       procedure _DetectFileType(const Filename: String);
       procedure _DetectModuleName(const Filename: String);
-      function _NewToken(newTokenLineNum: Integer; newTokenType: TTokenType; newTokenLiteral: String): TToken;
-      procedure _AddToken(toktype: TTokenType; tokliteral: String);
-      procedure _AddToken(toktype: TTokenType; part_tok: TToken);
+      function _NewToken(const newTokenLineNum: Integer; const newTokenType: TTokenType; const newTokenLiteral: String): TToken;
+      procedure _AddToken(const toktype: TTokenType; const tokliteral: String);
+      procedure _AddToken(const toktype: TTokenType; const part_tok: TToken);
       procedure _ProcessCLine();
       procedure _GrabAndAddStringTokens(const ACount: Integer);
       function _GrabNextToken(): TToken;
@@ -206,10 +206,10 @@ type
       procedure _ResetTLB();
 
       // Methods: Parser
-      procedure _CheckLine(tokline: TTokenisedLine; const ATokTypes: array of TTokenType; const AMandatoryArgs: Integer = -1);
-      function _GetClass(tokline_class: TTokenisedLine): TPsionOOClass;
+      procedure _CheckLine(const tokline: TTokenisedLine; const ATokTypes: array of TTokenType; const AMandatoryArgs: Integer = -1);
+      function _GetClass(const tokline_class: TTokenisedLine): TPsionOOClass;
       function _GetConstants(): TPsionOOConstantList;
-      function _BuildConstant(tokline: TTokenisedLine): TPsionOOConstantEntry;
+      function _BuildConstant(const tokline: TTokenisedLine): TPsionOOConstantEntry;
       function _GetCLines(): TStringList;
       procedure _CheckForBrace();
 
@@ -293,7 +293,7 @@ end;
 { _SetLexerState()
   Sets the lexer state. If verbosity is on, announce the state of the lexer.
 }
-procedure TPsionOOParser._SetLexerState(NewLexerState: TLexerState);
+procedure TPsionOOParser._SetLexerState(const NewLexerState: TLexerState);
 begin
   _LexerState := NewLexerState;
   if Verbose then begin
@@ -430,7 +430,7 @@ end;
   This is more flexible than the _AddToken() routines, as you can build a token from scratch. It was the original way
   to make a tokem, but now is only used as a hack to make an EOF token when parsing an empty file.
 }
-function TPsionOOParser._NewToken(newTokenLineNum: Integer; newTokenType: TTokenType; newTokenLiteral: String): TToken;
+function TPsionOOParser._NewToken(const newTokenLineNum: Integer; const newTokenType: TTokenType; const newTokenLiteral: String): TToken;
 // TODO: Is _NewToken() still needed? It's only used to create EOF tokens for adding to tokenised lines.
 begin
   Result.TType := newTokenType;
@@ -443,7 +443,7 @@ end;
   Takes a part-constructed token (with literal, line and column) and adds the provided token type. It then adds the
   finished token to the main token list.
 }
-procedure TPsionOOParser._AddToken(toktype: TTokenType; part_tok: TToken);
+procedure TPsionOOParser._AddToken(const toktype: TTokenType; const part_tok: TToken);
 var
   tok: TToken;
 begin
@@ -459,7 +459,7 @@ end;
   This version of _AddToken is used for some tokenisation hacks. First, it's used to quickly create an EOF. And second,
   it's used in _GetCLines() when turning an entire line into a string after some trimming.
 }
-procedure TPsionOOParser._AddToken(toktype: TTokenType; tokliteral: String);
+procedure TPsionOOParser._AddToken(const toktype: TTokenType; const tokliteral: String);
 var
   tok: TToken;
 begin
@@ -926,7 +926,7 @@ end;
   mandatory. Tokens 3 and 4 do not need to exist. If AMandatoryArgs is empty (auto-set to -1), then all arguments are
   mandatory.
 }
-procedure TPsionOOParser._CheckLine(tokline: TTokenisedLine; const ATokTypes: array of TTokenType; const AMandatoryArgs: Integer = -1);
+procedure TPsionOOParser._CheckLine(const tokline: TTokenisedLine; const ATokTypes: array of TTokenType; const AMandatoryArgs: Integer = -1);
 var
   i: Integer;
   tokline_ArgCount: Integer;
@@ -968,7 +968,7 @@ end;
 { _BuildConstant()
   Takes the first two tokens in a tokenised line and puts them together as a TPsionOOConstantEntry.
 }
-function TPsionOOParser._BuildConstant(tokline: TTokenisedLine): TPsionOOConstantEntry;
+function TPsionOOParser._BuildConstant(const tokline: TTokenisedLine): TPsionOOConstantEntry;
 // TODO: Could this be a nested function in _GetConstants()? It's not called by anything else.
 begin
   Result.Name := tokline.Tokens[0].Literal;
@@ -1055,7 +1055,7 @@ end;
 { _GetClass()
   Builds a class from tokenised lines.
 }
-function TPsionOOParser._GetClass(tokline_class: TTokenisedLine): TPsionOOClass;
+function TPsionOOParser._GetClass(const tokline_class: TTokenisedLine): TPsionOOClass;
 var
   tokline: TTokenisedLine;
   curMethodEntry: TPsionOOMethodEntry;

@@ -1,5 +1,6 @@
 {$mode objfpc}{$H+}{$J-}
 program ctran;
+{$MACRO ON}
 
 uses
   sysutils,
@@ -43,9 +44,11 @@ var
   ExternalModuleList: TStringList;
   parsers: TParserDictionary;
 
+{$define VERSION := '0.0.2'}
+
 procedure VerText();
 begin
-  WriteLn('CTRAN-ng Version 0.0.2 (C) Alex Brown');
+  WriteLn(Format('CTRAN-ng Version %s (C) Alex Brown', [VERSION]));
 end;
 
 procedure HelpText();
@@ -75,7 +78,7 @@ begin
 end;
 
 // Checks a provided path string, separated by semicolons.
-function CheckPath(s: String): TStringList;
+function CheckPath(const s: String): TStringList;
 var
   protopaths: TStringArray;
   pathitem: String;
@@ -109,7 +112,7 @@ end;
 
 // Makes sure that an external category file exists. If so, return the absolute
 // path.
-function CheckExternalFile(s: String; paths: TStringList): String;
+function CheckExternalFile(const s: String; const paths: TStringList): String;
 var
   ext: String;
   path: String;
@@ -139,7 +142,7 @@ end;
 
 // Recursively build a list of classes and their parents, so that dependencies
 // can easily be found.
-procedure LoadDependencies(par: TPsionOOParser);
+procedure LoadDependencies(const par: TPsionOOParser);
 // FIX: Deal with "shadow" classes that only contain DEFERred methods (see SOLIPEG's TASK class as an example)
 var
   ext_class: TPsionOOCatClass;
@@ -244,7 +247,7 @@ begin
 end;
 
 // Return all the ancestors of a class that have a HAS_PROPERTY flag.
-function GetAncestorsWithProperty(class_item: TPsionOOClass): TStringList;
+function GetAncestorsWithProperty(const class_item: TPsionOOClass): TStringList;
 // TODO: Check if this should be modified for internal classes
 var
   ancestor: String;
@@ -261,7 +264,7 @@ begin
 end;
 
 // Return all the ancestors of a class, "eldest" first
-function GetAncestors(class_item: TPsionOOClass): TStringList;
+function GetAncestors(const class_item: TPsionOOClass): TStringList;
 var
   ancestor: String;
   i: Integer;
@@ -294,7 +297,7 @@ end;
 
 // Builds a list of methods by superimposing all of a class's ancestors'
 // methods. This does not include the current class's methods.
-function MakeMetaclass(class_item: TPsionOOClass): TStringList;
+function MakeMetaclass(const class_item: TPsionOOClass): TStringList;
 // TODO: Is it right to ignore REPLACEd methods? Do they matter if they have already been declared?
 var
   method: TPsionOOMethodEntry;
@@ -328,7 +331,7 @@ begin
 end;
 
 // Return all the first-generation children of a class
-function GetChildren(par: TPsionOOParser; parent: String): TStringList;
+function GetChildren(const par: TPsionOOParser; const parent: String): TStringList;
 // TODO: Make the order of children match classic CTRAN's .LIS files
 var
   class_item: TPsionOOClass;
@@ -346,7 +349,7 @@ end;
 
 // Gives every method a number, based on the order it is mentioned in the
 // current category (or sub-category) file.
-function BuildMethodNumbers(par: TPsionOOParser): TStringList;
+function BuildMethodNumbers(const par: TPsionOOParser): TStringList;
 var
   class_item: TPsionOOClass;
   method_id: Integer;
@@ -377,7 +380,7 @@ end;
 // Creates a unique list of classes. It looks at the ancestry of every class in
 // a category file and finds each class's first external ancestor. If an
 // ancestor class is already in the list, don't add it again.
-function GetExternalAncestors(par: TPsionOOParser): TStringList;
+function GetExternalAncestors(const par: TPsionOOParser): TStringList;
 // TODO: Check ancestor classes for circular reference (ancestor TStringList?)
 // (Might not need to do this here if it's checked elsewhere.)
 // TODO: Sort methods as per classic CTRAN (the order that they appear in External files)
@@ -412,7 +415,7 @@ begin
   // Result := ancestor_list;
 end;
 
-function MakeMethodsForOutput(class_item: TPsionOOClass): TMethodsForOutput;
+function MakeMethodsForOutput(const class_item: TPsionOOClass): TMethodsForOutput;
 // TODO: Review this!
 var
   method: TPsionOOMethodEntry;
@@ -499,7 +502,7 @@ end;
 // Finds all the class method forward references across all internal category
 // and sub-cat files. Used to generate the "Class Method Forward References"
 // section at the start of .C and .ASM files.
-function GetMethodForwardRefs(par: TPsionOOParser): TStringList;
+function GetMethodForwardRefs(const par: TPsionOOParser): TStringList;
 var
   class_item: TPsionOOClass;
   method: TPsionOOMethodEntry;
@@ -512,7 +515,7 @@ begin
         Result.Add(method.ForwardRef);
 end;
 
-function GetClassFromParsers(class_name: String): TPsionOOClass;
+function GetClassFromParsers(const class_name: String): TPsionOOClass;
 var
   class_item: TPsionOOClass;
 begin
@@ -534,7 +537,7 @@ end;
 // If a class's parent is in an external module, return the ID (order in which
 // they are listed in the main category file, starting at 1). If it's in an
 // internal one, return 0. Otherwise halt, because there's a bug in CTRAN.
-function GetParentModuleID(class_name: String): Integer;
+function GetParentModuleID(const class_name: String): Integer;
 var
   parent: String;
   parent_module: String;
@@ -622,7 +625,7 @@ end;
 // MAKE FILES
 //
 
-procedure MakeEXT(par: TPsionOOParser);
+procedure MakeEXT(const par: TPsionOOParser);
 var
   // element: TPsionOOFileElement; // NOTE: Might need this again for OVAL support
   method: TPsionOOMethodEntry;
@@ -704,7 +707,7 @@ begin
   FreeAndNil(slFile);
 end;
 
-procedure MakeG(par: TPsionOOParser);
+procedure MakeG(const par: TPsionOOParser);
 var
   inc_file: String;
   inc_file_def: String;
@@ -842,7 +845,7 @@ begin
   end;
 end;
 
-procedure MakeC(par: TPsionOOParser);
+procedure MakeC(const par: TPsionOOParser);
 var
   s: String;
   sl: TStringList;
@@ -1027,7 +1030,7 @@ begin
   FreeAndNil(slFile);
 end;
 
-procedure MakeLIS(par: TPsionOOParser);
+procedure MakeLIS(const par: TPsionOOParser);
 var
   slFile: TStringList;
   sl: TStringList;
@@ -1088,7 +1091,7 @@ begin
   FreeAndNil(slFile);
 end;
 
-procedure MakeASM(par: TPsionOOParser);
+procedure MakeASM(const par: TPsionOOParser);
 var
   i: Integer;
   s: String;
@@ -1235,7 +1238,7 @@ begin
   FreeAndNil(slFile);
 end;
 
-function CLineToTasm(cstr: String; prefix: String): String;
+function CLineToTasm(const cstr: String; const prefix: String): String;
 var
   c_type: String;
   asm_type: String;
@@ -1285,7 +1288,7 @@ begin
   Result := prefix + UpCase(ident[1]) + copy(ident, 2) + ' ' + asm_type;
 end;
 
-function CTypesToTasm(class_item: TPsionOOClass): TStringList;
+function CTypesToTasm(const class_item: TPsionOOClass): TStringList;
 var
   cur_line: Integer;
   cur_typedef_line: Integer;
@@ -1337,7 +1340,7 @@ begin
   end;
 end;
 
-procedure MakeING(par: TPsionOOParser);
+procedure MakeING(const par: TPsionOOParser);
 var
   inc_file: String;
   inc_stem: String;
@@ -1471,7 +1474,7 @@ begin
   end;
 end;
 
-function MakeSkeletonFile(class_item: TPsionOOClass): TStringList;
+function MakeSkeletonFile(const class_item: TPsionOOClass): TStringList;
 var
   module_name: String;
   c_methods: TMethodsForOutput;
@@ -1507,7 +1510,7 @@ begin
 end;
 
 // Generates skeleton C files, one per class.
-procedure MakeAllSkeletonFiles(par: TPsionOOParser);
+procedure MakeAllSkeletonFiles(const par: TPsionOOParser);
 // TODO: Filenames must be 8.3
 // TODO: Find out what classic CTRAN does to files where the first 8 characters of a class are the same as another
 var
@@ -1547,7 +1550,7 @@ end;
 // REQUIREd sub-category files and parses them, adding each parser as a new parser object.
 //
 // Each internal file will now exist as a parser object in the TObjectDictionary `parsers`.
-function WalkParsers(filename: String): String;
+function WalkParsers(const filename: String): String;
 var
   par: TPsionOOParser;
   // fullpath: String;

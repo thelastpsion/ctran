@@ -1,7 +1,10 @@
 **/ctran
 **/*.exe
+**/*.EXE
 **/*.o
 **/*.a
+**/*.zip
+**/*.ZIP
 
 **/.vscode
 **/fp.*

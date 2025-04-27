@@ -349,6 +349,9 @@ end;
 
 // Gives every method a number, based on the order it is mentioned in the
 // current category (or sub-category) file.
+// It's quite lazy, in that it returns a list of strings made up of the method name and its number.
+// This is fine for generating C files, but to generate ASM files MakeASM() has to separate the two.
+// But the function is only run once in each of those, so it's not the end of the world.
 function BuildMethodNumbers(const par: TPsionOOParser): TStringList;
 var
   class_item: TPsionOOClass;
@@ -359,7 +362,11 @@ begin
 
   for class_item in par.ClassList do
   begin
+    // NOTE: This seems wasteful, but the full list needs to be built to make sure that there are no duplicate methods.
+    // TODO: Unless, of course, all the metaclasses were built up-front?
+    if params.InSwitch('V', 'C') then WriteLn('>>> Call MakeMetaclass to count methods');
     method_id := MakeMetaclass(class_item).Count;
+
     for method_item in class_item.Methods do
     begin
       case method_item.MethodType of
@@ -582,6 +589,8 @@ begin
 end;
 
 procedure CheckMethodInheritance();
+// FIX: This doesn't cover sub-category files
+// TODO: Potentially roll this into LoadDependencies() with closer ties to MakeMetaclass()?
 var
   class_item: TPsionOOClass;
   method_item: TPsionOOMethodEntry;

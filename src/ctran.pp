@@ -221,6 +221,8 @@ begin
     raise Exception.Create('LoadDependencies: filename is empty');
   end;
 
+  if params.InSwitch('V', 'C') then WriteLn('*** LoadDependencies for external file ' + filename);
+
   try
     begin
       par := TPsionOOParser.Create;
@@ -264,15 +266,17 @@ begin
 end;
 
 // Return all the ancestors of a class, "eldest" first
-function GetAncestors(const class_item: TPsionOOClass): TStringList;
+// function GetAncestors(const class_item: TPsionOOClass): TStringList;
+function GetAncestors(const class_name: String): TStringList;
 var
   ancestor: String;
   i: Integer;
 begin
   Result := TStringList.Create();
-  ancestor := LowerCase(class_item.Parent);
+  // ancestor := LowerCase(class_item.Parent);
+  ancestor := Dependencylist[class_name].Parent;
 
-  if params.InSwitch('V', 'C') then WriteLn('>>> Checking class ', class_item.Name, ' ancestors (and checking for circular refrerences.)');
+  if params.InSwitch('V', 'C') then WriteLn('>>> Checking class ', class_name, ' ancestors (and checking for circular refrerences.)');
 
   // TODO: Could this be tidied using TStringList.Reverse() and a separate TStringList?
   while ancestor <> '' do
@@ -280,7 +284,7 @@ begin
     if Result.indexof(ancestor) > -1 then
     begin
       writeln('ERROR: circular class dependency (', ancestor, '). current list of classes is:');
-      writeln('  ', class_item.name);
+      writeln('  ', class_name);
       for i := Result.Count - 1 downto 0 do
       begin
         if Result[i] = ancestor then write('> ') else write('  ');
@@ -295,19 +299,21 @@ begin
   end;
 end;
 
-// Builds a list of methods by superimposing all of a class's ancestors'
-// methods. This does not include the current class's methods.
-function MakeMetaclass(const class_item: TPsionOOClass): TStringList;
+// Builds a list of methods by superimposing all of a class's ancestors' methods. It does this by finding the "oldest"
+// class, taking the methods, then going to the next "oldest" and making sure that the methods in this class can be
+// superimposed without clashing. It keeps going until it gets to the class's parent.
+// This does not include the current class's methods, only the methods of the class's ancestors.
+function MakeMetaclass(const class_name: String): TStringList;
 // TODO: Is it right to ignore REPLACEd methods? Do they matter if they have already been declared?
+// TODO: Could the class name be used instead of a full `TPsionOOClass` record? class_item isn't used otherwise.
 var
   method: TPsionOOMethodEntry;
   ancestor: String;
   ancestor_list: TStringList;
 begin
-  if params.InSwitch('V', 'C') then WriteLn('>>> MakeMetaclass(', class_item.Name, ') running...');
+  if params.InSwitch('V', 'C') then WriteLn('>>> MakeMetaclass(', class_name, ') running...');
   Result := TStringList.Create();
-  ancestor := LowerCase(class_item.Parent);
-  ancestor_list := GetAncestors(class_item);
+  ancestor_list := GetAncestors(class_name);
 
   for ancestor in ancestor_list do
   begin
@@ -365,7 +371,8 @@ begin
     // NOTE: This seems wasteful, but the full list needs to be built to make sure that there are no duplicate methods.
     // TODO: Unless, of course, all the metaclasses were built up-front?
     if params.InSwitch('V', 'C') then WriteLn('>>> Call MakeMetaclass to count methods');
-    method_id := MakeMetaclass(class_item).Count;
+    method_id := MakeMetaclass(class_item.Name).Count;
+    // method_id := MetaclassList[class_item.Name].
 
     for method_item in class_item.Methods do
     begin
@@ -452,7 +459,7 @@ begin
   end;
   count_possible_nulls := 0;
   flgFoundFirst := false;
-  metaclass := MakeMetaclass(class_item);
+  metaclass := MakeMetaclass(class_item.Name);
 
   // Creates an empty method for null entries
   // TODO: This feels dirty - can I create a const or something similar?
@@ -598,7 +605,7 @@ var
 begin
   for class_item in CatParser.ClassList do
   begin
-    cur_metaclass := MakeMetaclass(class_item);
+    cur_metaclass := MakeMetaclass(class_item.Name);
 
     // WriteLn;
     // WriteLn('Ancestor metaclass for ', class_item.Name, ':');
@@ -1072,7 +1079,7 @@ begin
     for class_item in parsers[module_name].ClassList do
     begin
       slFile.Add(class_item.Name);
-      sl := GetAncestors(class_item);
+      sl := GetAncestors(class_item.Name);
       if sl.Count > 0 then begin
         slFile.Add('        Derived from ' + sl.Reverse.CommaText);
       end;

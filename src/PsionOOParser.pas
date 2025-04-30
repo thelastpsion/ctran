@@ -1087,6 +1087,8 @@ var
 
     if tokline.Tokens.Count = 4 then begin
       Result.ForwardRef := tokline.Tokens[3].Literal; // We already know this is going to be a string.
+    end else begin
+      Result.ForwardRef := '';
     end;
   end;
 

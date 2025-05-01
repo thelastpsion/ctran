@@ -305,7 +305,6 @@ end;
 // This does not include the current class's methods, only the methods of the class's ancestors.
 function MakeMetaclass(const class_name: String): TStringList;
 // TODO: Is it right to ignore REPLACEd methods? Do they matter if they have already been declared?
-// TODO: Could the class name be used instead of a full `TPsionOOClass` record? class_item isn't used otherwise.
 var
   method: TPsionOOMethodEntry;
   ancestor: String;
@@ -457,15 +456,11 @@ begin
       methodAdd:      methodAdd_list.Add(method);
     end;
   end;
+
   count_possible_nulls := 0;
   flgFoundFirst := false;
   metaclass := MakeMetaclass(class_item.Name);
-
-  // Creates an empty method for null entries
-  // TODO: This feels dirty - can I create a const or something similar?
-  method.MethodType := methodNull;
-  method.Name := '';
-  method.ForwardRef := '';
+  method := Default(TPsionOOMethodEntry);
 
   Result.StartIndex := metaclass.Count;
   if methodReplace_list.Count > 0 then begin

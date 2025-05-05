@@ -18,6 +18,8 @@ uses
 
 type
   TTokenType = (
+    tknEOF,
+
     tknString,
 
     // Symbols
@@ -51,9 +53,7 @@ type
     // External reference file (.EXT) keywords
     tknHasMethod,
     tknHasProperty,
-    tknDeclare,
-
-    tknEOF
+    tknDeclare
   );
 
   TTokenTypeHelper = Type Helper for TTokenType
@@ -209,7 +209,6 @@ type
       procedure _CheckLine(const tokline: TTokenisedLine; const ATokTypes: array of TTokenType; const AMandatoryArgs: Integer = -1);
       function _GetClass(const tokline_class: TTokenisedLine): TPsionOOClass;
       function _GetConstants(): TPsionOOConstantList;
-      function _BuildConstant(const tokline: TTokenisedLine): TPsionOOConstantEntry;
       function _GetCLines(): TStringList;
       procedure _CheckForBrace();
 
@@ -362,7 +361,6 @@ end;
 procedure TPsionOOParser._ErrIncorrectTokType(tokline: TTokenisedLine; toknum: Integer; PossibleTokens: Array of TTokenType);
 var
   s: String;
-  toktype: TTokenType;
   i: Integer;
 begin
   if Length(PossibleTokens) > 0 then
@@ -506,10 +504,7 @@ var
   flgFoundText: Boolean = false;
   curChar: Char;
 begin
-  Result.Literal := '';
-  Result.TType := tknEOF;
-  Result.Position.Line := 0;
-  Result.Position.Column := 0;
+  Result := Default(TToken);
 
   for column := _Position.Column to length(_strCurLine) do
   begin
@@ -965,22 +960,19 @@ begin
   end;
 end;
 
-{ _BuildConstant()
-  Takes the first two tokens in a tokenised line and puts them together as a TPsionOOConstantEntry.
-}
-function TPsionOOParser._BuildConstant(const tokline: TTokenisedLine): TPsionOOConstantEntry;
-// TODO: Could this be a nested function in _GetConstants()? It's not called by anything else.
-begin
-  Result.Name := tokline.Tokens[0].Literal;
-  Result.Value := tokline.Tokens[1].Literal;
-end;
-
 { _GetConstants()
   Takes the first two tokens in a tokenised line and puts them together as a TPsionOOConstantList.
 }
 function TPsionOOParser._GetConstants(): TPsionOOConstantList;
 var
   tokline: TTokenisedLine;
+
+  function BuildConst(): TPsionOOConstantEntry;
+  begin
+    Result.Name := tokline.Tokens[0].Literal;
+    Result.Value := tokline.Tokens[1].Literal;
+  end;
+
 begin
   tokline := _GetNextLine();
   Result := TPsionOOConstantList.Create();
@@ -993,7 +985,7 @@ begin
       end;
       tknString: begin
         _CheckLine(tokline, [tknString]);
-        Result.Add(_BuildConstant(tokline));
+        Result.Add(BuildConst());
       end;
       else begin
         // _ErrShowTokLine(tokline, 0, format('Incorrect token. Expected a tknBraceRight or a tknString, but found a %s', [tokline.Tokens[0].TType.ToString()]));
@@ -1058,7 +1050,6 @@ end;
 function TPsionOOParser._GetClass(const tokline_class: TTokenisedLine): TPsionOOClass;
 var
   tokline: TTokenisedLine;
-  curMethodEntry: TPsionOOMethodEntry;
 
   procedure StopIfEXT();
   begin
@@ -1118,8 +1109,6 @@ begin
 
   while tokline.Tokens[0].TType <> tknEOF do
   begin
-    curMethodEntry.ForwardRef := '';
-
     case tokline.Tokens[0].TType of
       tknAdd: begin
         StopIfEXT();

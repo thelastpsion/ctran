@@ -52,10 +52,8 @@ begin
 end;
 
 procedure HelpText();
-var
-  s: String;
-begin
-  s := 'Parameters: [<name>] [-e<dir>] [-p[<dir>] -x[<dir>] -g[<dir>] -a[<dir>] -i[<dir>] -l[<dir>] -c[<dir>] -s -k -v]' + LineEnding +
+const
+  s: String = 'Parameters: [<name>] [-e<dir>] [-p[<dir>] -x[<dir>] -g[<dir>] -a[<dir>] -i[<dir>] -l[<dir>] -c[<dir>] -s -k -v]' + LineEnding +
       '<name>     Category source input file' + LineEnding +
       '-e<dir>    Input externals directory (multiple separated by `;`)' + LineEnding +
       '-p<dir>    Set default path for all output files' + LineEnding +
@@ -74,6 +72,7 @@ begin
       '    a        show abstract syntax tables' + LineEnding +
       '    c        extra information when constructing new files' + LineEnding +
       '    r        reconstruct all input files from abstract syntax';
+begin
   WriteLn(s);
 end;
 
@@ -117,9 +116,9 @@ var
   ext: String;
   path: String;
   possiblefile: String;
-  extopts: Array of String;
+const
+  extopts: Array of String = ('', '.ext', '.EXT');
 begin
-  extopts := ['', '.ext', '.EXT'];
   if paths.Count = 0 then begin
     raise Exception.Create('CheckExternalFile(): Path list is empty.');
   end;

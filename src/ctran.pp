@@ -167,8 +167,15 @@ begin
           halt(-1);
         end;
 
+        if LowerCase(par_class.Name) = LowerCase(par_class.Parent) then begin
+          WriteLn('ERROR ', ExtractFilename(par.FileLocation), ': Class ', par_class.Parent, ' points to itself.');
+          // TODO: (if possible) add location in file
+          halt(-1);
+        end;
+
         if (not DependencyList.ContainsKey(LowerCase(par_class.Parent))) and (par_class.Parent <> '') then begin
-          WriteLn('ERROR ', ExtractFilename(par.FileLocation), ': Superclass ', par_class.Parent, ' of ', par_class.Name, ' does not exist');
+          WriteLn('ERROR ', ExtractFilename(par.FileLocation), ': Parent class ', par_class.Parent, ' of class ', par_class.Name, ' does not exist (yet).');
+          WriteLn('Check the order of your classes and make sure you don''t have a circular reference.');
           // TODO: (if possible) add location in file
           halt(-1);
         end;
@@ -178,7 +185,8 @@ begin
           case method.MethodType of
             methodDeclare, methodAdd: begin
               if method_list.IndexOf(LowerCase(method.Name)) > -1 then begin
-                WriteLn('ERROR ', ExtractFilename(par.FileLocation), ': Method ', method.Name, ' already exists in category');
+                WriteLn('ERROR ', ExtractFilename(par.FileLocation), ': Method ', method.Name, ' already exists in the current category file.');
+                WriteLn('Due to naming conventions in CTRAN, methods can''t have the same name, even if they are in different classes.');
                 halt(-1);
               end;
               // WriteLn('Adding method ', method.Name, ' to big list o'' methods.');
@@ -247,16 +255,17 @@ begin
   end;
 end;
 
-// Return all the ancestors of a class that have a HAS_PROPERTY flag.
-function GetAncestorsWithProperty(const class_item: TPsionOOClass): TStringList;
+// Return all the ancestors of a class that have a HAS_PROPERTY flag, "youngest" first
+function GetAncestorsWithProperty(const class_name: String): TStringList;
 // TODO: Check if this should be modified for internal classes
 var
   ancestor: String;
 begin
-  // TODO: Check ancestor classes for circular reference (ancestor TStringList?)
-  if params.InSwitch('V', 'C') then WriteLn('>>>   Checking class ', class_item.Name, 'ancestors with property. (do I need to check circular refs?)');
+  if params.InSwitch('V', 'C') then WriteLn('>>>   Building list of ancestors with properties for class ', class_name);
+
   Result := TStringList.Create;
-  ancestor := LowerCase(class_item.Parent);
+  ancestor := DependencyList[LowerCase(class_name)].Parent;
+
   while ancestor <> '' do
   begin
     if DependencyList[ancestor].HasProperty then Result.Add(ancestor);
@@ -265,43 +274,28 @@ begin
 end;
 
 // Return all the ancestors of a class, "eldest" first
-// function GetAncestors(const class_item: TPsionOOClass): TStringList;
 function GetAncestors(const class_name: String): TStringList;
 var
   ancestor: String;
-  i: Integer;
 begin
+  if params.InSwitch('V', 'C') then WriteLn('>>> Building list of ancestors for class ', class_name);
+
   Result := TStringList.Create();
-  // ancestor := LowerCase(class_item.Parent);
-  ancestor := Dependencylist[class_name].Parent;
+  ancestor := Dependencylist[LowerCase(class_name)].Parent;
 
-  if params.InSwitch('V', 'C') then WriteLn('>>> Checking class ', class_name, ' ancestors (and checking for circular refrerences.)');
-
-  // TODO: Could this be tidied using TStringList.Reverse() and a separate TStringList?
   while ancestor <> '' do
   begin
-    if Result.indexof(ancestor) > -1 then
-    begin
-      writeln('ERROR: circular class dependency (', ancestor, '). current list of classes is:');
-      writeln('  ', class_name);
-      for i := Result.Count - 1 downto 0 do
-      begin
-        if Result[i] = ancestor then write('> ') else write('  ');
-        writeln(Result[i]);
-      end;
-      writeln('> ', ancestor);
-      halt(-1);
-    end;
-
     Result.insert(0, ancestor);
     ancestor := Dependencylist[ancestor].Parent;
   end;
 end;
 
-// Builds a list of methods by superimposing all of a class's ancestors' methods. It does this by finding the "oldest"
-// class, taking the methods, then going to the next "oldest" and making sure that the methods in this class can be
-// superimposed without clashing. It keeps going until it gets to the class's parent.
-// This does not include the current class's methods, only the methods of the class's ancestors.
+{ MakeMetaClass()
+  Builds a list of methods by superimposing all of a class's ancestors' methods. It does this by finding the "oldest"
+  class, taking the methods, then going to the next "oldest" and making sure that the methods in this class can be
+  superimposed without clashing. It keeps going until it gets to the class's parent.
+  This does not include the current class's methods, only the methods of the class's ancestors.
+}
 function MakeMetaclass(const class_name: String): TStringList;
 // TODO: Is it right to ignore REPLACEd methods? Do they matter if they have already been declared?
 var
@@ -818,7 +812,7 @@ begin
       slFile.Add('typedef struct pr_' + class_item.Name);
       slFile.Add('{');
 
-      sl := GetAncestorsWithProperty(class_item).Reverse;
+      sl := GetAncestorsWithProperty(class_item.Name).Reverse;
       for s in sl do
       begin
         slFile.Add('PRS_%s %s;', [UpCase(s), s]);
@@ -1447,7 +1441,7 @@ begin
 
       slFile.Add('PR_' + UpCase(class_item.Name) + ' struc');
 
-      sl := GetAncestorsWithProperty(class_item).Reverse;
+      sl := GetAncestorsWithProperty(class_item.Name).Reverse;
       for s in sl do
       begin
         slFile.Add('%s%s PRS_%s <>', [ProperCase(class_item.Name), ProperCase(s), UpCase(s)]);

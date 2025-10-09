@@ -3,6 +3,9 @@
 An attempt to reverse-engineer and recreate `CTRAN.EXE`, the Psion Object Oriented C preprocessor.
 In Object Pascal.
 
+IMPORTANT: This project has been moved to Codeberg.
+https://codeberg.org/thelastpsion/ctran
+
 == Aims
 
 * A drop-in replacement for the original `CTRAN.EXE` in the Psion SIBO C SDK, replicating both the input switches and the generated files.
